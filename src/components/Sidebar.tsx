@@ -95,9 +95,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
     },
     { icon: <Calendar size={20} />, text: "Sessions", path: "/sessions" },
     { icon: <FileText size={20} />, text: "Plans", path: "/plans" },
+    { icon: <Calendar size={20} />, text: "BookingCalendar", path: "/bookingCalendar" },
     { icon: <Bell size={20} />, text: "Notifications", path: "/notifications" },
     { icon: <Settings size={20} />, text: "Settings", path: "/settings" },
     { icon: <HelpCircle size={20} />, text: "Help", path: "/help" },
+
   ];
 
   return (

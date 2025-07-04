@@ -18,6 +18,9 @@ import QuestionBank from "./QuestionBank/QuestionBank";
 import UserPersonalisedPlan from "./Pages/UserPersonalisedPlan";
 import SeePlan from "./SeePlanPage/SeePlan";
 import { SnackbarProvider } from "notistack";
+import BookingCalendarPage from "./Pages/bookingCalendar";
+
+
 
 function App() {
   const { selectComponent } = useContext(DataContext);
@@ -66,6 +69,10 @@ function App() {
                   <SessionsPage />
                 )
               }
+            />
+            <Route
+              path="/bookingCalendar"
+              element={<BookingCalendarPage/>}
             />
             <Route
               path="/question-bank"

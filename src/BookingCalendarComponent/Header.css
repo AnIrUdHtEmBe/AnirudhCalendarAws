@@ -1,0 +1,31 @@
+.header {
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: relative;
+  z-index: 10;
+  
+}
+
+.header-inner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+.header-title {
+  font-size: 2rem; /* 32px */
+  font-weight: bold;
+  color: #1f2937; /* Tailwind's gray-800 */
+  text-align: center;
+  padding: 0.75rem;
+  margin-left: -255px;
+}
+
+@media (max-width: 640px) {
+  .header-title {
+    font-size: 1.5rem; /* 24px on small screens */
+    padding: 0.5rem;
+    
+  }
+}

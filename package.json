@@ -4,11 +4,11 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-  "dev": "vite",
-  "build": "vite build",
-  "lint": "eslint .",
-  "preview": "vite preview",
-  "type-check": "tsc -b" 
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "type-check": "tsc -b"
   },
   "dependencies": {
     "@coreui/coreui": "^5.3.2",
@@ -23,7 +23,7 @@
     "@mui/x-data-grid": "^8.3.0",
     "@mui/x-date-pickers": "^8.3.1",
     "@tailwindcss/vite": "^4.1.4",
-    "axios": "^1.9.0",
+    "axios": "^1.10.0",
     "dayjs": "^1.11.13",
     "font-awesome": "^4.7.0",
     "lucide-react": "^0.503.0",
