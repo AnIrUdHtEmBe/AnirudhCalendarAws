@@ -18,11 +18,13 @@ import QuestionBank from "./QuestionBank/QuestionBank";
 import UserPersonalisedPlan from "./Pages/UserPersonalisedPlan";
 import SeePlan from "./SeePlanPage/SeePlan";
 import { SnackbarProvider } from "notistack";
-import BookingCalendarPage from "./Pages/bookingCalendar";
+import BookingCalendarPage from "./Pages/BookingCalendar";
+
 
 
 
 function App() {
+  //@ts-ignore
   const { selectComponent } = useContext(DataContext);
 
   // console.log(selectComponent);
