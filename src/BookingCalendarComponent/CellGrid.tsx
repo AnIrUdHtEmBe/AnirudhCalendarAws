@@ -114,7 +114,7 @@ const Cell = ({ row, col, state, label, onClick, onDropAction }: CellProps) => {
           .getData("text/plain")
           .split(",")
           .map(Number);
-        if (row !== undefined && col !== undefined && onDropAction) {
+        if (row !== undefined && col !== undefined && onDropAction && state === "available") {
           onDropAction([fromRow, fromCol], [row, col]);
         }
       }}
@@ -181,7 +181,7 @@ const CellGrid = () => {
       return (h - 12).toString();
     };
 
-    return `${formatHourShort(hour)}:${minute} - ${formatHourShort(
+    return `${formatHourShort(hour)}:${minute}  ${formatHourShort(
       nextHour
     )}:${nextMinute}`;
   });
@@ -450,9 +450,18 @@ const CellGrid = () => {
         // Toggle cell state between selected and available
         newG[row][col] = curr === "available" ? "selected" : "available";
       } else {
-        // For occupied or blocked cells, select only that cell (single selection)
-        setSelected([[row, col]]);
-      }
+  // For occupied or blocked cells, toggle selection (single selection)
+  setSelected((prevSelected) => {
+    const exists = prevSelected.some(([r, c]) => r === row && c === col);
+    if (exists) {
+      // Deselect the cell if already selected
+      return prevSelected.filter(([r, c]) => !(r === row && c === col));
+    } else {
+      // Select only this cell (deselect others)
+      return [[row, col]];
+    }
+  });
+}
 
       return newG;
     });
@@ -588,7 +597,8 @@ const CellGrid = () => {
           `https://play-os-backend.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
         );
         const bookingArray = res.data.bookings || [];
-
+        console.log("cancel bookingArray",res.data);
+        
         const hour = Math.floor(c / 2);
         const minute = c % 2 === 0 ? 0 : 30;
         const slotTime = new Date(currentDate);
@@ -601,7 +611,8 @@ const CellGrid = () => {
           const endTime = toIST(booking.endTime).getTime();
           return slotStartMillis < endTime && slotEndMillis > startTime;
         });
-
+        console.log("cancel current booking",currentBooking);
+        
         if (currentBooking) {
           bookingIds.add(currentBooking.bookingId);
         }
@@ -623,7 +634,8 @@ const CellGrid = () => {
     }
 
     const bookingId = Array.from(bookingIds)[0];
-
+    console.log("cancel booking ids",bookingIds);
+    
     try {
       await axios.delete(
         `https://play-os-backend.forgehub.in/booking/${bookingId}`
@@ -687,7 +699,7 @@ const CellGrid = () => {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - Synchronized with grid vertical scroll */}
         <div className="flex flex-col w-24 shrink-0 bg-white">
-          <div className="h-10 shrink-0" />
+          <div className="h-10 shrink-0"/>
           <div
             className="flex flex-col overflow-y-auto overflow-x-hidden"
             style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
@@ -695,7 +707,7 @@ const CellGrid = () => {
             {courtId.map((court) => (
               <div
                 key={court.courtId}
-                className="h-10 flex items-center justify-center border border-gray-200 text-xs text-center shrink-0"
+                className="h-10 flex items-center  justify-center border border-gray-200 text-xs text-center shrink-0"
               >
                 {resolvedNames[court.courtId] ?? court.name}
               </div>
@@ -707,31 +719,46 @@ const CellGrid = () => {
         <div className="flex flex-col flex-1 overflow-hidden">
           {/* Time Headers - Synchronized with grid horizontal scroll */}
           <div
-            className="shrink-0 overflow-x-auto overflow-y-hidden"
-            ref={(el) => {
-              if (el && gridScrollRef.current) {
-                el.scrollLeft = gridScrollRef.current.scrollLeft;
-              }
-            }}
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            <div
-              className="grid border border-gray-300 rounded-t-md bg-white"
-              style={{
-                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
-              }}
-            >
-              {timeLabels.map((label, i) => (
-                <div
-                  key={`header-${i}`}
-                  className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap px-1"
-                  style={{ userSelect: "none" }}
-                >
-                  {label}
-                </div>
-              ))}
-            </div>
-          </div>
+  className="shrink-0 overflow-x-auto overflow-y-hidden relative"
+  ref={(el) => {
+    if (el && gridScrollRef.current) {
+      el.scrollLeft = gridScrollRef.current.scrollLeft;
+    }
+  }}
+  style={{ scrollbarWidth: "none", msOverflowStyle: "none", background: "white" }}
+>
+  {/* Continuous border line from midnight to 12 PM */}
+  <div
+    style={{
+      position: "absolute",
+      top: 0,
+      left: 0,
+      width: `calc(4rem * 48)`,
+      height: "1px",
+      backgroundColor: "#D1D5DB",
+      pointerEvents: "none",
+      zIndex: 10,
+    }}
+  />
+
+  <div
+    className="grid border border-gray-300 rounded-t-md bg-white"
+    style={{
+      gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+    }}
+  >
+    {timeLabels.map((label, i) => (
+      <div
+        key={`header-${i}`}
+        className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+        style={{ userSelect: "none" }}
+      >
+        {label}
+      </div>
+    ))}
+  </div>
+</div>
+
 
           {/* Grid Content - Scrollable */}
           <div
