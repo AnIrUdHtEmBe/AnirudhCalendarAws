@@ -20,7 +20,9 @@ export default function TopBar() {
         {/* <div className="flex-1 flex justify-center">
           <DateSelector />
         </div> */}
+        <div className="pl-65">
         Admin Dashboard!
+        </div>
         {/* Right: LegendBoxes + TabSwitch (stacked vertically) */}
         <div className="flex flex-col items-end gap-2">
           <LegendBoxes />

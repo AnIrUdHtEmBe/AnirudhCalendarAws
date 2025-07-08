@@ -485,8 +485,8 @@ const CellGrid = () => {
               `https://play-os-backend.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
             );
 
-            console.log("blockFetch res", res);
-
+            console.log("blockFetch res",res);
+            
             if (res?.data && Array.isArray(res.data.bookings)) {
               newBookings[court.courtId] = res.data.bookings.map((b: any) => ({
                 start: toIST(b.startTime),
@@ -518,8 +518,9 @@ const CellGrid = () => {
         })
       );
       console.log("bookings in and block", bookings);
-      console.log("new bookings from blocked", newBookings);
-
+      console.log("new bookings from blocked",newBookings);
+      
+      
       setBookings(newBookings);
       // Pass blocked data to update grid
       updateGridWithBookings(courtId, newBookings, newBlocked, date);
@@ -788,7 +789,8 @@ const CellGrid = () => {
         quotePrice: 0,
       };
       console.log("Start Time:", startTime.toISOString());
-      console.log("End Time:", endTime.toISOString());
+console.log("End Time:", endTime.toISOString());
+
 
       console.log("Booking Data payload", bookingData);
 
@@ -1143,30 +1145,28 @@ const CellGrid = () => {
 
               {/* Game */}
               <div className="ml-4 md:ml-8 lg:ml-16 xl:ml-18 2xl:ml-21">
-                <strong>Games:</strong>{" "}
-                {selected.length > 0 ? (
-                  selectedCellDetails.currentBooking &&
-                  selectedCellDetails.currentBooking.sportId ? (
-                    // Show only the booked game's name
-                    <span>
-                      {"'" +
-                        (selectedCellDetails.availableSports.find(
-                          (s) =>
-                            s.sportId ===
-                            selectedCellDetails.currentBooking!.sportId
-                        )?.name || "Unknown") +
-                        "' "}
-                    </span>
-                  ) : (
-                    // Show all available sports
-                    selectedCellDetails.availableSports.map((sport) => (
-                      <span key={sport.sportId}>{"'" + sport.name + "' "}</span>
-                    ))
-                  )
-                ) : (
-                  ""
-                )}
-              </div>
+  <strong>Games:</strong>{" "}
+  {selected.length > 0 ? (
+    selectedCellDetails.currentBooking && selectedCellDetails.currentBooking.sportId ? (
+      // Show only the booked game's name
+      <span>
+        {'\'' +
+          (selectedCellDetails.availableSports.find(
+            (s) => s.sportId === selectedCellDetails.currentBooking!.sportId
+          )?.name || "Unknown") +
+          '\' '}
+      </span>
+    ) : (
+      // Show all available sports
+      selectedCellDetails.availableSports.map((sport) => (
+        <span key={sport.sportId}>{"'" + sport.name + "' "}</span>
+      ))
+    )
+  ) : (
+    ""
+  )}
+</div>
+
             </div>
           </div>
 
