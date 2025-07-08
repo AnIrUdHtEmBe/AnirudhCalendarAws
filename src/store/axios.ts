@@ -12,7 +12,8 @@ import {
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
 const API_BASE_URL = "https://forge-play-backend.forgehub.in";
-
+// const API_BASE_URL="http://127.0.0.1:8000"
+const API_BASE_URL2="https://play-os-backend.forgehub.in";
 export const useApiCalls = () => {
   const context = useContext(DataContext);
   if (!context) {
@@ -31,16 +32,39 @@ export const useApiCalls = () => {
 
   const customer_creation = async (customer: any) => {
 
-    console.log("Creating customer with data:", customer);
+    // console.log("Creating customer with data:", customer);
+    const data={
+      type:customer.type,
+      name:customer.name,
+      age:customer.age,
+      gender:customer.gender,
+      mobile:customer.mobile,
+      email:customer.email,
+      password:customer.password
+    }
+    const data2={
+       type:customer.type,
+      name:customer.name,
+      age:customer.age,
+      gender:customer.gender,
+      mobile:customer.mobile,
+      email:customer.email,
+      height: customer.height,
+      weight: customer.weight,
+      healthCondition: customer.healthCondition,
+      membershipType: customer.membershipType,
+    }
     try {
-      const res = await axios.post(`${API_BASE_URL}/humans`, customer);
-      console.log("Customer created successfully:", res.data);
+      const res = await axios.post(`${API_BASE_URL2}/human/register`, data);
+      // console.log("Customer created successfully:", res.data);
       // alert("Customer created successfully!");
       enqueueSnackbar("Customer created successfully!", {
         variant: "success",
         autoHideDuration: 3000,
       });
 
+      const res_2=await axios.patch(`${API_BASE_URL2}/human/${res.data.userId.userId}`,data2);
+      // console.log("Customer updated successfully:", res_2.data);
       customers_fetching(); // Refresh the customer list after creation
     } catch (error) {
       console.error("❌ Error creating customer:", error);
@@ -66,14 +90,14 @@ export const useApiCalls = () => {
 
   const customers_fetching = async () => {
     try {
-      const res = await axios.get(`${API_BASE_URL}/humans`);
+      const res = await axios.get(`${API_BASE_URL2}/human/all?type=forge`);
       const data = res.data;
       const filteredData = [...data].filter((user) => user.type == "forge");
-      console.log("Filtered Data:", filteredData);
-      setCustomers_Api_call(filteredData);
+      // console.log("Filtered Data:", filteredData);
+      setCustomers_Api_call(data);
       // console.log("✅ Customers fetched successfully:", data);
 
-      console.log("Status:", res.status);
+      // console.log("Status:", res.status);
     } catch (error) {
       console.error("❌ Error fetching customers:", error);
     }
@@ -84,7 +108,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/session-templates/${sessionId}`,
         session
       );
-      console.log("Session updated successfully:", res.data);
+      // console.log("Session updated successfully:", res.data);
       // alert("Session updated successfully!");
       enqueueSnackbar("Session updated successfully!", {
         variant: "success",
@@ -100,11 +124,22 @@ export const useApiCalls = () => {
       });
     }
   };
+
+  // getting human by userId
+  const getHumanById=async(userId:string)=>{
+    try{
+      const res=await axios.get(`${API_BASE_URL}/human/${userId}`)
+      const data=res.data
+      return data
+    }catch (error) {
+      console.error("❌ Error fetching plan:", error);
+    }
+  }
   const getPlanByPlanId = async (planId: string) => {
     try {
       const res = await axios.get(`${API_BASE_URL}/plan-templates/${planId}`);
       const data = res.data;
-      console.log("✅ Plan fetched successfully:", data);
+      // console.log("✅ Plan fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching plan:", error);
@@ -115,7 +150,7 @@ export const useApiCalls = () => {
       const res = await axios.get(`${API_BASE_URL}/session-templates/full`);
       const data = res.data;
       setSessions_api_call(data);
-      console.log("✅ Sessions fetched successfully:", data);
+      // console.log("✅ Sessions fetched successfully:", data);
     } catch (error) {
       console.error("❌ Error fetching sessions:", error);
     }
@@ -150,7 +185,7 @@ export const useApiCalls = () => {
       const data = res.data;
       setAssessments_Api_call(data);
       // console.log("✅ Assessments fetched successfully:", data);
-      console.log("Status:", res.status);
+      // console.log("Status:", res.status);
     } catch (error) {
       console.error("❌ Error fetching assessments:", error);
     }
@@ -168,17 +203,42 @@ export const useApiCalls = () => {
           newDate: newDate.toISOString(),
         }
       );
-      console.log("Session instance updated successfully:", res.data);
+      // console.log("Session instance updated successfully:", res.data);
     } catch (error) {
       console.error("❌ Error updating session instance:", error);
     }
   };
+
+  // used to update session instance to removed in plan
+  const RemoveSessionInPlanInstance=async(
+    sessionId:string,
+    planInstanceId:string
+  )=>{
+    try{
+      console.log(sessionId,planInstanceId,"hellooo")
+      const res = await axios.patch(
+        `${API_BASE_URL}/plan-instances/${sessionId}/remove_session`,null,{
+          params: {
+          sessionId: sessionId,
+          planInstanceId: planInstanceId,
+        }
+        }
+        // console.log("res",)
+       
+      );
+      console.log(res,"sesion updated")
+      return res
+    }catch(error){
+      console.error("❌ Error updating session instance:", error);
+
+    }
+  }
   const questions = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/questions`);
       const data = res.data;
       setQuestionsForAPICall(data);
-      console.log("✅ Questions fetched successfully:", data);
+      // console.log("✅ Questions fetched successfully:", data);
     } catch (error) {
       console.error("❌ Error fetching questions:", error);
     }
@@ -190,7 +250,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/asssessmenttemplates`,
         assesment
       );
-      console.log("✅ Assessment submitted successfully:", res.data);
+      // console.log("✅ Assessment submitted successfully:", res.data);
     } catch (error) {
       console.error("❌ Error submitting assessment:", error);
     }
@@ -209,7 +269,7 @@ export const useApiCalls = () => {
 
     const data = res.data;
     setActivities_api_call(data);
-    console.log("✅ Activities fetched successfully:", data);
+    // console.log("✅ Activities fetched successfully:", data);
     console.log(theme);
     
   } catch (error) {
@@ -240,7 +300,7 @@ export const useApiCalls = () => {
       // Update the state with the array of all fetched data
       setAssessmentInstance_expanded_Api_call(allData);
 
-      console.log("✅ Assessment instances fetched successfully:", allData);
+      // console.log("✅ Assessment instances fetched successfully:", allData);
     } catch (error) {
       console.error("❌ Error fetching assessment instances:", error);
     }
@@ -256,7 +316,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/plan-instances?planTemplateId=${planTemplateId}&userId=${userId}`,
         plan
       );
-      console.log("Plan instance created successfully:", res.data);
+      // console.log("Plan instance created successfully:", res.data);
       // alert(
       //   "Plan instance created successfully! You can now view it in the Plans section."
       // );
@@ -282,7 +342,7 @@ export const useApiCalls = () => {
     }
     try {
       const res = await axios.post(`${API_BASE_URL}/plan-templates`, plan);
-      console.log("Plan created successfully:", res.data);
+      // console.log("Plan created successfully:", res.data);
       // alert(
       //   "Plan created successfully! You can now view it in the All Plans section."
       // );
@@ -304,22 +364,22 @@ export const useApiCalls = () => {
     user_id: string,
     template_id: string
   ) => {
-    console.log("Starting assessment for user:", user_id);
-    console.log("Template ID:", template_id);
+    // console.log("Starting assessment for user:", user_id);
+    // console.log("Template ID:", template_id);
     try {
       const res = axios.post(
         `${API_BASE_URL}/asssessmentinstances/start/${user_id}/${template_id}`
       );
-      console.log("Assessment started successfully:", (await res).status);
+      // console.log("Assessment started successfully:", (await res).status);
       // console.log("Assessment started successfully:", (await res).data);
       localStorage.setItem(
         "latestAssessmentTemplate",
         JSON.stringify((await res).data.assessmentInstanceId)
       );
-      console.log(
-        "Latest Assessment Template ID stored in localStorage:",
-        (await res).data.assessmentInstanceId
-      );
+      // console.log(
+      //   "Latest Assessment Template ID stored in localStorage:",
+      //   (await res).data.assessmentInstanceId
+      // );
     } catch (error) {
       console.error("❌ Error starting assessment:", error);
     }
@@ -330,14 +390,14 @@ export const useApiCalls = () => {
     answers: object[]
   ) => {
     try {
-      console.log(answers);
+      // console.log(answers);
       const res = await axios.patch(
         `${API_BASE_URL}/asssessmentinstances/${instanceId}/submit`,
         {
           answers: answers,
         }
       );
-      console.log("Assessment submitted successfully:", (await res).status);
+      // console.log("Assessment submitted successfully:", (await res).status);
 
       setSelectComponent("responses");
       // alert("Assessment submitted successfully!");
@@ -362,7 +422,7 @@ export const useApiCalls = () => {
         options: question.options,
         scoreZones: question.scoreZones || null,
       });
-      console.log("✅ Question updated successfully:", res.data);
+      // console.log("✅ Question updated successfully:", res.data);
     } catch (error) {
       console.error("❌ Error updating question:", error);
     }
@@ -371,7 +431,7 @@ export const useApiCalls = () => {
   const questionCreation = async (question: object) => {
     try {
       const res = await axios.post(`${API_BASE_URL}/questions`, question);
-      console.log("✅ Question created successfully:", res.data);
+      // console.log("✅ Question created successfully:", res.data);
     } catch (error) {
       console.error("❌ Error creating question:", error);
     }
@@ -390,7 +450,7 @@ export const useApiCalls = () => {
                 answerType: question.answerType,
               }
             );
-            console.log("✅ Question updated successfully:", res.data);
+            // console.log("✅ Question updated successfully:", res.data);
           } else {
             const res = await axios.post(`${API_BASE_URL}/questions`, question);
             console.log("✅ Question created successfully:", res.data);
@@ -414,7 +474,7 @@ export const useApiCalls = () => {
         variant: "success",
         autoHideDuration: 3000,
       });
-      console.log("Activity created successfully:", res.data);
+      // console.log("Activity created successfully:", res.data);
     } catch (error) {
       console.error("❌ Error creating activity:", error);
     }
@@ -425,7 +485,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/activity-templates/${activityId}`
       );
       const data = res.data;
-      console.log("✅ Activity fetched successfully:", data);
+      // console.log("✅ Activity fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching activity:", error);
@@ -437,7 +497,7 @@ export const useApiCalls = () => {
       const res = await axios.get(`${API_BASE_URL}/plan-templates/All`);
       const data = res.data;
       setPlans_full_api_call(data);
-      console.log("✅ Plans fetched successfully:", data);
+      // console.log("✅ Plans fetched successfully:", data);
     } catch (error) {
       console.error("❌ Error fetching plans:", error);
     }
@@ -450,7 +510,7 @@ export const useApiCalls = () => {
         planIds
       );
       const data = res.data;
-      console.log("✅ Plan fetched successfully:", data);
+      // console.log("✅ Plan fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching plan:", error);
@@ -463,7 +523,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/session-templates/${sessionId}`
       );
       const data = res.data;
-      console.log("✅ Session fetched successfully:", data);
+      // console.log("✅ Session fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching session:", error);
@@ -474,7 +534,7 @@ export const useApiCalls = () => {
     try {
       const res = await axios.post(`${API_BASE_URL}/session-instances/generate` ,session );
       const data = res.data;
-      console.log("✅ Sessions fetched successfully:", data);
+      // console.log("✅ Sessions fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching sessions:", error);
@@ -485,7 +545,7 @@ export const useApiCalls = () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/session-templates`);
       const data = res.data;
-      console.log("✅ All sessions fetched successfully:", data);
+      // console.log("✅ All sessions fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching all sessions:", error);
@@ -502,7 +562,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/humans/${userId}/plan-instances-within-date?start=${startDate}&end=${endDate}`
       );
       const data = res.data;
-      console.log("✅ Plans for interval fetched successfully:", data);
+      // console.log("✅ Plans for interval fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching plans for interval:", error);
@@ -524,7 +584,7 @@ export const useApiCalls = () => {
         }
       );
 
-      console.log("✅ Patch successful:", res.data);
+      // console.log("✅ Patch successful:", res.data);
       enqueueSnackbar("Plan updated successfully!", {
         variant: "success",
         autoHideDuration: 3000,
@@ -552,7 +612,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/plan-templates/batch`,
         payload
       );
-      console.log("✅ Patch successful:", response.data);
+      // console.log("✅ Patch successful:", response.data);
       return response.data;
     } catch (error) {
       console.error("❌ Error in OptimisedPatchPlan:", error);
@@ -578,7 +638,7 @@ export const useApiCalls = () => {
     try {
       const res = await axios.get(`${API_BASE_URL}/plan-templates`);
       const data = res.data;
-      console.log("✅ Plans fetched successfully:", data);
+      // console.log("✅ Plans fetched successfully:", data);
       return data;
     } catch (error) {
       console.error("❌ Error fetching plans:", error);
@@ -592,7 +652,7 @@ export const useApiCalls = () => {
         `${API_BASE_URL}/plan-instances/${planInstanceId}/full`
       );
       const data = res.data;
-      console.log("✅ Plan instance fetched successfully:", data);
+      // console.log("✅ Plan instance fetched successfully:", data);
       return data;  
     } catch (error) {
       console.error("❌ Error fetching plan instance:", error);
@@ -604,7 +664,7 @@ export const useApiCalls = () => {
     try{
       const res = await axios.get(`${API_BASE_URL}/tags`);
       const data = res.data;
-      console.log("✅ Tags fetched successfully:", data);
+      // console.log("✅ Tags fetched successfully:", data);
       return data;    
     }
     catch (error) {
@@ -629,6 +689,7 @@ export const useApiCalls = () => {
     getSessions,
     getPlansFull,
     patchSession,
+    RemoveSessionInPlanInstance,
     createPlan,
     patchPlans,
     getPlanByPlanId,
@@ -641,6 +702,7 @@ export const useApiCalls = () => {
     OptimisedPatchPlan,
     customer_creation,
     patch_user,
+    getHumanById,
     question_Updation,
     questionCreation,
     getPlans,

@@ -45,11 +45,60 @@ export type Customers_Api_call ={
   height?: string;
   weight?: string;
   healthCondition?: string;
-  created_on :string;
+  createdOn :string;
   updated_on?: string;
   membershipType: string;
+  membershipValidity: {
+    startDate: string;
+    endDate: string;
+  };
+  membershipStatus: string;
   plansAllocated: string[];
-  assessments?: string[];
+  assessments: string[];
+  type: string;
+  photo: string | null;
+  address: string | null;
+  sessionsBooked: string[];
+  gamesBooked: string[];
+  gamesPlayed: string[];
+  gameLevel: string | null;
+  userRating: number | null;
+  faveSports: string[];
+  faveUsers: string[];
+  blockedUsers: string[];
+  playedWithUsers: string[];
+}
+export type UserDetailsType={
+  userId: string;
+  name: string;
+  age: number;
+  gender: string;
+  mobile: string;
+  email: string;
+  height: number;
+  weight: number;
+  healthCondition: string;
+  membershipType: string;
+  membershipValidity: {
+    startDate: string;
+    endDate: string;
+  };
+  membershipStatus: string;
+  plansAllocated: string[];
+  assessments: string[];
+  type: string;
+  photo: string | null;
+  address: string | null;
+  sessionsBooked: string[];
+  gamesBooked: string[];
+  gamesPlayed: string[];
+  gameLevel: string | null;
+  userRating: number | null;
+  faveSports: string[];
+  faveUsers: string[];
+  blockedUsers: string[];
+  playedWithUsers: string[];
+
 }
 export type Plan_Instance_Api_call = {
   sessionTemplateIds: string[];
@@ -122,6 +171,7 @@ type DataContextType = {
 
   customers_Api_call: Customers_Api_call[];
   setCustomers_Api_call: Dispatch<SetStateAction<Customers_Api_call[]>>;
+
 
 
   // Assessments -> Dashboard page

@@ -12,11 +12,12 @@
   padding: 16px;
 }
 
-.header-title {
+.cust-header-title {
   font-family: Gilroy-Bold;
-  font-size: 32px;
-  font-weight:400;
-  color: #1f2937; /* Tailwind's gray-800 */
+  font-size: 42px;
+  font-weight:500;
+  color: #1f2937;/* Tailwind's gray-800*/
+  /* color: red; */
   padding: 12px;
   text-align: center;
 

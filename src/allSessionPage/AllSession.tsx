@@ -47,6 +47,7 @@ function AllSession() {
   }, []);
 
   useEffect(() => {
+    // console.log(selecteddPlan)
     getActivities();
   }, [selecteddPlan]);
 
@@ -171,13 +172,14 @@ function AllSession() {
           </button>
         </div>
 
-        <div className="table-container">
-          <table className="table">
-            <thead className="table-header">
-              <tr>
-                <th className="table-header thone">Sl.No</th>
-                <th className="table-header thtwo">Session Name</th>
-                <th className="table-header ththree">Category</th>
+        <div className="Alstable-container">
+          <table className="Alstable">
+            <thead className="Alstable-header">
+              <tr className="header-table-row">
+                <th className=" thone">Sl.No</th>
+                {/* <th className=" thtwo">Session Name</th> */}
+                <th className=" ththree">Category</th>
+                <th className=" thtwo">Session Name</th>
               </tr>
             </thead>
             <tbody>
@@ -185,11 +187,14 @@ function AllSession() {
                 <tr
                   key={index}
                   onClick={() => setSelectedPlan(session)}
-                  className="table-row"
+                  // className="plan-table-row"
+                  className={`plan-table-row ${selecteddPlan?.sessionId === session.sessionId ? 'highlight-row' : ''}`}
+
                 >
                   <td className="table-cell-one">{index + 1}</td>
-                  <td className="table-cell-two">{session.title}</td>
+                  {/* <td className="table-cell-two">{session.title}</td> */}
                   <td className="table-cell-three">{session.category}</td>
+                  <td className="table-cell-two">{session.title}</td>
                 </tr>
               ))}
             </tbody>
@@ -237,7 +242,7 @@ function AllSession() {
         </div>
 
         {/* Activities Table */}
-        <div className="table-container">
+        <div className="Alstable-container">
           {selecteddPlan ? (
             <table className="activities-table">
               <thead className="activities-table-header">

@@ -18,7 +18,7 @@ import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import { People } from "@mui/icons-material";
+import { Password, People } from "@mui/icons-material";
 import Modal from "./Modal";
 import { enqueueSnackbar } from "notistack";
 
@@ -85,7 +85,7 @@ const CustomerTable = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUserIDs, setSelectedUserIDs] = useState<Array<string>>([]);
 
-  console.log("Customers API Call:", customers_Api_call);
+  // console.log("Customers API Call:", customers_Api_call);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -93,6 +93,8 @@ const CustomerTable = () => {
     gender: "",
     mobile: "",
     email: "",
+    password:"",
+    type:"forge",
     height: "",
     weight: "",
     healthCondition: "",
@@ -156,6 +158,7 @@ const CustomerTable = () => {
       weight: Number(formData.weight) || null,
       healthCondition: formData.healthCondition || null,
     };
+    console.log(payload,"payload")
     await customer_creation(payload); // assuming this returns a promise
     setModalOpen(false);
     // Optionally, reset form fields here
@@ -197,7 +200,7 @@ const CustomerTable = () => {
       day: "numeric",
     });
   };
-
+  // console.log(dateChangeHandler("1"),"data")
   const generateColumns = () => {
     return [
       { field: "no", headerName: "SI.No" },
@@ -209,7 +212,7 @@ const CustomerTable = () => {
       { field: "phoneNumber", headerName: "Phone Number" },
       { field: "memberShip", headerName: "Membership" },
       { field: "lastAssessedOn", headerName: "Last Assessed On" },
-      { field: "planAllocated", headerName: "Plan Allocated" },
+      // { field: "planAllocated", headerName: "Plan Allocated" },
       {
         field: "action",
         headerName: "",
@@ -223,33 +226,81 @@ const CustomerTable = () => {
     ];
   };
 
-  const generateRows = async () => {
-    const rows = await Promise.all(
-      customers_Api_call.map(async (customer :any, i :any) => {
-        const plan = customer.plansAllocated?.[0]
-            ? await getPlanInstanceByPlanID(customer.plansAllocated[0]).then(
-                (plan) => plan?.PlanTemplateName == "alacartePH" ?  "-" : plan?.PlanTemplateName || "-"
-              )
-            : "-";
-        return {
-          no: i + 1,
-          id: customer.userId,
-          name: customer.name,
-          age: customer.age,
-          gender: customer.gender || "-",
-          email: customer.email || "-",
-          joinedOn: dateChangeHandler(customer.created_on),
-          phoneNumber: customer.mobile || "-",
-          memberShip: customer.membershipType,
-          lastAssessedOn: customer.lastAssessed || "-",
-          planAllocated: plan || "-",
-          customerData: customer,
-        };
-      })
-    );
+  // const generateRows = async () => {
+    
+  //   const rows = await Promise.all(
+  //     customers_Api_call.map(async (customer :any, i :any) => {
+  //       console.log(customer,"eeee",customer.plansAllocated?.[0])
+  //       const plan =  await getPlanInstanceByPlanID(customer.plansAllocated[0]).then(
+  //               (plan) => {
+  //                 console.log(plan.PlanTemplateName,"hhhhuhhh")
+  //                 plan?.PlanTemplateName == "alacartePH" ?  "-" : plan?.PlanTemplateName 
+  //               }
+  //             )
+            
+  //           console.log("rrrrr",plan)
+  //       // const planInstance = await getPlanInstanceByPlanID(customer.plansAllocated[0]);
+  //       // const plan = planInstance?.PlanTemplateName === "alacartePH" 
+  //       //   ? "-" 
+  //       //   : planInstance?.PlanTemplateName;
 
-    return rows;
-  };
+  //       //   console.log(plan,"plannnningggsss",plan.PlanTemplateName)
+
+  //       return {
+  //         no: i + 1,
+  //         id: customer.userId,
+  //         name: customer.name,
+  //         age: customer.age,
+  //         gender: customer.gender || "-",
+  //         email: customer.email || "-",
+  //         joinedOn: dateChangeHandler(customer.created_on),
+  //         phoneNumber: customer.mobile || "-",
+  //         memberShip: customer.membershipType,
+  //         lastAssessedOn: customer.lastAssessed || "-",
+  //         planAllocated: plan ,
+  //         customerData: customer,
+  //       };
+  //     })
+  //   );
+
+  //   return rows;
+  // };
+  const generateRows = async () => {
+  const rows = await Promise.all(
+    customers_Api_call.map(async (customer: any, i: any) => {
+      // console.log(customer, "eeee", customer.plansAllocated?.[0]);
+
+      // const planInstance = await getPlanInstanceByPlanID(customer.plansAllocated?.[customer.plansAllocated.length-1]);
+
+      // const plan = planInstance?.PlanTemplateName === "alacartePH"
+      //   ? "-"
+      //   : planInstance?.PlanTemplateName;
+
+      const plan='-'
+      // console.log("rtrtrtrtrt", planInstance?.PlanTemplateName,customer.name,customer.plansAllocated?.[-1]);
+      // console.log(customer.createdOn,"createdzzzzzzzzzz")
+
+      return {
+        no: i + 1,
+        id: customer.userId,
+        name: customer.name,
+        age: customer.age,
+        gender: customer.gender || "-",
+        email: customer.email || "-",
+        joinedOn: dateChangeHandler(customer.createdOn),
+        phoneNumber: customer.mobile || "-",
+        memberShip: customer.membershipType,
+        lastAssessedOn: customer.lastAssessed || "-",
+        // planAllocated: plan,
+        customerData: customer,
+      };
+    })
+  );
+
+  return rows;
+};
+
+  console.log(rows,"roweeeees")
 
   const formatColumns = (columns: GridColDef[]) => {
     const width = ref.current?.clientWidth || 900;
@@ -269,8 +320,8 @@ const CustomerTable = () => {
       return {
         ...col,
         width: width / 10,
-        headerAlign: "center",
-        align: "center",
+        headerAlign: "left",
+        align: "left",
       };
     });
   };
@@ -279,6 +330,7 @@ const CustomerTable = () => {
     if (!ref.current) return;
 
     const fetchData = async () => {
+      console.log("console")
       const _rows = await generateRows(); // ✅ Wait for async rows
       const _columns = formatColumns(generateColumns());
 
@@ -536,6 +588,14 @@ const CustomerTable = () => {
               value={formData.email}
               placeholder="Email"
               name="email"
+            />
+             <input
+              type="text"
+              style={modalInputStyle}
+              onChange={handleInputChange}
+              value={formData.password}
+              placeholder="Password ***"
+              name="password"
             />
             <select
               style={modalInputStyle}

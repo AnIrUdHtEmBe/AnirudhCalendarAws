@@ -47,6 +47,7 @@ function SessionPage() {
   const [sessionName, setSessionName] = useState("");
   const [category, setCategory] = useState("");
 
+  console.log(selectedIds,"eleczzzz")
   const {
     getSessions,
     getActivities,
@@ -130,18 +131,37 @@ function SessionPage() {
     getSessions();
   };
 
+  // const toggleSelectOne = (id: string) => {
+  //   setSelectedIds((prev) => {
+  //     const newSelected = prev.includes(id)
+  //       ? prev.filter((i) => i !== id)
+  //       : [...prev, id];
+  //     console.log(newSelected,"newSelectedddd");
+  //     // setting active plan for the communication of grid and colums
+  //     if (newSelected.length === 1) {
+  //       const plan = sessions_api_call.find(
+  //         (p) => p.sessionId === newSelected[0]
+  //       );
+  //       console.log(plan,"9999000");
+  //       setActivePlan(plan || null);
+  //     } else {
+  //       setActivePlan(null);
+  //     }
+  //     return newSelected;
+  //   });
+  // };
   const toggleSelectOne = (id: string) => {
     setSelectedIds((prev) => {
       const newSelected = prev.includes(id)
         ? prev.filter((i) => i !== id)
-        : [...prev, id];
-      console.log(newSelected);
+        : [ id];
+      console.log(newSelected,"newSelectedddd");
       // setting active plan for the communication of grid and colums
       if (newSelected.length === 1) {
         const plan = sessions_api_call.find(
           (p) => p.sessionId === newSelected[0]
         );
-        console.log(plan);
+        console.log(plan,"9999000");
         setActivePlan(plan || null);
       } else {
         setActivePlan(null);
@@ -314,13 +334,13 @@ function SessionPage() {
               <thead>
                 <tr>
                   <th className="inp-header">
-                    <input
+                    {/* <input
                       type="checkbox"
                       className="session-checkbox"
                       ref={checkboxRef}
                       checked={isAllSelected}
                       onChange={toggleSelectAll}
-                    />
+                    /> */}
                   </th>
 
                   <th className="session-header">Session Name</th>

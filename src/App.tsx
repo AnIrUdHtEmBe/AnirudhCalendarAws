@@ -22,6 +22,7 @@ import BookingCalendarPage from "./Pages/BookingCalendar";
 
 
 
+import UserProfile from "./UserPages/ProfilePage";
 
 function App() {
   //@ts-ignore
@@ -86,6 +87,11 @@ function App() {
                 selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
               }
             />
+              <Route
+              path="/profile"
+              element={<UserProfile></UserProfile>}
+              />
+           
           </Routes>
         </Layout>
       </Router>

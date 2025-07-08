@@ -79,13 +79,14 @@
   font-size: 1rem;
 }
 
-.table-container {
+.Alstable-container {
   overflow-x: auto;
 }
 
-.table {
+.Alstable {
   width: 100%;
   border-collapse: collapse;
+  background-color: #f3f4f6;
 }
 
 /* .table-r {
@@ -94,28 +95,64 @@
   /* font-size: 0.875rem; */
 /* } */
 
-.table-header th {
+.Alstable-header th {
   padding: 1rem;
-}
+  color: black;
+  font-weight: 600;
+    height: 50px;
 
-.table-row {
+  border-bottom: 1px solid grey;
+}
+.header-table-row {
   cursor: pointer;
-  /* height: 40px; */
+  height: 50px;
+  background-color: f3f4f6;
+}
+.plan-table-row{
+  cursor: pointer;
+  height: 50px;
+  background-color: white;
 }
 
-.table-row:hover {
-  background-color: rgb(243 244 246);
+.plan-table-row:hover {
+  background-color:  rgb(150, 193, 236);
 }
 
-.table-header{
-  color: #667085;
-  font-weight: 100;
+.Alstable-header{
+  /* color: #667085; */
+  /* color: rgb(97, 21, 183); */
+  /* font-weight: 800; */
+
 }
 
+.thtwo{
+  text-align: left;
+  background-color: #f3f4f6;
+
+  /* color: green; */
+}
+.table-cell-one{
+  font-weight: 500;
+  text-align: center;
+  /* background-color: #f3f4f6;  */
+}
+.table-cell-three{
+   font-weight: 500;
+  text-align: center;
+    /* background-color: #f3f4f6; */
+
+}
 .table-cell-two{
   font-weight: 500;
-}
+  text-align: left;
+    /* background-color: #f3f4f6; */
 
+  /* color: red; */
+}
+.highlight-row{
+   background-color: #ffeeba; /* light yellow */
+  transition: background-color 0.3s ease;
+}
 .table-cell-one{
   font-weight: 100;
 }
@@ -123,6 +160,7 @@
 .table-cell-three{
   font-weight: 100;
 }
+
 
 /* .table-cell {
   padding: 1rem;
@@ -273,6 +311,7 @@
 
 .activity-row:hover {
   background-color: rgb(249 250 251);
+  /* background-color: ; */
 }
 
 .activity-cell {

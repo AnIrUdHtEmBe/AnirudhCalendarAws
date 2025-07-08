@@ -172,7 +172,7 @@ const Assessment: React.FC = () => {
                 <thead>
                   <tr>
                     <th className="sl-header">Sl.No</th>
-                    <th className="assess-header">Assessment</th>
+                    <th  className="assess-header">Assessment</th>
                     <th className="ques-header">No.of Questions</th>
                     <th className="prev-header">Preview</th>
                   </tr>
@@ -189,7 +189,7 @@ const Assessment: React.FC = () => {
                       }
                     >
                       <td>{index + 1}</td>
-                      <td>{assessment.name}</td>
+                      <td style={{textAlign:"left"}}>{assessment.name}</td>
                       <td>{assessment.questions.length}</td>
                       <td>
                         {assessment.questions.length !== 0 && (

@@ -240,6 +240,16 @@ const QuestionBank = () => {
           <span className="header-title">Questionnaire Creation</span>
         </div>
         <div className="header-tabs">
+          {/* <button
+          className={`header-tab ${
+              selectComponent === "/assignment" ||
+              selectComponent === "dashboard"
+                ? "border-b-4 active-tab"
+                : ""
+            }`}
+          >
+            Assessments
+          </button> */}
           <button
             className={`header-tab ${
               selectComponent === "/question-bank" ||
