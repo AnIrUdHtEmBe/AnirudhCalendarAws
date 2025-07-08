@@ -1,6 +1,7 @@
 // import { Celebration } from "@mui/icons-material";
 
 import CellGrid from "./CellGrid";
+import UserModal from "./UserModal";
 
 
 const CalendarBooking = () => {
@@ -12,6 +13,7 @@ const CalendarBooking = () => {
             <CellGrid />
             {/* <PlsGod />
              */}
+             
 
         </div>
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import axios from "axios";
 import TopBar from "./Topbar";
+import UserModal from "./UserModal";
 
 export type CellState = "available" | "occupied" | "blocked" | "selected";
 
@@ -12,6 +13,7 @@ interface CellProps {
   label?: string;
   onClick?: (row: number, col: number) => void;
   onDropAction?: (from: [number, number], to: [number, number]) => void;
+  isSelected?: any;
 }
 
 type Court = { courtId: string; name: string };
@@ -73,7 +75,7 @@ function toLocalISOString(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
-const Cell = ({ row, col, state, label, onClick, onDropAction }: CellProps) => {
+const Cell = ({ row, col, state, label, onClick, onDropAction, isSelected }: CellProps) => {
   const colorMap: Record<CellState, string> = {
     available: "bg-gray-300",
     occupied: "bg-green-500",
@@ -92,11 +94,16 @@ const Cell = ({ row, col, state, label, onClick, onDropAction }: CellProps) => {
     );
   }
 
+  const showRing = isSelected && (state === "occupied" || state === "blocked");
+
   return (
     <div
       className={clsx(
         "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors",
-        state && colorMap[state]
+        state && colorMap[state],
+        showRing && isSelected &&  "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
+
+
       )}
       onClick={() => {
         if (row !== undefined && col !== undefined && onClick) {
@@ -668,6 +675,10 @@ const CellGrid = () => {
 
   // Update updateCell to allow multiple selection toggling
   const updateCell = (row: number, col: number) => {
+  //   setSelectedCell({ row, col });
+  //    setSelectedCell(prev =>
+  //   prev && prev.row === row && prev.col === col ? null : { row, col }
+  // );
     setSelectedSportId("");
     setGrid((prev) => {
       const newG = prev.map((r) => [...r]);
@@ -679,9 +690,11 @@ const CellGrid = () => {
           const exists = prevSelected.some(([r, c]) => r === row && c === col);
           if (exists) {
             // Deselect cell
+            // setSelectedCell(null);
             return prevSelected.filter(([r, c]) => !(r === row && c === col));
           } else {
             // Select cell (add)
+            // setSelectedCell({ row, col });
             return [...prevSelected, [row, col]];
           }
         });
@@ -694,9 +707,11 @@ const CellGrid = () => {
           const exists = prevSelected.some(([r, c]) => r === row && c === col);
           if (exists) {
             // Deselect the cell if already selected
+            setSelectedCell(null);
             return prevSelected.filter(([r, c]) => !(r === row && c === col));
           } else {
             // Select only this cell (deselect others)
+            setSelectedCell({ row, col });
             return [[row, col]];
           }
         });
@@ -723,6 +738,12 @@ const CellGrid = () => {
       return newG;
     });
   };
+
+  type ModalGame = {
+    gameId: string
+  }
+
+const [modalData, setModalData] = useState<ModalGame>();
 
   // Modify applyAction to handle multiple selected cells for booking
   const applyAction = async (action: CellState) => {
@@ -798,6 +819,8 @@ const CellGrid = () => {
           bookingData
         );
         console.log("Booking created:", response.data);
+        setModalData(response.data.gameId);
+        
 
         // Refresh bookings after successful creation
         await fetchBookingsAndBlocked(currentDate);
@@ -902,6 +925,17 @@ const CellGrid = () => {
   // Helper for UI: get first selected cell or null
   const firstSelected = selected.length > 0 ? selected[0] : null;
   console.log(firstSelected, "firstSelected");
+
+  const [isModalOpen, setisModalOpen] = useState<boolean>(false);
+
+  function openModal() {
+    setisModalOpen(true);
+  }
+
+  function closeModal () {
+    setisModalOpen(false);
+  }
+const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
 
   return (
     <div className="flex flex-col h-screen">
@@ -1049,6 +1083,7 @@ const CellGrid = () => {
                     state={cell}
                     onClick={updateCell}
                     onDropAction={handleDrop}
+                    isSelected={selectedCell?.row === rIdx && selectedCell?.col === cIdx}
                   />
                 ))
               )}
@@ -1204,22 +1239,35 @@ const CellGrid = () => {
                   </>
                 )}
               {firstSelected && (
-                <button
-                  className="bg-gray-500 text-white px-3 py-1 rounded"
-                  onClick={() => {
-                    if (
-                      ["occupied", "blocked"].includes(
-                        grid[firstSelected[0]][firstSelected[1]]
-                      )
-                    ) {
-                      cancelBooking();
-                    } else {
-                      applyAction("available");
-                    }
-                  }}
-                >
-                  Cancel
-                </button>
+                <>
+                  <button
+                    className="bg-gray-500 text-white px-3 py-1 rounded"
+                    onClick={() => {
+                      if (
+                        ["occupied", "blocked"].includes(
+                          grid[firstSelected[0]][firstSelected[1]]
+                        )
+                      ) {
+                        cancelBooking();
+                      } else {
+                        applyAction("available");
+                      }
+                    }}
+                  >
+                    Cancel
+                  </button>
+
+                  {["occupied", "blocked"].includes(
+                    grid[firstSelected[0]][firstSelected[1]]
+                  ) && (
+                    <button
+                      onClick={openModal}
+                      className="bg-blue-500 text-white px-3 py-1 rounded"
+                    >
+                      View Details
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -1239,6 +1287,16 @@ const CellGrid = () => {
           })}
         </div>
       </div>
+      <UserModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        cellData={{
+          courtName: "ab",
+          timeSlot: "cd",
+          gameName: "efg",
+          bookingId: "hijklmnop",
+        }}
+      />
     </div>
   );
 };
