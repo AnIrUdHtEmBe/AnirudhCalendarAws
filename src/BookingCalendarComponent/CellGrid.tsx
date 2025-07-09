@@ -3,6 +3,7 @@ import clsx from "clsx";
 import axios from "axios";
 import TopBar from "./Topbar";
 import UserModal from "./UserModal";
+import { green } from "@mui/material/colors";
 
 export type CellState = "available" | "occupied" | "blocked" | "selected";
 
@@ -77,7 +78,7 @@ function toLocalISOString(date: Date): string {
 
 const Cell = ({ row, col, state, label, onClick, onDropAction, isSelected }: CellProps) => {
   const colorMap: Record<CellState, string> = {
-    available: "bg-gray-300",
+    available: "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
     occupied: "bg-green-500",
     blocked: "bg-red-500",
     selected: "bg-blue-500",
@@ -936,6 +937,34 @@ const [modalData, setModalData] = useState<ModalGame>();
     setisModalOpen(false);
   }
 const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | null>(null);
+// const [selectedDate, setSelectedDate] = useState(new Date());
+// function addDays(date: Date, days: number) {
+//   const result = new Date(date);
+//   result.setDate(date.getDate() + days);
+//   return result;
+// }
+// function formatWeekLabel(startDate: Date) {
+//   const endDate = addDays(startDate, 6);
+//   const startDay = startDate.getDate();
+//   const endDay = endDate.getDate();
+//   const month = startDate.toLocaleString("default", { month: "long" });
+//   const year = startDate.getFullYear();
+
+//   return `${startDay} - ${endDay} ${month} ${year}`;
+// }
+
+// function getWeekStart(date: Date) {
+//   const day = date.getDay();
+//   const diff = day === 0 ? -6 : 1 - day; // Monday as week start
+//   const monday = new Date(date);
+//   monday.setDate(date.getDate() + diff);
+//   monday.setHours(0, 0, 0, 0);
+//   return monday;
+// }
+
+function formatDateForInput(date: Date) {
+  return date.toISOString().split("T")[0];
+}
 
   return (
     <div className="flex flex-col h-screen">
@@ -963,6 +992,20 @@ const [selectedCell, setSelectedCell] = useState<{ row: number; col: number } | 
             <span className="ml-2 text-blue-500">Loading...</span>
           )}
         </span>
+        <div className="flex items-center gap-4">
+          {/* <span className="text-sm font-semibold">
+            {formatWeekLabel(getWeekStart(currentDate))}
+          </span> */}
+          <input
+            type="date"
+            value={formatDateForInput(currentDate)}
+            onChange={(e) => {
+              const newDate = new Date(e.target.value);
+              if (!isNaN(newDate.getTime())) setCurrentDate(newDate);
+            }}
+            className="px-2 py-1 border border-gray-300 rounded text-xs"
+          />
+        </div>
         <button
           onClick={() =>
             setCurrentDate(
