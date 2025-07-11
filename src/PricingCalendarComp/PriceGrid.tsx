@@ -214,7 +214,7 @@ export default function WeeklyPricingGrid() {
   };
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const gridScrollRef = useRef<HTMLDivElement>(null);
-
+//abcd
   return (
     <div className="flex flex-col h-screen">
       {/* Top Bar - Fixed */}
