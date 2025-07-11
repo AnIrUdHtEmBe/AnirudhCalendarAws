@@ -139,6 +139,7 @@ export default function EventModal({ isOpen, onClose, eventData,sessionId,planIn
     }
     
   }
+  // this to commit the before pull
   const handleRemoveAct=async(id:string,removalNote:string)=>{
     if(showConfirmAct){
       const res=await RemoveActivityFromSession(id,sessionId,planInstanceId,removalNote)

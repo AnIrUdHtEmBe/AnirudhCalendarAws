@@ -23,6 +23,9 @@ import BookingCalendarPage from "./Pages/BookingCalendar";
 
 
 import UserProfile from "./UserPages/ProfilePage";
+import PricingCalendaPage from "./Pages/PricingCalendarPage";
+import PricingCalendarPage from "./Pages/PricingCalendarPage";
+import PricingCalendarDaily from "./Pages/PricingCalendarDaily";
 
 // changes
 function App() {
@@ -82,10 +85,21 @@ function App() {
               path="/bookingCalendar"
               element={<BookingCalendarPage/>}
             />
-            {/* <Route
+
+            <Route
+              path="/pricingCalendar"
+              element={<PricingCalendarPage/>}
+            />
+
+            <Route
+              path="/pricingCalendarDaily"
+              element={<PricingCalendarDaily/>}
+            />
+
+            <Route
               path="/question-bank"
               element={<QuestionBank></QuestionBank>}
-            /> */}
+            /> 
             <Route
               path="/plans"
               element={
