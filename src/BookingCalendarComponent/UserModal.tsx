@@ -1,13 +1,14 @@
+import axios from 'axios';
 import React, { useState, useEffect } from 'react';
 
 interface CellModalProps {
   isOpen: boolean;
   onClose: () => void;
   cellData: {
-    courtName: string;
-    timeSlot: string;
-    gameName: string;
-    bookingId: string;
+    courtName?: string;
+    timeSlot?: string;
+    gameName?: string;
+    bookingId?: string;
   };
 }
 
@@ -19,13 +20,47 @@ interface UserAttendance {
 
 const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   // Hard-coded users for now - later replace with API call
-  const [modalUsers, setModalUsers] = useState<UserAttendance[]>([
-    { id: 1, name: 'Anirudh Kumar', status: '' },
-    { id: 2, name: 'Priya Sharma', status: '' },
-    { id: 3, name: 'Rajesh Patel', status: '' },
-    { id: 4, name: 'Sneha Reddy', status: '' },
-    { id: 5, name: 'Vikram Singh', status: '' },
-  ]);
+  const [modalUsers, setModalUsers] = useState<UserAttendance[]>([]);
+
+  const fetchUserData = async () => {
+  if (!cellData.bookingId) return;
+
+  try {
+    const bookingRes = await axios.get(`https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`);
+    const bookingData = bookingRes.data;
+    console.log("booking fetch", bookingRes);
+
+    // For single user bookedBy
+    const joinedUsers = bookingData.joinedUsers || [];
+const usersDetails = await Promise.all(
+  joinedUsers.map(async (userId: string) => {
+    try {
+      const humanRes = await axios.get(`https://play-os-backend.forgehub.in/human/${userId}`);
+      return {
+        id: Number(userId.replace(/\D/g, '')) || userId,
+        name: humanRes.data.name,
+        status: '',
+      };
+    } catch {
+      return null;
+    }
+  })
+);
+const validUsers = usersDetails.filter(u => u !== null) as UserAttendance[];
+setModalUsers(validUsers);
+
+
+  } catch (err) {
+    console.error("Failed to fetch booking details", err);
+  }
+};
+
+useEffect(() => {
+  if (isOpen && cellData.bookingId) {
+    fetchUserData();
+  }
+},[isOpen])
+
 
   const [modalSubmittedData, setModalSubmittedData] = useState<UserAttendance[]>([]);
 

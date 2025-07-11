@@ -212,9 +212,11 @@ export default function PriceDaily() {
       const newPrices: Record<string, Record<string, string>> = {};
 
       const allSlots = Object.values(courtSlots).flat();
-
+      
+      
       await Promise.all(
         allSlots.map(async (slot) => {
+          console.log("SlotId's", slot.slotId);
           try {
             const res = await axios.get(
               `https://play-os-backend.forgehub.in/timeslot/${slot.slotId}`
@@ -346,7 +348,7 @@ export default function PriceDaily() {
       <TopBar />
       <div className="flex items-center justify-between  bg-white shadow-sm shrink-0 rounded-b-lg p-2">
         <button
-          onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+          onClick={() => setSelectedDate(addDays(selectedDate, -1))}
           className="px-3 py-1 bg-gray-300 rounded"
         >
           ← Prev
@@ -366,7 +368,7 @@ export default function PriceDaily() {
           />
         </div>
         <button
-          onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+          onClick={() => setSelectedDate(addDays(selectedDate, 1))}
           className="px-3 py-1 bg-gray-300 rounded"
         >
           Next →
