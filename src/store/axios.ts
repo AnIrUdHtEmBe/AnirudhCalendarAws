@@ -11,8 +11,8 @@ import {
 // import { Dispatch, SetStateAction } from 'react';
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
-const API_BASE_URL = "https://forge-play-backend.forgehub.in";
-// const API_BASE_URL="http://127.0.0.1:8000"
+// const API_BASE_URL = "https://forge-play-backend.forgehub.in";
+const API_BASE_URL="http://127.0.0.1:8000"
 const API_BASE_URL2="https://play-os-backend.forgehub.in";
 export const useApiCalls = () => {
   const context = useContext(DataContext);
@@ -184,8 +184,8 @@ export const useApiCalls = () => {
       const res = await axios.get(`${API_BASE_URL}/asssessmenttemplates/full`);
       const data = res.data;
       setAssessments_Api_call(data);
-      // console.log("✅ Assessments fetched successfully:", data);
-      // console.log("Status:", res.status);
+      console.log("✅ Assessments fetched successfully:", data);
+      console.log("Status:", res.status);
     } catch (error) {
       console.error("❌ Error fetching assessments:", error);
     }
@@ -212,19 +212,23 @@ export const useApiCalls = () => {
   // used to update session instance to removed in plan
   const RemoveSessionInPlanInstance=async(
     sessionId:string,
-    planInstanceId:string
+    planInstanceId:string,
+    removalNote:string
   )=>{
     try{
-      console.log(sessionId,planInstanceId,"hellooo")
-      const res = await axios.patch(
-        `${API_BASE_URL}/plan-instances/${sessionId}/remove_session`,null,{
-          params: {
+      console.log(sessionId,planInstanceId,removalNote,"hellooo")
+      const data={
+          
           sessionId: sessionId,
           planInstanceId: planInstanceId,
+          note:removalNote        
         }
+      const res = await axios.patch(
+        `${API_BASE_URL}/plan-instances/${sessionId}/remove_session`,data,{
+          params:{
+            sessionId:sessionId
+          }
         }
-        // console.log("res",)
-       
       );
       console.log(res,"sesion updated")
       return res
@@ -244,6 +248,65 @@ export const useApiCalls = () => {
     }
   };
 
+const AddActivityToSession=async(
+  activityId:string,
+    sessionId:string,
+    planInstanceId:string,
+)=>{
+  try{
+    const res=await axios.patch(`${API_BASE_URL}/add-activity-to-session/${activityId}/${sessionId}/${planInstanceId}`,{
+    params:{
+       activityId:activityId,
+        sessionId:sessionId,
+        planInstanceId:planInstanceId,
+    }
+  })
+  return res
+
+  }catch(err){
+    console.log(err)
+  }
+  
+}
+  const RemoveActivityFromSession=async(
+    activityId:string,
+    sessionId:string,
+    planInstanceId:string,
+    removalNote:string
+  )=>{
+    try{
+       const data={
+        activityId:activityId,
+        sessionId:sessionId,
+        planInstanceId:planInstanceId,
+        removalNote:removalNote        
+        }
+      console.log(data,"rmeovof data")
+      const res=await axios.patch(`${API_BASE_URL}/remove-activity-instance/${activityId}/${sessionId}`,data,{
+        params:{
+          activitySessionId:activityId,
+          sessionId:sessionId,
+        }
+      });
+      return res;
+
+    }catch(error){
+      console.log(error)
+    }
+  }
+
+
+  const getDummyPlanFromPlans=async(instanceid:string[])=>{
+    
+    try{const res=await axios.post(`${API_BASE_URL}/getDummyPlanTemplateIdFromList`,
+      instanceid
+    )
+    return res
+  }  catch(err){
+      console.log(err)
+    }
+
+  }
   const submitAssesment = async (assesment: createAssessmentTemplate) => {
     try {
       const res = await axios.post(
@@ -530,8 +593,45 @@ export const useApiCalls = () => {
     }
   };
 
+  const getSessionInstanceById=async(sessionInstanceId:string)=>{
+     try {
+      const res = await axios.get(
+        `${API_BASE_URL}/session-instance/${sessionInstanceId}`
+      );
+      const data = res.data;
+      console.log("✅ Session fetched successfully:", data);
+      return data;
+    } catch (error) {
+      console.error("❌ Error fetching session:", error);
+    }
+  }
+
+  const allocate_Activity_Session=async(
+    data:any
+  )=>{
+    // const data={
+    //   activityId:activityId,
+    // sessionTemplateId: sessionTemplateId,
+    // userId: userId,
+    // scheduledDate:scheduledDate, // format: yyyy-mm-dd
+    // planInstanceId: planInstanceId
+    // }
+    try{
+      const res=await axios.post(`${API_BASE_URL}/allocateActivityIn_AlcarteSession/${data.activityId}/${data.sessionTemplateId}/${data.sessionInstanceId}/${data.planInstanceId}`,data,{
+        params:{
+          activityId: data.activityId, sessionId: data.sessionTemplateId,sessionInstanceId:data.sessionInstanceId, planInstanceId: data.planInstanceId
+        }
+      })
+      console.log("res is rescheduled",res)
+      return res
+    }catch(err){
+      console.log(err)
+    }
+  }
+
   const addSessionFromCalendar = async (session) => {
     try {
+      console.log(session,"this is session comgin in addsession")
       const res = await axios.post(`${API_BASE_URL}/session-instances/generate` ,session );
       const data = res.data;
       // console.log("✅ Sessions fetched successfully:", data);
@@ -689,11 +789,16 @@ export const useApiCalls = () => {
     getSessions,
     getPlansFull,
     patchSession,
+    AddActivityToSession,
     RemoveSessionInPlanInstance,
+    RemoveActivityFromSession,
+    getDummyPlanFromPlans,
+    allocate_Activity_Session,
     createPlan,
     patchPlans,
     getPlanByPlanId,
     getSessionById,
+    getSessionInstanceById,
     createPlanInstance,
     getExpandedPlanByPlanId,
     getScore,

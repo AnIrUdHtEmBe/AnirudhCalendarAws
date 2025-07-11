@@ -31,6 +31,8 @@ import { useContext, useEffect, useState, useRef } from "react";
 import { useApiCalls } from "../store/axios";
 import { DataContext } from "../store/DataContext";
 import { LowPriority } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
+import AssessmentPage from "../Pages/AssessmentPage";
 
 const questionTypes = [
   { label: "Text Input", value: "text", icon: <ShortTextIcon /> },
@@ -58,10 +60,29 @@ const QuestionBank = () => {
       console.error("Failed to fetch questions:", error);
     }
   };
-  const { selectComponent, questionsForAPICall } = useContext(DataContext);
+  const { selectComponent, questionsForAPICall ,setSelectComponent} = useContext(DataContext);
+  const [headingText,setheadingText]=useState("Questionnaire Creation")
+  const navigate=useNavigate();
+  const handleSelection=async(dataString:string)=>{
+    // if(dataString=='question'){
+    //   // navigate('/question-bank')
+    //   setSelectComponent('/question-bank')
+    //   setheadingText("Questionnaire Creation")
+    // }else 
+    if(dataString=='assignment'){
+      // navigate('/assignment')
+      console.log("reached assignme")
+      setSelectComponent('/assignment')
+      setheadingText("Assignments")
+    }
+  }
+  // used to fetch question
   useEffect(() => {
     fetchQuestions();
   }, []);
+
+
+  // used to stored editted copy of questions
   const [shouldEdit, setShouldEdit] = useState(false);
   useEffect(() => {
     if (questionsForAPICall && questionsForAPICall.length > 0) {
@@ -93,7 +114,7 @@ const QuestionBank = () => {
   const [checked, setChecked] = useState(false);
   const [options, setOptions] = useState([]);
   const [scoreZones, setScoreZones] = useState([]);
-  console.log(question);
+  // console.log(question);
 
   const inputRef = useRef(null);
 
@@ -225,7 +246,7 @@ const QuestionBank = () => {
       console.log("works");
       setShouldEdit(false);
     } else {
-      console.log("hi");
+      // console.log("hi");
       console.log(question.length);
     }
   }, [shouldEdit, question]); // 👈 Add questions to the dependency array
@@ -233,344 +254,368 @@ const QuestionBank = () => {
   console.log("selectComponent:", selectComponent);
   return (
     <div className="question-bank-container">
+      
       {/* header */}
       <div className="question-bank-header-container">
         <div className="header-top">
           <FileText size={28} className="text-gray-800" />
-          <span className="header-title">Questionnaire Creation</span>
+          <span className="header-title">{headingText}</span>
         </div>
         <div className="header-tabs">
-          {/* <button
+          <button
+          onClick={()=>handleSelection("assignment")}
           className={`header-tab ${
-              selectComponent === "/assignment" ||
-              selectComponent === "dashboard"
+              selectComponent === "/assignment" 
                 ? "border-b-4 active-tab"
                 : ""
             }`}
+
           >
             Assessments
-          </button> */}
+          </button>
           <button
+            onClick={()=>handleSelection("question")}
             className={`header-tab ${
-              selectComponent === "/question-bank" ||
-              selectComponent === "dashboard"
+              selectComponent === "/question-bank"
                 ? "border-b-4 active-tab"
                 : ""
             }`}
           >
             Questions
           </button>
-          <button className="header-tab border-b-4 border-transparent pb-2">
+          <button className="header-tab border-b-4 border-transparent pb-2"
+          onClick={()=>handleSelection("settings")}
+          >
             Settings
           </button>
         </div>
       </div>
-
       {/* main body */}
-      <div className="question-bank-body-container">
-        <div className="question-bank-main-container">
-          {/* main conatiner header */}
-          <div className="question-bank-main-header">
-            <span className="question-bank-main-header-title">
-              Question Bank
-            </span>
-            {/* <button
-              className="question-bank-main-header-button"
-              onClick={handleApiCall}
-            >
-              <Save></Save>
-              <span>Save</span>
-            </button> */}
-          </div>
-
-          {/* main conatianer body */}
-          <div className="question-bank-main-body">
-            {/* main body left side  */}
-            <div className="question-bank-main-body-left">
-              <div className="question-bank-main-body-left-header">
-                <span className="question-bank-main-body-left-header-title">
-                  Questions
+      { selectComponent==="/question-bank" &&(
+        <div className="question-bank-body-container">
+          <div className="question-bank-main-container">
+            {/* main conatiner header */}
+              <div className="question-bank-main-header">
+                <span className="question-bank-main-header-title">
+                  Question Bank
                 </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    className="question-bank-main-body-left-content-add-button"
-                    onClick={addQuestion}
-                  >
-                    <Plus size={13}></Plus>
-                    <span>Add Question</span>
-                  </button>
-                  <button
-                    className="question-bank-main-body-left-header-button"
-                    // onClick={handleEditDone}
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
+                {/* <button
+                  className="question-bank-main-header-button"
+                  onClick={handleApiCall}
+                >
+                  <Save></Save>
+                  <span>Save</span>
+                </button> */}
               </div>
-
-              <div className="question-bank-main-body-left-content">
-                {question.map((item, index) => (
-                  <div
-                    key={index}
-                    className="question-bank-main-body-left-item"
-                  >
-                    <input
-                      type="radio"
-                      name="question-select"
-                      checked={editingIndex === index}
-                      onChange={() => editQuestion(index)}
-                    />
-                    <span>{index + 1})</span>
-                    <span
-                      // onClick={() => editQuestion(index)}
-                      className="question-bank-main-body-left-item-text"
+              {/* <div className="question-bank-main-body-left-header">
+                  <span className="question-bank-main-body-left-header-title">
+                    Questions
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="question-bank-main-body-left-content-add-button"
+                      onClick={addQuestion}
                     >
-                      {item.mainText}
-                    </span>
+                      <Plus size={13}></Plus>
+                      <span>Add Question</span>
+                    </button>
+                    <button
+                      className="question-bank-main-body-left-header-button"
+                      // onClick={handleEditDone}
+                    >
+                      <X size={20} />
+                    </button>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div> */}
 
-            {/* main body right side */}
-            <div className="question-bank-main-body-right">
-              <div className="question-bank-main-body-right-box">
-                <div className="question-bank-main-body-right-header">
-                  {editingIndex !== null ? (
-                    <span className="question-bank-main-body-right-header-title">
-                      {editingIndex + 1})
-                    </span>
-                  ) : (
-                    <span className="question-bank-main-body-right-header-title">
-                      {question.length + 1})
-                    </span>
-                  )}
-
-                  <FormControl size="small" sx={{ width: "200px" }}>
-                    <InputLabel id="question-type-label">
-                      Select Question Type
-                    </InputLabel>
-                    <Select
-                      labelId="question-type-label"
-                      id="question-type-select"
-                      value={type}
-                      label="Select Question Type"
-                      onChange={(e) => setType(e.target.value)}
-                      renderValue={(selected) => {
-                        const selectedItem = questionTypes.find(
-                          (item) => item.value === selected
-                        );
-                        return (
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            {selectedItem?.icon}
-                            {selectedItem?.label}
-                          </Box>
-                        );
-                      }}
+            {/* main conatianer body */}
+            <div className="question-bank-main-body">
+              {/* main body left side  */}
+              <div className="question-bank-main-body-left">
+                <div className="question-bank-main-body-left-header">
+                  <span className="question-bank-main-body-left-header-title">
+                    Questions
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="question-bank-main-body-left-content-add-button"
+                      onClick={addQuestion}
                     >
-                      {questionTypes.map((item) => (
-                        <MenuItem
-                          key={item.value}
-                          value={item.value}
-                          sx={{ fontSize: "0.875rem", py: 0.5 }}
-                        >
-                          <ListItemIcon sx={{ minWidth: 28 }}>
-                            {item.icon}
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={item.label}
-                            primaryTypographyProps={{ fontSize: "0.875rem" }}
-                          />
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                      <Plus size={13}></Plus>
+                      <span>Add Question</span>
+                    </button>
+                    <button
+                      className="question-bank-main-body-left-header-button"
+                      // onClick={handleEditDone}
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="question-bank-main-body-right-content">
-                  <TextField
-                    inputRef={inputRef}
-                    label=""
-                    value={value}
-                    variant="standard"
-                    onChange={(e) => setValue(e.target.value)}
-                    InputProps={{
-                      sx: {
-                        fontSize: "0.9rem", // input text size
-                        fontWeight: 500, // input text weight
-                        paddingY: 0.5, // vertical padding
-                      },
-                    }}
-                    InputLabelProps={{
-                      sx: {
-                        fontSize: "1rem", // label text size
-                        fontWeight: 400, // label text weight
-                      },
-                    }}
-                    sx={{
-                      width: "100%", // Makes the TextField shrink to fit
-                    }}
-                  />
-
-                  {type === "choose_one" || type === "choose_many" ? (
-                    <div className="question-option-container">
-                      {options.map((option, index) => (
-                        <div key={index} className="question-option">
-                          {type === "choose_one" ? (
-                            <input
-                              type="radio"
-                              name="question" // Make sure all radio buttons share the same name
-                              value={option}
-                            />
-                          ) : (
-                            <input type="Checkbox" />
-                          )}
-                          <TextField
-                            label={`Option ${index + 1}`}
-                            variant="standard"
-                            value={option}
-                            onChange={(e) => {
-                              const newOptions = [...options];
-                              newOptions[index] = e.target.value;
-                              setOptions(newOptions);
-                            }}
-                            InputProps={{
-                              sx: {
-                                fontSize: "0.9rem", // input text size
-                                fontWeight: 500, // input text weight
-                                paddingY: 0.5, // vertical padding
-                              },
-                            }}
-                            InputLabelProps={{
-                              sx: {
-                                fontSize: "1rem", // label text size
-                                fontWeight: 400, // label text weight
-                              },
-                            }}
-                            sx={{
-                              width: "200px", // control the overall width
-                            }}
-                          />
-                          <button
-                            className="remove-option-button"
-                            onClick={() => {
-                              const newOptions = options.filter(
-                                (_, i) => i !== index
-                              );
-                              console.log(index);
-                              console.log(options);
-
-                              console.log(newOptions);
-
-                              setOptions(newOptions);
-                            }}
-                          >
-                            <X className="border-2 rounded-full" size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        className="add-option-button"
-                        onClick={() => {
-                          const newOption = "";
-                          setOptions([...options, newOption]);
-                        }}
+                <div className="question-bank-main-body-left-content">
+                  {question.map((item, index) => (
+                    <div
+                      key={index}
+                      className="question-bank-main-body-left-item"
+                    >
+                      <input
+                        type="radio"
+                        name="question-select"
+                        checked={editingIndex === index}
+                        onChange={() => editQuestion(index)}
+                      />
+                      <span>{index + 1})</span>
+                      <span
+                        // onClick={() => editQuestion(index)}
+                        className="question-bank-main-body-left-item-text"
                       >
-                        <Plus size={13}></Plus>
-                        <span>Add Option</span>
-                      </button>
+                        {item.mainText}
+                      </span>
                     </div>
-                  ) : (
-                    ""
-                  )}
-
-                  {type === "number_ws" ? (
-                    <div className="question-option-container">
-                      {scoreZones.map((option, index) => (
-                        <div key={index} className="question-option">
-                          <input type="checkbox" />
-                          <TextField
-                            label={`ScoreZone ${index + 1}`}
-                            variant="standard"
-                            value={option}
-                            onChange={(e) => {
-                              const newOptions = [...scoreZones];
-                              newOptions[index] = e.target.value;
-                              setScoreZones(newOptions);
-                            }}
-                            InputProps={{
-                              sx: {
-                                fontSize: "0.9rem",
-                                fontWeight: 500,
-                                paddingY: 0.5,
-                              },
-                            }}
-                            InputLabelProps={{
-                              sx: {
-                                fontSize: "1rem",
-                                fontWeight: 400,
-                              },
-                            }}
-                            sx={{ width: "200px" }}
-                          />
-                          <button
-                            className="remove-option-button"
-                            onClick={() => {
-                              const newOptions = scoreZones.filter(
-                                (_, i) => i !== index
-                              );
-                              setScoreZones(newOptions);
-                            }}
-                          >
-                            <X className="border-2 rounded-full" size={16} />
-                          </button>
-                        </div>
-                      ))}
-                      <button
-                        className="add-option-button"
-                        onClick={() => {
-                          const newOption = "";
-                          setScoreZones([...scoreZones, newOption]);
-                        }}
-                      >
-                        <Plus size={13}></Plus>
-                        <span>Add</span>
-                      </button>
-                    </div>
-                  ) : (
-                    ""
-                  )}
+                  ))}
                 </div>
               </div>
-              {question[editingIndex]?.questionId ? (
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={handleAddQuestion}
-                    className="question-bank-main-body-left-content-add-button"
-                  >
-                    Update changes
-                  </button>
+
+              {/* main body right side */}
+              <div className="question-bank-main-body-right">
+                <div className="question-bank-main-body-right-box">
+                  <div className="question-bank-main-body-right-header">
+                    {editingIndex !== null ? (
+                      <span className="question-bank-main-body-right-header-title">
+                        {editingIndex + 1})
+                      </span>
+                    ) : (
+                      <span className="question-bank-main-body-right-header-title">
+                        {question.length + 1})
+                      </span>
+                    )}
+
+                    <FormControl size="small" sx={{ width: "200px" }}>
+                      <InputLabel id="question-type-label">
+                        Select Question Type
+                      </InputLabel>
+                      <Select
+                        labelId="question-type-label"
+                        id="question-type-select"
+                        value={type}
+                        label="Select Question Type"
+                        onChange={(e) => setType(e.target.value)}
+                        renderValue={(selected) => {
+                          const selectedItem = questionTypes.find(
+                            (item) => item.value === selected
+                          );
+                          return (
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              {selectedItem?.icon}
+                              {selectedItem?.label}
+                            </Box>
+                          );
+                        }}
+                      >
+                        {questionTypes.map((item) => (
+                          <MenuItem
+                            key={item.value}
+                            value={item.value}
+                            sx={{ fontSize: "0.875rem", py: 0.5 }}
+                          >
+                            <ListItemIcon sx={{ minWidth: 28 }}>
+                              {item.icon}
+                            </ListItemIcon>
+                            <ListItemText
+                              primary={item.label}
+                              primaryTypographyProps={{ fontSize: "0.875rem" }}
+                            />
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </div>
+
+                  <div className="question-bank-main-body-right-content">
+                    <TextField
+                      inputRef={inputRef}
+                      label=""
+                      value={value}
+                      variant="standard"
+                      onChange={(e) => setValue(e.target.value)}
+                      InputProps={{
+                        sx: {
+                          fontSize: "0.9rem", // input text size
+                          fontWeight: 500, // input text weight
+                          paddingY: 0.5, // vertical padding
+                        },
+                      }}
+                      InputLabelProps={{
+                        sx: {
+                          fontSize: "1rem", // label text size
+                          fontWeight: 400, // label text weight
+                        },
+                      }}
+                      sx={{
+                        width: "100%", // Makes the TextField shrink to fit
+                      }}
+                    />
+
+                    {type === "choose_one" || type === "choose_many" ? (
+                      <div className="question-option-container">
+                        {options.map((option, index) => (
+                          <div key={index} className="question-option">
+                            {type === "choose_one" ? (
+                              <input
+                                type="radio"
+                                name="question" // Make sure all radio buttons share the same name
+                                value={option}
+                              />
+                            ) : (
+                              <input type="Checkbox" />
+                            )}
+                            <TextField
+                              label={`Option ${index + 1}`}
+                              variant="standard"
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...options];
+                                newOptions[index] = e.target.value;
+                                setOptions(newOptions);
+                              }}
+                              InputProps={{
+                                sx: {
+                                  fontSize: "0.9rem", // input text size
+                                  fontWeight: 500, // input text weight
+                                  paddingY: 0.5, // vertical padding
+                                },
+                              }}
+                              InputLabelProps={{
+                                sx: {
+                                  fontSize: "1rem", // label text size
+                                  fontWeight: 400, // label text weight
+                                },
+                              }}
+                              sx={{
+                                width: "200px", // control the overall width
+                              }}
+                            />
+                            <button
+                              className="remove-option-button"
+                              onClick={() => {
+                                const newOptions = options.filter(
+                                  (_, i) => i !== index
+                                );
+                                console.log(index);
+                                console.log(options);
+
+                                console.log(newOptions);
+
+                                setOptions(newOptions);
+                              }}
+                            >
+                              <X className="border-2 rounded-full" size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="add-option-button"
+                          onClick={() => {
+                            const newOption = "";
+                            setOptions([...options, newOption]);
+                          }}
+                        >
+                          <Plus size={13}></Plus>
+                          <span>Add Option</span>
+                        </button>
+                      </div>
+                    ) : (
+                      ""
+                    )}
+
+                    {type === "number_ws" ? (
+                      <div className="question-option-container">
+                        {scoreZones.map((option, index) => (
+                          <div key={index} className="question-option">
+                            <input type="checkbox" />
+                            <TextField
+                              label={`ScoreZone ${index + 1}`}
+                              variant="standard"
+                              value={option}
+                              onChange={(e) => {
+                                const newOptions = [...scoreZones];
+                                newOptions[index] = e.target.value;
+                                setScoreZones(newOptions);
+                              }}
+                              InputProps={{
+                                sx: {
+                                  fontSize: "0.9rem",
+                                  fontWeight: 500,
+                                  paddingY: 0.5,
+                                },
+                              }}
+                              InputLabelProps={{
+                                sx: {
+                                  fontSize: "1rem",
+                                  fontWeight: 400,
+                                },
+                              }}
+                              sx={{ width: "200px" }}
+                            />
+                            <button
+                              className="remove-option-button"
+                              onClick={() => {
+                                const newOptions = scoreZones.filter(
+                                  (_, i) => i !== index
+                                );
+                                setScoreZones(newOptions);
+                              }}
+                            >
+                              <X className="border-2 rounded-full" size={16} />
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          className="add-option-button"
+                          onClick={() => {
+                            const newOption = "";
+                            setScoreZones([...scoreZones, newOption]);
+                          }}
+                        >
+                          <Plus size={13}></Plus>
+                          <span>Add</span>
+                        </button>
+                      </div>
+                    ) : (
+                      ""
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <div className="flex justify-end mt-4">
-                  <button
-                    onClick={handleAddQuestion}
-                    className="question-bank-main-body-left-content-add-button"
-                  >
-                    Add a new Question
-                  </button>
-                </div>
-              )}
+                {question[editingIndex]?.questionId ? (
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={handleAddQuestion}
+                      className="question-bank-main-body-left-content-add-button"
+                    >
+                      Update changes
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={handleAddQuestion}
+                      className="question-bank-main-body-left-content-add-button"
+                    >
+                      Add a new Question
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+      </div>)}
     </div>
   );
 };

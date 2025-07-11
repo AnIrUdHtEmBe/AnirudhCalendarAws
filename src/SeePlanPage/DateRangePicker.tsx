@@ -5,6 +5,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import AddPlanInstance from './AddPlanInstance';
 import AddSession from './AddSession';
+import AddActivity from './AddActivity';
 export default function DateRangePicker({ startDate, userDate ,setStartDate, endDate, setEndDate ,userId ,planForAlacatre , getData} ) {
   React.useEffect(()=> {
     console.log(userDate);
@@ -36,6 +37,7 @@ export default function DateRangePicker({ startDate, userDate ,setStartDate, end
     <div className='flex items-center gap-2'>
     <AddPlanInstance userId={userId} />
     <AddSession userId={userId} userDate={userDate} planForAlacarte={planForAlacatre} getData={getData}/>
+    <AddActivity userId={userId} userDate={userDate} planForAlacarte={planForAlacatre} getData={getData} />
     </div>
     </div>
   );

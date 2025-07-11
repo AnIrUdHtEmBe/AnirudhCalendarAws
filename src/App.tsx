@@ -24,6 +24,7 @@ import BookingCalendarPage from "./Pages/BookingCalendar";
 
 import UserProfile from "./UserPages/ProfilePage";
 
+// changes
 function App() {
   //@ts-ignore
   const { selectComponent } = useContext(DataContext);
@@ -54,13 +55,17 @@ function App() {
               }
             />
             <Route
-              path="/assignment"
+              path="/question-bank"
               element={
                 selectComponent === "AssessmentCreationPage2" ? (
                   <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
-                ) : (
-                  <AssessmentPage />
-                )
+                ) : selectComponent === "/assignment"?(
+                  <AssessmentPage />):
+                // selectComponent === "/question-bank"?(
+                  <QuestionBank/>
+                // ):(
+                //   <Dashboard/>
+                // )
               }
             />
             <Route
@@ -77,10 +82,10 @@ function App() {
               path="/bookingCalendar"
               element={<BookingCalendarPage/>}
             />
-            <Route
+            {/* <Route
               path="/question-bank"
               element={<QuestionBank></QuestionBank>}
-            />
+            /> */}
             <Route
               path="/plans"
               element={

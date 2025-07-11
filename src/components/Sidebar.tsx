@@ -67,9 +67,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
   const { selectComponent, setSelectComponent } = context;
 
   const handleClick = (path: string) => {
+    console.log(path)
     navigate(path);
     setSelectComponent(path);
   };
+  useEffect(()=>{
+    // console.log(selectComponent,"this is form sidebar")
+  },[selectComponent])
 
   useEffect(() => {
     const handleResize = () => {
@@ -83,11 +87,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
 
   const menuItems = [
     { icon: <LayoutDashboard size={20} />, text: "Dashboard", path: "/" },
-    {
-      icon: <ClipboardCheck size={20} />,
-      text: "Assessment",
-      path: "/assignment",
-    },
+    // {
+    //   icon: <ClipboardCheck size={20} />,
+    //   text: "Assessment",
+    //   path: "/assignment",
+    // },
     {
       icon: <FileQuestion size={20} />,
       text: "Question Bank",

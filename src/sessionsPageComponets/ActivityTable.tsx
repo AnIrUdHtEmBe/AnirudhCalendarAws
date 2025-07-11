@@ -245,7 +245,9 @@ useEffect(() => {
     getActivities();
   }, [theme , goal]);
 
-  
+  useEffect(()=>{
+    console.log(emptyArr,"this is emort")
+  },[emptyArr])
   return (
     <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
       {/* Header */}
