@@ -91,7 +91,7 @@ const handleConfirm = async () => {
   const parsedDate = new Date(date);
   const user=localStorage.getItem("user")
   const user_new = JSON.parse(user)
-  console.log(user_new?.plansAllocated)
+  // console.log(user_new?.plansAllocated)
   const result=await getDummyPlanFromPlans(user_new?.plansAllocated)
   const total=result?.data.sessionInstances
   const sessionInstanceId = total[0].sessionInstanceId;

@@ -21,6 +21,7 @@ function Responses() {
     { name: "Elite", from: 81, to: 100 },
   ];
 
+  const [selectedDate,setselectedDate]=useState("")
   const paperDetails = JSON.parse(localStorage.getItem("assessmentDetails"));
   console.log(paperDetails);
   const userDetail = JSON.parse(localStorage.getItem("user"));
@@ -148,6 +149,8 @@ function Responses() {
     );
   }
 
+  
+
   return (
     <div className="responses-root">
       {/* Fixed Header */}
@@ -240,7 +243,7 @@ function Responses() {
               </div>
 
               {score.score === 0 ? (
-                <div className="font-normal text-2xl flex items-center justify-center pt-[50px]">
+                <div className="font-normal text-2xl flex items-center justify-center pt-[40px]">
                   Welcome to Forge , Below are Your recommended Plans
                 </div>
               ) : (
@@ -289,12 +292,23 @@ function Responses() {
                 ))}
               </div>
 
+{/* where to dave the next assessment date? */}
               <div className="mt-12 flex space-x-4 items-center">
                 <Calendar></Calendar>{" "}
-                <span className="font-normal text-xl ">
+                <div >
+                    
+                    <span className="font-normal text-xl">
+                      Next assessment On:<input
+                      type="date"
+                      className="border border-gray-300 rounded px-3 py-2 text-lg"
+                      onChange={(e) => (setselectedDate(e.target.value))}
+                    />
+                    </span>
+                </div>
+                {/* <span className="font-normal text-xl ">
                   Next assessment On : 10/12/13
-                </span>
-                <Edit></Edit>
+                </span> */}
+                {/* <Edit></Edit> */}
               </div>
               <div className="proceed-button-wrapper">
                 <button

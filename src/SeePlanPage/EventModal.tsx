@@ -145,7 +145,7 @@ export default function EventModal({ isOpen, onClose, eventData,sessionId,planIn
       const res=await RemoveActivityFromSession(id,sessionId,planInstanceId,removalNote)
       if(res){
         setshowConfirmAct(false)
-        await getData()
+        getData()
         await regenerate();
         onClose();
       }else{
@@ -159,11 +159,18 @@ export default function EventModal({ isOpen, onClose, eventData,sessionId,planIn
     console.log(activityForTable?.activityId,sessionId,planInstanceId,"thi si new ")
     const res=await AddActivityToSession(activityForTable?.activityId,sessionId,planInstanceId)
      if(res){
-        setshowConfirmAct(false)
+        
         console.log("checjidvobuewifbvwiyvfeouy")
-        onClose();
+    //     await getData();  
+    // // await regenerate();
+    // setshowConfirmAct(false)
+
+    // onClose(); 
+    // setShowConfirm(false)
+        // console.log("session updated")
         getData()
         await regenerate();
+        onClose();
         
       }else{
         console.error("session insatnce not updated")
@@ -283,11 +290,22 @@ export default function EventModal({ isOpen, onClose, eventData,sessionId,planIn
         >
           &times;
         </button>
-        <p className="text-3xl font-bold mb-2 ">{eventData.title}</p>
+        <p className="text-3xl font-bold mb-2 ">
+          {eventData.title==="DUMMY"?"ACTIVITIES":eventData.title}
+          
+          </p>
         
         <div className="text-sm text-gray-700 space-y-2 ">
           {/* <p><strong>Plan ID:</strong> {eventData.extendedProps.planInstanceId}</p> */}
-          <p className="text-xl"><strong>Plan Name: </strong>{eventData.extendedProps.planTitle}</p>
+          <p className="text-xl"><strong>Plan Name: </strong>
+          {eventData.title === "DUMMY"
+            ? details?.activityDetails && (
+                <>
+                  ({Object.keys(details.activityDetails).length} activities)
+                </>
+              )
+            : eventData.extendedProps.planTitle}
+          </p>
             {details?.activityDetails && (
                 <div>
                 <p className="text-xl"><strong>Activities:</strong></p>

@@ -12,7 +12,8 @@ import {
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
 // const API_BASE_URL = "https://forge-play-backend.forgehub.in";
-const API_BASE_URL="http://127.0.0.1:8000"
+// const API_BASE_URL="http://127.0.0.1:8000"
+const API_BASE_URL="https://forge-play-backendv2.forgehub.in/docs"
 const API_BASE_URL2="https://play-os-backend.forgehub.in";
 export const useApiCalls = () => {
   const context = useContext(DataContext);

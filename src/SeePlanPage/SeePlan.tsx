@@ -17,7 +17,9 @@ function SeePlan() {
   const userId =  user.userId || "defaultUserId"; // Fallback to a default user ID if not found
     const [data, setData] = React.useState(null);
      const getData = async () => {
+
             const res = await getPlansForInterval(dayjs(startDate).format("YYYY-MM-DD"), dayjs(endDate).format("YYYY-MM-DD"),userId); 
+            console.log(res," i have called getData")
             setData(res);
         }
   useEffect( () => {

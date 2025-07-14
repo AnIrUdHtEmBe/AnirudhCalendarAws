@@ -6,7 +6,7 @@ import dayjs from "dayjs";
 import { useApiCalls } from "../store/axios";
 import EventModal from "./EventModal"; 
 import AddPlanInstance from "./AddPlanInstance"; // Adjust the path if needed
-
+import './styles/EventCalendar.css'
 export default function EventCalendar({ data ,  onEventClick,getData }) {
   const [events, setEvents] = useState([]);
   const { getSessionById , updateSessionInPlanInstance } = useApiCalls();
@@ -22,21 +22,21 @@ export default function EventCalendar({ data ,  onEventClick,getData }) {
       // );
       console.log(data,"this is data");
       const validSessions_2 = data.flatMap(plan =>
-    (plan.sessionInstances || [])
-      .filter(session => /*session.sessionTemplateId && session.scheduledDate &&*/ session.status!="REMOVED")
-      .map(session => ({
-        id: session.sessionTemplateId,
-        title: session.sessionTemplateTitle || "Untitled Session",
-        start: dayjs(session.scheduledDate).format("YYYY-MM-DD"),
-        sessionInstanceId: session.sessionInstanceId,
-        planInstanceId: plan.planInstanceId,
-        planTitle: plan.planTitle,
-        // category: session.category,
-        // activities: session.activities,
-        // rating: session.rating,
-        // status: session.status,
-      }))
-  );
+        (plan.sessionInstances || [])
+          .filter(session => /*session.sessionTemplateId && session.scheduledDate &&*/ session.status!="REMOVED")
+          .map(session => ({
+            id: session.sessionTemplateId,
+            title: session.sessionTemplateTitle || "Untitled Session",
+            start: dayjs(session.scheduledDate).format("YYYY-MM-DD"),
+            sessionInstanceId: session.sessionInstanceId,
+            planInstanceId: plan.planInstanceId,
+            planTitle: plan.planTitle,
+            // category: session.category,
+            // activities: session.activities,
+            // rating: session.rating,
+            // status: session.status,
+        }))
+      );
 
   console.log(validSessions_2,"this is valid session 2");
   console.log(events,"this is event below valisession2")
@@ -76,7 +76,7 @@ export default function EventCalendar({ data ,  onEventClick,getData }) {
       setEvents(validSessions_2); // Filter out nulls
     };
 useEffect(() => {
-  // console.log("Received new data in EventCalendar:", data);
+  console.log("Received new data in EventCalendar:", data);
   generateEvents();
 }, [data]);
 useEffect(() => {
@@ -128,6 +128,20 @@ useEffect(() => {
       editable={true}
       selectable={true}
       height="auto"
+      eventClassNames={(arg) => {
+    if (arg.event.title === "DUMMY") {
+      return ['event-alacarte'];
+    }
+    return [];
+  }}
+      eventContent={(arg) => {
+    return (
+      <div>
+        <strong>{arg.event.title==="DUMMY"?"ACTIVITIES":arg.event.title}</strong>
+        {/* <div>{arg.event.extendedProps.planTitle}</div> */}
+      </div>
+    );
+  }}
       dateClick={(info) => {
         onEventClick(info.dateStr);
         console.log("New event on:", info.dateStr);
@@ -135,18 +149,18 @@ useEffect(() => {
       eventClick={handleEventClick}
       eventDrop={handleEventDrop}
     />
-     <EventModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        eventData={selectedEvent}
-        sessionId={sessionId}
-        planInstanceId={planInstanceId}
-        getData={getData}
-        regenerate={async () => {
-          // await fetchPlanData();
-          await generateEvents();
-        }}
-      />
+      <EventModal
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          eventData={selectedEvent}
+          sessionId={sessionId}
+          planInstanceId={planInstanceId}
+          getData={getData}
+          regenerate={async () => {
+            // await fetchPlanData();
+            await generateEvents();
+          }}
+        />
 
     </div>
   );
