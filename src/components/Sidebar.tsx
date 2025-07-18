@@ -82,7 +82,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
   }, []);
 
   const menuItems = [
-    { icon: <LayoutDashboard size={20} />, text: "Dashboard", path: "/" },
+    {
+      icon: <LayoutDashboard size={20} />,
+      text: "Dashboard",
+      path: "/Dashboard",
+    },
     {
       icon: <ClipboardCheck size={20} />,
       text: "Assessment",
@@ -95,12 +99,20 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
     },
     { icon: <Calendar size={20} />, text: "Sessions", path: "/sessions" },
     { icon: <FileText size={20} />, text: "Plans", path: "/plans" },
-    { icon: <Calendar size={20} />, text: "Booking Calendar", path: "/bookingCalendar" },
-    { icon: <Calendar size={20} />, text: "Pricing Calendar", path: "/pricingCalendar" },
+    {
+      icon: <Calendar size={20} />,
+      text: "Booking Calendar",
+      path: "/bookingCalendar",
+    },
+    {
+      icon: <Calendar size={20} />,
+      text: "Pricing Calendar",
+      path: "/pricingCalendar",
+    },
     { icon: <Bell size={20} />, text: "Notifications", path: "/notifications" },
     { icon: <Settings size={20} />, text: "Settings", path: "/settings" },
     { icon: <HelpCircle size={20} />, text: "Help", path: "/help" },
-
+    { icon: <Settings size={20} />, text: "Logout", path: "/logout" },
   ];
 
   return (
@@ -140,7 +152,6 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
               ""
             ) : (
               <img className="h-13 w-30" src="/play-black.png"></img>
-            
             )}
           </div>
           <button className="toggle-btn" onClick={toggleSidebar}>
@@ -182,12 +193,36 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
         </div>
 
         <div className={`user-info ${collapsed ? "centered" : ""}`}>
-          <div className="avatar">U</div>
+          <div className="avatar">
+            {(() => {
+              try {
+                const t = sessionStorage.getItem("token");
+                return t
+                  ? JSON.parse(atob(t.split(".")[1]))
+                      .name.charAt(0)
+                      .toUpperCase()
+                  : "G";
+              } catch {
+                return "G";
+              }
+            })()}
+          </div>
           {!collapsed && (
             <div className="user-details">
               <div>
                 <p className="username">Welcome Back </p>
-                <p className="role">Naveen</p>
+                <p className="role">
+                  {(() => {
+                    try {
+                      const t = sessionStorage.getItem("token");
+                      return t
+                        ? JSON.parse(atob(t.split(".")[1])).name
+                        : "Guest";
+                    } catch {
+                      return "Guest";
+                    }
+                  })()}
+                </p>
               </div>
               <div>
                 <ChevronRight size={20} />

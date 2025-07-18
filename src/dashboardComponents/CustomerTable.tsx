@@ -94,7 +94,7 @@ const CustomerTable = () => {
     mobile: "",
     email: "",
     password:"",
-    type:"forge",
+    type:"",
     height: "",
     weight: "",
     healthCondition: "",
@@ -559,6 +559,24 @@ const CustomerTable = () => {
               onChange={handleInputChange}
               required
             />
+            <select
+              style={modalInputStyle}
+              name="type"
+              value={formData.type}
+              onChange={handleInputChange}
+              required
+            >
+              <option value="" disabled hidden>
+                Select Type
+              </option>
+              <option value="forge">Forge</option>
+              <option value="play">Play</option>
+              <option value="coach_wellness">COACH WELLNESS</option>
+              <option value="coach_fitness">COACH FITNESS</option>
+              <option value="coach_sports">COACH SPORTS</option>
+              <option value="employee">EMPLOYEE</option>
+              <option value="other">OTHERS</option>
+            </select>
             <select
               style={modalInputStyle}
               name="gender"

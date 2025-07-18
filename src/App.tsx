@@ -1,4 +1,10 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
 import { useContext } from "react";
 import Layout from "./components/Layout";
 import Dashboard from "./Pages/Dashboard";
@@ -19,13 +25,28 @@ import UserPersonalisedPlan from "./Pages/UserPersonalisedPlan";
 import SeePlan from "./SeePlanPage/SeePlan";
 import { SnackbarProvider } from "notistack";
 import BookingCalendarPage from "./Pages/BookingCalendar";
-
-
-
+// import PrivateRoute from "./Utils/PrivaetRouteWrapper";
 import UserProfile from "./UserPages/ProfilePage";
 import PricingCalendaPage from "./Pages/PricingCalendarPage";
 import PricingCalendarPage from "./Pages/PricingCalendarPage";
 import PricingCalendarDaily from "./Pages/PricingCalendarDaily";
+import LoginPage from "./Pages/LoginPage";
+import Login from "./components/Login";
+import LogoutPage from "./Pages/LogoutPage";
+import RegisterPage from "./Pages/RegisterPage";
+import GameChatPage from "./Pages/GameChatPage";
+
+const PrivateRoute: React.FC = () => {
+  const isAuthenticated = Boolean(sessionStorage.getItem("token")); // your auth check
+
+  if (!isAuthenticated) {
+    // User not logged in, redirect to login page
+    return <Navigate to="/" replace />;
+  }
+
+  // User logged in: render child routes
+  return <Outlet />;
+};
 
 function App() {
   //@ts-ignore
@@ -37,75 +58,112 @@ function App() {
       <Router>
         <Layout>
           <Routes>
-            <Route
-              path="/"
-              element={
-                selectComponent === "assessment" ? (
-                  <Assessment />
-                ) : selectComponent === "seePlan" ? (
-                  <SeePlan />
-                ) : selectComponent === "Q&A" ? (
-                  <QuestionPaper />
-                ) : selectComponent === "responses" ? (
-                  <Responses />
-                ) : selectComponent === "planCreation" ? (
-                  // <PlansPage />
-                  <UserPersonalisedPlan></UserPersonalisedPlan>
-                ) : (
-                  <Dashboard />
-                )
-              }
-            />
-            <Route
-              path="/assignment"
-              element={
-                selectComponent === "AssessmentCreationPage2" ? (
-                  <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
-                ) : (
-                  <AssessmentPage />
-                )
-              }
-            />
-            <Route
-              path="/sessions"
-              element={
-                selectComponent === "AllSessions" ? (
-                  <AllSessionsPage />
-                ) : (
-                  <SessionsPage />
-                )
-              }
-            />
-            <Route
-              path="/bookingCalendar"
-              element={<BookingCalendarPage/>}
-            />
+            <Route path="/" element={<LoginPage />} />
 
-            <Route
-              path="/pricingCalendar"
-              element={<PricingCalendarPage/>}
-            />
+            
 
-            <Route
-              path="/pricingCalendarDaily"
-              element={<PricingCalendarDaily/>}
-            />
-
-            <Route
-              path="/question-bank"
-              element={<QuestionBank></QuestionBank>}
-            />
-            <Route
-              path="/plans"
-              element={
-                selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
-              }
-            />
+            <Route element={<PrivateRoute />}>
               <Route
-              path="/profile"
-              element={<UserProfile></UserProfile>}
+                path="/Dashboard"
+                element={
+                  selectComponent === "assessment" ? (
+                    <Assessment />
+                  ) : selectComponent === "seePlan" ? (
+                    <SeePlan />
+                  ) : selectComponent === "Q&A" ? (
+                    <QuestionPaper />
+                  ) : selectComponent === "responses" ? (
+                    <Responses />
+                  ) : selectComponent === "planCreation" ? (
+                    // <PlansPage />
+                    <UserPersonalisedPlan></UserPersonalisedPlan>
+                  ) : (
+                    <Dashboard />
+                  )
+                }
               />
-           
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/assignment"
+                element={
+                  selectComponent === "AssessmentCreationPage2" ? (
+                    <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
+                  ) : (
+                    <AssessmentPage />
+                  )
+                }
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/sessions"
+                element={
+                  selectComponent === "AllSessions" ? (
+                    <AllSessionsPage />
+                  ) : (
+                    <SessionsPage />
+                  )
+                }
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/bookingCalendar"
+                element={<BookingCalendarPage />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/gameChat"
+                element={<GameChatPage />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/logout"
+                element={<LogoutPage />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/pricingCalendar"
+                element={<PricingCalendarPage />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/pricingCalendarDaily"
+                element={<PricingCalendarDaily />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/question-bank"
+                element={<QuestionBank></QuestionBank>}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/plans"
+                element={
+                  selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
+                }
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route path="/profile" element={<UserProfile></UserProfile>} />
+            </Route>
           </Routes>
         </Layout>
       </Router>
