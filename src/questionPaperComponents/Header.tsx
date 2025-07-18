@@ -23,19 +23,24 @@ const Header: React.FC<HeaderProps> = () => {
   return (
     <header className="bg-white z-10 w-full">
       {/* Top row with icon and title */}
-      <div className="flex flex-col sm:flex-row items-center gap-2 ml-[50px] sm:gap-4 p-4 sm:px-10">
-        <FileText size={48} className="text-gray-800 " />
-        <h1 className="text-xl sm:text-2xl md:text-[24px] font-normal text-gray-800 text-center sm:text-left">
-          Assessment {assignment?.id ?? ""}
-        </h1>
-      </div>
-
-      {selectComponent === "responses" && (
-        <div className="flex text-[18px] gap-2 ml-[95px] flex items-center">
-          <Calendar size={20}></Calendar>
-          <h2>{today}</h2>
+      
+      <div className="flex flex-row  justify-between items-center">
+        <div className="flex flex-col sm:flex-row items-center gap-2  sm:gap-4 p-4 sm:px-10">
+          <FileText size={48} className="text-gray-800 " />
+          <h1 className="text-xl sm:text-2xl md:text-[24px] font-normal text-gray-800 text-center sm:text-left">
+            Assessment {assignment?.id ?? ""}
+          </h1>
         </div>
-      )}
+
+        <div className="flex flex-col sm:flex-row items-center gap-2  sm:gap-4 p-4 sm:px-10">
+          {selectComponent === "responses" && (
+            <div className="flex text-[18px] gap-2 ml-[95px] flex items-center">
+              <Calendar size={20}></Calendar>
+              <h2>{today}</h2>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Navigation Tabs */}
       <div className="flex justify-center flex-wrap gap-6 sm:gap-10 font-normal text-sm sm:text-base px-2 py-3">

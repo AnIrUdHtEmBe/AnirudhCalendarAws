@@ -67,9 +67,13 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
   const { selectComponent, setSelectComponent } = context;
 
   const handleClick = (path: string) => {
+    console.log(path)
     navigate(path);
     setSelectComponent(path);
   };
+  useEffect(()=>{
+    // console.log(selectComponent,"this is form sidebar")
+  },[selectComponent])
 
   useEffect(() => {
     const handleResize = () => {
@@ -92,12 +96,19 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       text: "Assessment",
       path: "/assignment",
     },
+    { icon: <LayoutDashboard size={20} />, text: "Dashboard", path: "/" },
+    // {
+    //   icon: <ClipboardCheck size={20} />,
+    //   text: "Assessment",
+    //   path: "/assignment",
+    // },
     {
       icon: <FileQuestion size={20} />,
       text: "Question Bank",
       path: "/question-bank",
     },
     { icon: <Calendar size={20} />, text: "Sessions", path: "/sessions" },
+    { icon: <Calendar size={20} />, text: "Nutrition", path: "/nutrition_sessions" },
     { icon: <FileText size={20} />, text: "Plans", path: "/plans" },
     {
       icon: <Calendar size={20} />,
@@ -162,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
         <div className="menu">
           {/* Group 1: Dashboard to Plans */}
           <ul>
-            {menuItems.slice(0, 5).map((item, index) => (
+            {menuItems.slice(0, 4).map((item, index) => (
               <NavItem
                 key={index}
                 icon={item.icon}
@@ -179,7 +190,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
 
           {/* Group 2: Notifications to Help */}
           <ul>
-            {menuItems.slice(5).map((item, index) => (
+            {menuItems.slice(4).map((item, index) => (
               <NavItem
                 key={index + 5}
                 icon={item.icon}

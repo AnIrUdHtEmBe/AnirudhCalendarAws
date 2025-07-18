@@ -13,19 +13,19 @@ function AssignmentCreationModal() {
 
   return (
     <div className="assignment-modal">
-      <div className="modal-title">Create Assessment</div>
-      <div className="modal-description">
+      {/* <div className="modal-title">Create Assessment</div> */}
+      {/* <div className="modal-description">
         Create a personalized assessment to analyze customer goals and recommend
         a tailored fitness plan.
-      </div>
-      <div>
+      </div> 
+      <div>*/}
         <button
           className="modal-button"
           onClick={() => setSelectComponent("AssessmentCreationPage2")}
         >
           Create Assessment
         </button>
-      </div>
+      {/* </div> */}
     </div>
   );
 }

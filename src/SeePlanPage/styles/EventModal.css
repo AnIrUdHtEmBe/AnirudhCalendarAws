@@ -1,0 +1,24 @@
+.EventModal_activity{
+    display: flex;
+    flex-direction:  row;
+    align-items: center;
+    justify-content:space-between;
+    /* gap: 32px; */
+    /* border: 2px solid red; */
+}
+.Add_activity_event_modal{
+    border: 2px solid black;
+    background-color: blue;
+    color: white;
+    font-size: 20px;
+    display:  flex;
+    align-items: center;
+    justify-content: center;
+    width:  102px;
+}
+.activity-each-row-event-modal{
+     display: flex;
+    flex-direction:  row;
+    align-items: center;
+    justify-content:space-between;
+}

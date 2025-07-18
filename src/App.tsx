@@ -47,7 +47,11 @@ const PrivateRoute: React.FC = () => {
   // User logged in: render child routes
   return <Outlet />;
 };
+import ResponseViewPage from "./Pages/ResponseViewPage";
+import NutritionSessionsPage from "./Pages/NutritionSessionPage";
+import AllNutritionSessionsPage from "./Pages/AllNutritionSessionPage";
 
+// changes
 function App() {
   //@ts-ignore
   const { selectComponent } = useContext(DataContext);
@@ -59,10 +63,83 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<LoginPage />} />
+            <Route
+              path="/"
+              element={
+                selectComponent === "assessment" ? (
+                  <Assessment />
+                ) : selectComponent === "seePlan" ? (
+                  <SeePlan />
+                ) : selectComponent === "Q&A" ? (
+                  <QuestionPaper />
+                ) : selectComponent === "responses" ? (
+                  <Responses />
+                ) : selectComponent === "planCreation" ? (
+                  // <PlansPage />
+                  <UserPersonalisedPlan></UserPersonalisedPlan>
+                ) : (
+                  <Dashboard />
+                )
+              }
+            />
+            <Route
+              path="/question-bank"
+              element={
+                selectComponent === "AssessmentCreationPage2" ? (
+                  <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
+                ) : selectComponent === "/assignment"?(
+                  <AssessmentPage />):
+                // selectComponent === "/question-bank"?(
+                  <QuestionBank/>
+                // ):(
+                //   <Dashboard/>
+                // )
+              }
+            />
+            <Route
+              path="/sessions"
+              element={
+                selectComponent === "AllSessions" ? (
+                  <AllSessionsPage />
+                ) : (
+                  <SessionsPage />
+                )
+              }
+            />
+            <Route
+              path="/nutrition_sessions"
+              element={
+                selectComponent === "All_nutrition_Sessions" ? (
+                  <AllNutritionSessionsPage />
+                ) : 
+                (
+                  <NutritionSessionsPage />
+                )
+              }
+            />
+            <Route
+              path="/bookingCalendar"
+              element={<BookingCalendarPage/>}
+            />
 
             
 
             <Route element={<PrivateRoute />}>
+            <Route
+              path="/pricingCalendarDaily"
+              element={<PricingCalendarDaily/>}
+            />
+
+            <Route
+              path="/question-bank"
+              element={<QuestionBank></QuestionBank>}
+            /> 
+            <Route
+              path="/plans"
+              element={
+                selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
+              }
+            />
               <Route
                 path="/Dashboard"
                 element={
@@ -164,6 +241,10 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route path="/profile" element={<UserProfile></UserProfile>} />
             </Route>
+            <Route
+            path="/response"
+            element={<ResponseViewPage/>}
+            />
           </Routes>
         </Layout>
       </Router>
@@ -173,3 +254,4 @@ function App() {
 
 export default App;
 // changes in the code by aditi
+// changes in the code by aditi wqwww

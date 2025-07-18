@@ -75,9 +75,9 @@ const Assessment: React.FC = () => {
     fetchData();
   }, []);
 
-  console.log(assessmentInstance_expanded_Api_call);
+  console.log(assessmentInstance_expanded_Api_call,"this expaned");
 
-  // console.log("assessments_Api_call", assessments_Api_call);
+  console.log("assessments_Api_call", assessments_Api_call);
   return (
     <div>
       <Header />
@@ -246,19 +246,6 @@ const Assessment: React.FC = () => {
                         </tr>
                       )
                     )}
-
-                    {Array.from({
-                      length: Math.max(
-                        0,
-                        15 - selectedAssessment.questions.length
-                      ),
-                    }).map((_, i) => (
-                      <tr key={`empty-${i}`} className="modal-table-row">
-                        <td className="modal-td slno-header">-</td>
-                        <td className="modal-td question-headerrr text-gray-400"></td>
-                        <td className="modal-td mandatory-header madat-option ml-[10px] text-gray-400"></td>
-                      </tr>
-                    ))}
                   </tbody>
                 </table>
               </div>

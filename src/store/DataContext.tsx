@@ -126,6 +126,47 @@ export type Assessment_instance_expanded_Api_call = {
   totalScore: number;
   template: object[];
 }
+export interface Answer {
+  questionId: string;
+  mainText: string;
+  answerType: "text" | "number" | "choose_one" | "date";
+  value: string | null;
+  scoreLevel: string | null;
+  scoreValue: number | null;
+  scoreZone: string | null;
+  notes: string | null;
+  isRequired: boolean;
+}
+
+export interface TemplateQuestion {
+  created_on: string;
+  questionId: string;
+  mainText: string;
+  answerType: "text" | "number" | "choose_one" | "date";
+  options: string[] | null;
+  scoreZones: any; // or a specific type if known
+  isRequired: boolean;
+}
+
+export interface Template {
+  name: string;
+  created_on: string;
+  templateId: string;
+  questions: TemplateQuestion[];
+}
+
+export interface AssessmentInstance_with_answer {
+  assessmentInstanceId: string;
+  templateId: string;
+  userId: string;
+  answers: Answer[];
+  startedOn: string;
+  submittedOn: string;
+  nextAssessmentOn: string | null;
+  totalScore: number;
+  template: Template;
+}
+
 
 
 type MCQQuestion = {
@@ -182,6 +223,9 @@ type DataContextType = {
   assessmentInstance_expanded_Api_call: Assessment_instance_expanded_Api_call[];
   setAssessmentInstance_expanded_Api_call: Dispatch<SetStateAction<Assessment_instance_expanded_Api_call[]>>;
 
+  // Assessment instance for user by assessment id
+  assessmentInstance_call:AssessmentInstance_with_answer[];
+  setAssessmentInstance_call:Dispatch<SetStateAction<AssessmentInstance_with_answer[]>>;
   // plans api call
   plans_full_api_call: plans_full_api_call[];
   setPlans_full_api_call: Dispatch<SetStateAction<plans_full_api_call[]>>;
@@ -211,6 +255,11 @@ type DataContextType = {
   // sessions for api call
   sessions_api_call: Session_Api_call[];
   setSessions_api_call: Dispatch<SetStateAction<Session_Api_call[]>>;
+
+  // loading details
+  loading:boolean;
+  setLoading:Dispatch<SetStateAction<boolean>>;
+
 };
 
 export const DataContext = createContext<DataContextType | undefined>(
@@ -235,7 +284,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [questionsForAPICall, setQuestionsForAPICall] = useState<Question_Api_call[]>([]);
   // Assessment instance for each user
   const [assessmentInstance_expanded_Api_call , setAssessmentInstance_expanded_Api_call] = useState<Assessment_instance_expanded_Api_call[]>([]);
-  
+
+  // Assessment instance for each user by userid
+  const [assessmentInstance_call,setAssessmentInstance_call]=useState<AssessmentInstance_with_answer[]>([]);
   // activities api call
   const [activities_api_call, setActivities_api_call] = useState<Activity_Api_call[]>([]);
 
@@ -249,6 +300,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [sessions_api_call , setSessions_api_call] = useState<Session_Api_call[]>([]);
 
   const [plan_api_call , setPlan_api_call] = useState<Plan_Api_call[]>([]);
+  
+  const [loading, setLoading] = useState(false);
+
   return (
     <DataContext.Provider
       value={{
@@ -273,6 +327,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         assessmentInstance_expanded_Api_call,
         setAssessmentInstance_expanded_Api_call,
 
+        // Assessment instance for each user by user id
+        assessmentInstance_call,
+        setAssessmentInstance_call,
 
         //activities 
         activities_api_call,
@@ -297,6 +354,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         // plan api call
         plan_api_call,
         setPlan_api_call,
+
+        loading,
+        setLoading,
       }}
     >
       {children}

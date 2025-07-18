@@ -7,7 +7,7 @@ import {
 } from "../store/DataContext";
 import { ActivityUtils } from "../Utils/ActivityUtils";
 
-import "./ActivityTable.css";
+import "../sessionsPageComponets/ActivityTable.css";
 import {
   Autocomplete,
   FormControl,
@@ -17,22 +17,22 @@ import {
   TextField,
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
-function ActivityTable() {
+function NutritionActivityTable() {
   const context = useContext(DataContext);
   if (!context) {
     return <div>Loading...</div>;
   }
-  const { getActivities, createActivity, getActivityById, createSession ,getTags} =
+  const { getActivities, createNutritionActivity, getActivityById, createSession ,getTags} =
     useApiCalls();
   useEffect(() => {
-    getActivities();
+    getActivities("","","NUTRITION");
   }, []);
 
   
   const { setSelectComponent, activities_api_call } = context;
   const [tags, setTags] = useState([]);
   const [planName, setPlanName] = useState<string>("");
-  const [category, setCategory] = useState<string>("Fitness");
+  const [category, setCategory] = useState<string>("Nutrition");
   const [theme, setTheme] = useState("");
   const [goal, setGoal] = useState("");
   const [themes , setThemes] = useState([]);
@@ -102,7 +102,7 @@ function ActivityTable() {
     const sessionToBeCreated: Session_Api_call = {
       title: planName,
       description: "",
-      category: category,
+      category: "NUTRITION",
       activityIds: activityIds,
     };
     console.log(sessionToBeCreated);
@@ -160,7 +160,7 @@ function ActivityTable() {
     const postEachActivity = async () => {
       try {
         for (const item of newItems) {
-          await createActivity(item);
+          await createNutritionActivity(item);
         }
       } catch (error) {
         console.error("Error posting some activities:", error);
@@ -169,7 +169,7 @@ function ActivityTable() {
     // ✅ Wait for posting to finish
     await postEachActivity();
     // ✅ Then update the state
-    await getActivities();
+    await getActivities("","","NUTRITION");
     setNewActivities([
       {
         name: "",
@@ -228,21 +228,23 @@ useEffect(() => {
 useEffect(() => {
     if (theme && goal) {
       console.log("Theme and Goal are set:", theme, goal);
-      getActivities(theme, goal);
+      getActivities(theme, goal,"NUTRITION");
       return;
       // You can add any additional logic here that depends on both theme and goal being set
     }
     if(theme){
       console.log("Theme is set:", theme);
-      getActivities(theme,"");
+      getActivities(theme,"","NUTRITION");
       return;
     }
     if(goal){
       console.log("Goal is set:", goal);
-      getActivities("",goal);
+      getActivities("",goal,"NUTRITION");
       return;
+    }if(category){
+        getActivities("","","NUTRITION")
     }
-    getActivities();
+    getActivities("","","NUTRITION");
   }, [theme , goal]);
 
   useEffect(()=>{
@@ -256,7 +258,7 @@ useEffect(() => {
           <div className="flex flex-col w-full">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 170 }}>
               <TextField
-                label="Session Name"
+                label="Nutrition Name"
                 variant="standard"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
@@ -269,20 +271,15 @@ useEffect(() => {
 
           <div className="flex flex-col w-full ">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <InputLabel id="demo-select-label"> Category</InputLabel>
-              <Select
-                value={category}
+              <TextField
                 label="Category"
-                onChange={(e) => setCategory(e.target.value)}
-                displayEmpty
-                sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
-              >
-                <MenuItem value="FITNESS">Fitness</MenuItem>
-                <MenuItem value="SPORTS">Sports</MenuItem>
-                <MenuItem value="WELLNESS">Wellness</MenuItem>
-                <MenuItem value="OTHER">Other</MenuItem>
+                variant="standard"
+                value={category}
                 
-              </Select>
+                InputProps={{
+                  sx: { fontSize: "1.25rem", fontFamily: "Roboto" },
+                }}
+              />
             </FormControl>
           </div>
          <div className="flex flex-col w-full">
@@ -504,7 +501,7 @@ useEffect(() => {
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="px-4 py-2">Sl.No</th>
-                      <th className="px-4 py-2">Activity Name</th>
+                      <th className="px-4 py-2">Nutrition Name</th>
                       <th className="px-4 py-2">Description</th>
                       <th className="px-4 py-2">Target</th>
                       <th className="px-4 py-2">Units</th>
@@ -515,7 +512,7 @@ useEffect(() => {
                     {newActivities.map((activity, index) => (
                       <tr key={index}>
                         <td className="px-4 py-2 text-center border-b-2 border-gray-200">
-                          {index + 1}
+                          {index + 1}sw
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200">
                           <Autocomplete
@@ -656,4 +653,4 @@ useEffect(() => {
   );
 }
 
-export default ActivityTable;
+export default NutritionActivityTable;

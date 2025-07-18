@@ -1,9 +1,9 @@
 .assignment-modal {
   font-family: 'roboto', sans-serif;
   padding: 2.5rem;
-  background-color: white;
-  height: 500px;
-  width: 640px;
+  /* background-color: white;
+  height: 50px;
+  width: 60px; */
   display: flex;
   flex-direction: column;
   justify-content: center;
