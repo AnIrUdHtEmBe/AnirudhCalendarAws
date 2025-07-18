@@ -181,6 +181,7 @@ const allAnswered = questions
     try {
       let instanceId;
       if (localStorage.getItem("type") === "start") {
+        console.log("typeweweeeeeeee")
         instanceId = JSON.parse(
           localStorage.getItem("latestAssessmentTemplate")
         );
@@ -245,6 +246,7 @@ const allAnswered = questions
 
       // console.log("Submitting answers:", ans);
       await assessmet_submission(instanceId, ans);
+      // await updateNextAssessmentDate(instanceId,selectedD)
     } catch (error) {
       console.error("Submission error:", error);
 

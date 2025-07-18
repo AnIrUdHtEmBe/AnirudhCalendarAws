@@ -300,7 +300,7 @@ const CustomerTable = () => {
   return rows;
 };
 
-  console.log(rows,"roweeeees")
+  // console.log(rows,"roweeeees")
 
   const formatColumns = (columns: GridColDef[]) => {
     const width = ref.current?.clientWidth || 900;
@@ -330,7 +330,7 @@ const CustomerTable = () => {
     if (!ref.current) return;
 
     const fetchData = async () => {
-      console.log("console")
+      // console.log("console")
       const _rows = await generateRows(); // ✅ Wait for async rows
       const _columns = formatColumns(generateColumns());
 
@@ -420,7 +420,7 @@ const CustomerTable = () => {
     }
   };
 
-  console.log("Selected User IDs:", selectedUserIDs);
+  // console.log("Selected User IDs:", selectedUserIDs);
 
   if (isLoading) {
     return (

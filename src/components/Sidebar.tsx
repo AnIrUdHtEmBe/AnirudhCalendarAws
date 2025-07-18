@@ -98,6 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       path: "/question-bank",
     },
     { icon: <Calendar size={20} />, text: "Sessions", path: "/sessions" },
+    { icon: <Calendar size={20} />, text: "Nutrition", path: "/nutrition_sessions" },
     { icon: <FileText size={20} />, text: "Plans", path: "/plans" },
     { icon: <Calendar size={20} />, text: "Booking Calendar", path: "/bookingCalendar" },
     { icon: <Calendar size={20} />, text: "Pricing Calendar", path: "/pricingCalendar" },
@@ -155,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
         <div className="menu">
           {/* Group 1: Dashboard to Plans */}
           <ul>
-            {menuItems.slice(0, 5).map((item, index) => (
+            {menuItems.slice(0, 4).map((item, index) => (
               <NavItem
                 key={index}
                 icon={item.icon}
@@ -172,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
 
           {/* Group 2: Notifications to Help */}
           <ul>
-            {menuItems.slice(5).map((item, index) => (
+            {menuItems.slice(4).map((item, index) => (
               <NavItem
                 key={index + 5}
                 icon={item.icon}

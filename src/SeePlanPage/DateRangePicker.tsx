@@ -12,7 +12,7 @@ export default function DateRangePicker({ startDate, userDate ,setStartDate, end
      
   }, [userDate]);
   return (
-    <div className='p-4 flex justify-between'>
+    <div className='p-4 flex flex-col gap-5 justify-end items-end'>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Stack spacing={5} direction="row">
         

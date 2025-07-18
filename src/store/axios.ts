@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useContext } from "react";
+import { useContext ,useState} from "react";
 import {
   Activity_Api_call,
   Customers_Api_call,
@@ -12,9 +12,10 @@ import {
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
 // const API_BASE_URL = "https://forge-play-backend.forgehub.in";
-// const API_BASE_URL="http://127.0.0.1:8000"
-const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
+const API_BASE_URL="http://127.0.0.1:8000"
+// const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
 const API_BASE_URL2="https://play-os-backend.forgehub.in";
+// const API_BASE_URL2=" http://127.0.0.1:8001"
 export const useApiCalls = () => {
   const context = useContext(DataContext);
   if (!context) {
@@ -29,6 +30,7 @@ export const useApiCalls = () => {
     setActivities_api_call,
     setSessions_api_call,
     setPlans_full_api_call,
+    setAssessmentInstance_call,
   } = context;
 
   const customer_creation = async (customer: any) => {
@@ -156,6 +158,18 @@ export const useApiCalls = () => {
       console.error("❌ Error fetching sessions:", error);
     }
   };
+
+  const getNutrition=async()=>{
+    try{
+      setLoading(true);
+      const res=await axios.get(`${API_BASE_URL}/nutition_session-template/full`);
+      const data=res.data
+      setSessions_api_call(data);
+      console.log("✅ Sessions fetched successfully:", data);
+    }catch(error){
+      console.log(error)
+    }
+  }
   const createSession = async (session: Session_Api_call) => {
     try {
       const res = await axios.post(
@@ -320,18 +334,21 @@ const AddActivityToSession=async(
     }
   };
 
- const getActivities = async (theme?: string, goal?: string) => {
+ const getActivities = async (theme?: string, goal?: string,type?:string) => {
   try {
     const params: Record<string, string> = {};
 
     if (theme) params.themeTitle = theme;
     if (goal) params.goalTitle = goal;
+    if(type) params.typeTitle=type;
 
+    console.log(theme,goal,type,";AWILBEVKD")
     const res = await axios.get(`${API_BASE_URL}/activity-templates`, {
       params
     });
 
     const data = res.data;
+    console.log(data,"this is datatttaa")
     setActivities_api_call(data);
     // console.log("✅ Activities fetched successfully:", data);
     console.log(theme);
@@ -370,6 +387,32 @@ const AddActivityToSession=async(
     }
   };
 
+  const assessment_instance_fetching_by_id=async(assessmentId:string)=>{
+    try{
+
+      const response=await axios.get(`${API_BASE_URL}/asssessmentinstances/${assessmentId}/expanded`)
+      const data=response.data
+      // console.log()
+      setAssessmentInstance_call([data])
+    }catch(e){
+      console.log(e)
+    }
+  }
+
+  const  updateNextAssessmentDate=async(assessmentId:string,date:string)=>{
+    try{
+      const response=await axios.patch(`${API_BASE_URL}/nextAssessmentDate`,{},{
+        params:{
+          assessment_instance_id: assessmentId,
+          date:date
+        }
+        
+      })
+      return response.data
+    }catch(e){
+      console.log(e)
+    }
+  }
   const createPlanInstance = async (
     planTemplateId: string,
     userId: string,
@@ -543,6 +586,18 @@ const AddActivityToSession=async(
       console.error("❌ Error creating activity:", error);
     }
   };
+
+  const createNutritionActivity=async(activity: Activity_Api_call)=>{
+    try{
+      const res=await axios.post(`${API_BASE_URL}/nutrition-activity-template`,activity);
+      enqueueSnackbar("Nutrition created successfully!", {
+        variant: "success",
+        autoHideDuration: 3000,
+      });
+    }catch(error){
+      console.error("❌ Error creating activity:", error);
+    }
+  }
   const getActivityById = async (activityId: string) => {
     try {
       const res = await axios.get(
@@ -670,6 +725,22 @@ const AddActivityToSession=async(
     }
   };
 
+
+  const getLatestPlanAssessment=async(
+    userid:string
+  )=>{
+    try{
+      const res=await axios.get(`${API_BASE_URL}/getLatestPlanAndAssessment`,{
+        params: {
+          userId: userid
+        }
+      })
+      const data=res.data
+      return data
+    }catch(err){
+      console.log(err)
+    }
+  }
   const patchPlans = async (templateIds: string, session: object[]) => {
     const sessionData = session.map((s) => ({
       sessionId: s.sessionId,
@@ -785,9 +856,11 @@ const AddActivityToSession=async(
     getActivities,
     Question_creation_Api_call,
     createActivity,
+    createNutritionActivity,
     getActivityById,
     createSession,
     getSessions,
+    getNutrition,
     getPlansFull,
     patchSession,
     AddActivityToSession,
@@ -804,6 +877,9 @@ const AddActivityToSession=async(
     getExpandedPlanByPlanId,
     getScore,
     getPlansForInterval,
+    getLatestPlanAssessment,
+    assessment_instance_fetching_by_id,
+    updateNextAssessmentDate,
     updateSessionInPlanInstance,
     OptimisedPatchPlan,
     customer_creation,

@@ -26,6 +26,9 @@ import UserProfile from "./UserPages/ProfilePage";
 import PricingCalendaPage from "./Pages/PricingCalendarPage";
 import PricingCalendarPage from "./Pages/PricingCalendarPage";
 import PricingCalendarDaily from "./Pages/PricingCalendarDaily";
+import ResponseViewPage from "./Pages/ResponseViewPage";
+import NutritionSessionsPage from "./Pages/NutritionSessionPage";
+import AllNutritionSessionsPage from "./Pages/AllNutritionSessionPage";
 
 // changes
 function App() {
@@ -82,6 +85,17 @@ function App() {
               }
             />
             <Route
+              path="/nutrition_sessions"
+              element={
+                selectComponent === "All_nutrition_Sessions" ? (
+                  <AllNutritionSessionsPage />
+                ) : 
+                (
+                  <NutritionSessionsPage />
+                )
+              }
+            />
+            <Route
               path="/bookingCalendar"
               element={<BookingCalendarPage/>}
             />
@@ -110,7 +124,10 @@ function App() {
               path="/profile"
               element={<UserProfile></UserProfile>}
               />
-           
+            <Route
+            path="/response"
+            element={<ResponseViewPage/>}
+            />
           </Routes>
         </Layout>
       </Router>

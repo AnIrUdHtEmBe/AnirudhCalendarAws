@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState } from "react";
 import Header from "../questionPaperComponents/Header";
+import { useLocation } from "react-router-dom";
 import {
   ArrowRight,
   Dumbbell,
@@ -21,12 +22,13 @@ function Responses() {
     { name: "Elite", from: 81, to: 100 },
   ];
 
-  const [selectedDate,setselectedDate]=useState("")
+  const [selectedDate, setselectedDate] = useState("")
   const paperDetails = JSON.parse(localStorage.getItem("assessmentDetails"));
-  console.log(paperDetails);
+  // console.log(paperDetails);
   const userDetail = JSON.parse(localStorage.getItem("user"));
-  console.log(userDetail);
+  // console.log(userDetail);
   const [loading, setLoading] = useState(true);
+  const location = useLocation();
 
   const [score, setScore] = useState<{ score: number; index: number }>({
     score: 0,
@@ -39,6 +41,7 @@ function Responses() {
     starting_assessment_by_user,
     assessments_intsnce_fetching,
     getPlansFull,
+    updateNextAssessmentDate
   } = useApiCalls();
 
   const context = useContext(DataContext);
@@ -149,7 +152,7 @@ function Responses() {
     );
   }
 
-  
+
 
   return (
     <div className="responses-root">
@@ -260,9 +263,8 @@ function Responses() {
                       {ScoreZoneData.map((zone, index) => (
                         <tr
                           key={index}
-                          className={`${
-                            score.index === index ? "highlight" : ""
-                          }`}
+                          className={`${score.index === index ? "highlight" : ""
+                            }`}
                         >
                           <td>{zone.name}</td>
                           <td>{zone.from}</td>
@@ -282,9 +284,8 @@ function Responses() {
                 {plans_full_api_call.map((plan, i) => (
                   <button
                     key={i}
-                    className={`plan-box hover:cursor-pointer ${
-                      plann === plan ? "sel" : ""
-                    }`}
+                    className={`plan-box hover:cursor-pointer ${plann === plan ? "sel" : ""
+                      }`}
                     onClick={() => handlePlanSelection(plan)}
                   >
                     {plan.title}
@@ -292,18 +293,18 @@ function Responses() {
                 ))}
               </div>
 
-{/* where to dave the next assessment date? */}
+              {/* where to dave the next assessment date? */}
               <div className="mt-12 flex space-x-4 items-center">
                 <Calendar></Calendar>{" "}
                 <div >
-                    
-                    <span className="font-normal text-xl">
-                      Next assessment On:<input
+
+                  <span className="font-normal text-xl">
+                    Next assessment On:<input
                       type="date"
                       className="border border-gray-300 rounded px-3 py-2 text-lg"
                       onChange={(e) => (setselectedDate(e.target.value))}
                     />
-                    </span>
+                  </span>
                 </div>
                 {/* <span className="font-normal text-xl ">
                   Next assessment On : 10/12/13
@@ -312,13 +313,27 @@ function Responses() {
               </div>
               <div className="proceed-button-wrapper">
                 <button
-                  className={`flex items-center bg-blue-600 px-4 py-3 text-white rounded-xl space-x-4 absolute bottom-4 right-4 transition-opacity ${
-                    plann === null
+                  className={`flex items-center bg-blue-600 px-4 py-3 text-white rounded-xl space-x-4 absolute bottom-4 right-4 transition-opacity ${plann === null
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-blue-700"
-                  }`}
+                    }`}
                   disabled={plann === null}
-                  onClick={() => setSelectComponent("planCreation")}
+                  onClick={async () => {
+                    try {
+                      const res = await updateNextAssessmentDate(
+                        JSON.parse(localStorage.getItem("assessmentInstanceId")),
+                        selectedDate
+                      );
+
+                      if (res) {
+                        setSelectComponent("planCreation");
+                      } else {
+                        console.log("Date not updated");
+                      }
+                    } catch (err) {
+                      console.error("Error updating date:", err);
+                    }
+                  }}
                 >
                   <span>Proceed</span> <ArrowRight />
                 </button>
