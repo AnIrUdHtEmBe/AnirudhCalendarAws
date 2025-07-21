@@ -24,7 +24,8 @@ export type Activity_Api_call = {
   description: string,
   target: number | null,
   unit: string,
-  icon?: string
+  icon?: string,
+  type?:string,
 }
 
 export type Session_Api_call = {
@@ -256,6 +257,9 @@ type DataContextType = {
   sessions_api_call: Session_Api_call[];
   setSessions_api_call: Dispatch<SetStateAction<Session_Api_call[]>>;
 
+  nutrition_api_call:Session_Api_call[];
+  setnutrition_api_call:Dispatch<SetStateAction<Session_Api_call[]>>;
+
   // loading details
   loading:boolean;
   setLoading:Dispatch<SetStateAction<boolean>>;
@@ -298,6 +302,7 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   const [selectComponent, setSelectComponent] = useState<string>("dashboard");
 
   const [sessions_api_call , setSessions_api_call] = useState<Session_Api_call[]>([]);
+  const[nutrition_api_call,setnutrition_api_call]= useState<Session_Api_call[]>([]);
 
   const [plan_api_call , setPlan_api_call] = useState<Plan_Api_call[]>([]);
   
@@ -350,6 +355,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         // sessions for api call
         sessions_api_call,
         setSessions_api_call,
+
+        nutrition_api_call,
+        setnutrition_api_call,
 
         // plan api call
         plan_api_call,

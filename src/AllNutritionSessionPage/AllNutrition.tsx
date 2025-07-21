@@ -26,7 +26,7 @@ function AllNutrition() {
   }
   const {
     activities_api_call,
-    sessions_api_call,
+    nutrition_api_call,
     setSelectComponent,
   } = context;
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
@@ -58,7 +58,7 @@ function AllNutrition() {
     }
   }, [selecteddPlan]);
 
-  const filteredPlans = sessions_api_call.filter(
+  const filteredPlans = nutrition_api_call.filter(
     (plan) =>
       plan.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       plan.category?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -246,6 +246,7 @@ function AllNutrition() {
                   <th className="actthree">Description</th>
                   <th className="actfour"> Target</th>
                   <th>Unit</th>
+                  <th>Type</th>
                   <th></th>
                 </tr>
               </thead>
@@ -333,7 +334,18 @@ function AllNutrition() {
                               ? "Km"
                               : item.unit === "repetitions"
                               ? "Reps"
+                              :  item.unit == "grams"
+                              ? "g"
+                              : item.unit == "meter"
+                              ? "m"
+                              : item.unit == "litre"
+                              ? "L"
+                              : item.unit == "millilitre"
+                              ? "ml"
                               : ""}
+                          </td>
+                          <td className="activity-cell">
+                            {item.type}
                           </td>
                           <td><MinusCircle className="text-red-500" onClick={ () => handleDelete(index)}></MinusCircle></td>
                         </>

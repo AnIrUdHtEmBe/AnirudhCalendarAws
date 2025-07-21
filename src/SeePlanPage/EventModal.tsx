@@ -10,6 +10,8 @@ import {
 
   TextField,
 } from "@mui/material";
+import { Dumbbell, MinusCircle, Plus } from "lucide-react";
+
 import './styles/EventModal.css';
 
 export default function EventModal({ isOpen, onClose, eventData, sessionId, planInstanceId, regenerate, getData }) {
@@ -55,6 +57,7 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
 
   const { getSessionById, getActivityById, getSessionInstanceById, patchSession, RemoveSessionInPlanInstance, RemoveActivityFromSession, AddActivityToSession } = useApiCalls();
   const [details, setDetails] = useState({});
+  console.log(sessionId,"iohhhhhhhioh")
   const getSessionDetails = async (eventData) => {
     try {
       if (!eventData?.extendedProps?.sessionInstanceId) {
@@ -156,7 +159,7 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
   const handleActivityAdd = async (e: any) => {
     e.preventDefault();
     console.log(activityForTable?.activityId, sessionId, planInstanceId, "thi si new ")
-    const res = await AddActivityToSession(activityForTable?.activityId, sessionId, planInstanceId)
+    const res = await AddActivityToSession(activityForTable?.activityId, sessionId, planInstanceId,"")
     if (res) {
 
       console.log("checjidvobuewifbvwiyvfeouy")
@@ -218,8 +221,8 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
                   setRemovalNote("");
                 }}
                 className={`px-4 py-2 rounded text-white ${removalNote.trim().length > 20
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-red-300 cursor-not-allowed"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-red-300 cursor-not-allowed"
                   }`}
                 disabled={removalNote.trim().length < 20}
               >
@@ -269,8 +272,8 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
                   setRemovalNote("");
                 }}
                 className={`px-4 py-2 rounded text-white ${removalNote.trim().length > 10
-                    ? "bg-red-600 hover:bg-red-700"
-                    : "bg-red-300 cursor-not-allowed"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-red-300 cursor-not-allowed"
                   }`}
                 disabled={removalNote.trim().length < 10}
               >
@@ -330,16 +333,25 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
                           }
 
                         </div>
-                        <div> <button
-                          className="ml-2 px-3 py-1 text-sm font-medium text-white bg-red rounded hover:bg-red-600 transition"
-                          onClick={() => {
-                            // console.log(activity,activityId,"this is instance")
-                            setactivityId(activityId)
-                            setshowConfirmAct(true)
-                          }}
-                        >
-                          ➖
-                        </button></div>
+                        <div>
+                          {/* <button
+                            className="ml-2 px-3 py-1 text-sm font-medium text-white bg-red rounded hover:bg-red-600 transition"
+                            onClick={() => {
+                              // console.log(activity,activityId,"this is instance")
+                              setactivityId(activityId)
+                              setshowConfirmAct(true)
+                            }}
+                          >
+                            ➖
+                          </button> */}
+                          <MinusCircle
+                            className="ml-2 w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition"
+                            onClick={() => {
+                              setactivityId(activityId);
+                              setshowConfirmAct(true);
+                            }}
+                          />
+                        </div>
                       </div>
                     </li>
                   )

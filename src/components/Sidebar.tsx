@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Menu,
+  Utensils ,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
@@ -108,7 +109,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       path: "/question-bank",
     },
     { icon: <Calendar size={20} />, text: "Sessions", path: "/sessions" },
-    { icon: <Calendar size={20} />, text: "Nutrition", path: "/nutrition_sessions" },
+    { icon: <Utensils size={20} />, text: "Nutrition", path: "/nutrition_sessions" },
     { icon: <FileText size={20} />, text: "Plans", path: "/plans" },
     {
       icon: <Calendar size={20} />,

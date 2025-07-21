@@ -17,6 +17,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
+import { NutritionUtils } from "../Utils/NutritionUtils";
 function NutritionActivityTable() {
   const context = useContext(DataContext);
   if (!context) {
@@ -59,7 +60,7 @@ function NutritionActivityTable() {
      
   }, []);
   useEffect(() => {
-    console.log("Tags fetched:", tags);
+    // console.log("Tags fetched:", tags);
   }, [tags]);
   const [newActivities, setNewActivities] = useState<Activity_Api_call[]>([
     {
@@ -67,6 +68,7 @@ function NutritionActivityTable() {
       description: "",
       target: null,
       unit: "",
+      type:"",
     },
   ]);
   const [emptyArr, setEmptyArr] = useState<Activity_Api_call[]>([
@@ -76,17 +78,18 @@ function NutritionActivityTable() {
       target: null,
       unit: "",
       icon: "",
+      type:"",
     },
   ]);
 
   useEffect(() => {
     console.log(emptyArr);
     const activityIds = emptyArr.map((activity) => activity.activityId);
-    console.log(activityIds);
+    // console.log(activityIds);
   }, [emptyArr]);
 
   useEffect(() => {
-    console.log(activities_api_call);
+    // console.log(activities_api_call);
   }, [activities_api_call]);
 
   const handlePlanSaving = () => {
@@ -119,6 +122,7 @@ function NutritionActivityTable() {
         target: null,
         unit: "",
         icon: "",
+        type:"",
       },
     ]);
   };
@@ -133,6 +137,7 @@ function NutritionActivityTable() {
         target: null,
         unit: "",
         icon: "",
+        type:"",
       },
     ]);
   };
@@ -156,10 +161,12 @@ function NutritionActivityTable() {
       description: activity.description,
       target: activity.target,
       unit: activity.unit,
+      type:activity.type,
     }));
     const postEachActivity = async () => {
       try {
         for (const item of newItems) {
+          console.log(item,"jiiji")
           await createNutritionActivity(item);
         }
       } catch (error) {
@@ -176,6 +183,7 @@ function NutritionActivityTable() {
         description: "",
         target: null,
         unit: "",
+        type:"",
       },
     ]);
     setShowModal(false);
@@ -202,6 +210,7 @@ function NutritionActivityTable() {
   };
   const updateTheActivitityById = async (activityId: string, index: number) => {
     const activity = await getActivityById(activityId);
+    console.log(activity,"['pilkujhgfd")
     if (activity) {
       emptyArr[index] = activity;
       setEmptyArr([...emptyArr]);
@@ -218,10 +227,10 @@ function NutritionActivityTable() {
     updateTheActivitityById(value, id);
   };
 
-  console.log(newActivities);
+  // console.log(newActivities);
 useEffect(() => {
-  console.log(theme);
-  console.log(goal);
+  // console.log(theme);
+  // console.log(goal);
 }
 , [theme, goal]);
 
@@ -248,7 +257,7 @@ useEffect(() => {
   }, [theme , goal]);
 
   useEffect(()=>{
-    console.log(emptyArr,"this is emort")
+    // console.log(emptyArr,"this is emort")
   },[emptyArr])
   return (
     <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
@@ -351,7 +360,7 @@ useEffect(() => {
             onClick={() => setShowModal(true)}
           >
             <Plus />
-            <span>Create New Activity</span>
+            <span>Create New Meal</span>
           </button>
           <button
             className="flex items-center space-x-2 text-white px-4 py-2 rounded-xl text-sm md:text-base btn2 "
@@ -375,6 +384,7 @@ useEffect(() => {
                   "Description",
                   "Target",
                   "Unit",
+                  "Type",
                   "",
                 ].map((item, index) => (
                   <th
@@ -436,6 +446,7 @@ useEffect(() => {
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center">
                     {activity.target}
                   </td>
+                  
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center">
                     {activity.unit == "weight"
                       ? "Kg"
@@ -445,7 +456,19 @@ useEffect(() => {
                       ? "Min"
                       : activity.unit == "repetitions"
                       ? "Reps"
+                      :  activity.unit == "grams"
+                      ? "g"
+                      : activity.unit == "meter"
+                      ? "m"
+                      : activity.unit == "litre"
+                      ? "L"
+                      : activity.unit == "millilitre"
+                      ? "ml"
                       : ""}
+                  </td>
+                  <td  className="px-4 py-7 border-b border-b-gray-200 text-center">
+                    {activity.type}
+                    
                   </td>
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center">
                     <button onClick={() => handleDelete(index)}>
@@ -485,7 +508,7 @@ useEffect(() => {
               {/* Close Button */}
 
               <div className="flex justify-between items-center border-gray-200 border-b pb-2 mb-4">
-                <h2 className="text-xl font-[500]">Create New Activities</h2>
+                <h2 className="text-xl font-[500]">Create New Meal</h2>
                 <button
                   onClick={handleModalSave}
                   className="activity-save-button mx-6 m flex items-center space-x-2 bg-[#0070FF] text-white px-4 py-2 rounded-xl"
@@ -504,7 +527,8 @@ useEffect(() => {
                       <th className="px-4 py-2">Nutrition Name</th>
                       <th className="px-4 py-2">Description</th>
                       <th className="px-4 py-2">Target</th>
-                      <th className="px-4 py-2">Units</th>
+                      <th className="px-4 py-2">Unit</th>
+                      <th className="px-4 py-2">Type</th>
                       <th className="px-4 py-2"></th>
                     </tr>
                   </thead>
@@ -512,7 +536,7 @@ useEffect(() => {
                     {newActivities.map((activity, index) => (
                       <tr key={index}>
                         <td className="px-4 py-2 text-center border-b-2 border-gray-200">
-                          {index + 1}sw
+                          {index + 1}
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200">
                           <Autocomplete
@@ -585,18 +609,7 @@ useEffect(() => {
                           />
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200">
-                          {/* <input
-                            type="text"
-                            value={activity.unit}
-                            onChange={(e) => {
-                              const updated = [...newActivities];
-                              updated[index].unit = e.target.value;
-                              setNewActivities(updated);
-                            }}
-                            className="w-full border border-gray-400 rounded p-2"
-                          /> */}
-
-                            <Autocomplete
+                           <Autocomplete
                               options ={ActivityUtils}
                               getOptionsLable={(option :any) => option || ""}
                               value={activity.unit || ""}
@@ -609,6 +622,27 @@ useEffect(() => {
                                 <TextField
                                   {...params}
                                   label="Select Unit"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ width: 180 }}
+                                />
+                              )}
+                            />
+                        </td>
+                        <td>
+                            <Autocomplete
+                              options ={NutritionUtils}
+                              getOptionsLable={(option :any) => option || ""}
+                              value={activity.type || ""}
+                              onChange={(_ , newValue) => {
+                                const updated = [...newActivities];
+                                updated[index].type = newValue || "";
+                                setNewActivities(updated);
+                              }}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Select Type"
                                   variant="outlined"
                                   size="small"
                                   sx={{ width: 180 }}
@@ -642,7 +676,7 @@ useEffect(() => {
                   className="flex items-center space-x-2 border bg-white text-[#0070FF] px-4 py-2 heya"
                 >
                   <Plus />
-                  <span>Create another activity</span>
+                  <span>Create another item</span>
                 </button>
               </div>
             </div>

@@ -12,10 +12,11 @@ import {
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
 // const API_BASE_URL = "https://forge-play-backend.forgehub.in";
-const API_BASE_URL="http://127.0.0.1:8000"
-// const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
-const API_BASE_URL2="https://play-os-backend.forgehub.in";
-// const API_BASE_URL2=" http://127.0.0.1:8001"
+// const API_BASE_URL="http://127.0.0.1:8000"
+const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
+// const API_BASE_URL2="https://play-os-backend.forgehub.in";
+// const API_BASE_URL2=" http://127.0.0.1:8000"
+const API_BASE_URL2='https://play-os-backendv2.forgehub.in'
 export const useApiCalls = () => {
   const context = useContext(DataContext);
   if (!context) {
@@ -29,6 +30,7 @@ export const useApiCalls = () => {
     setAssessmentInstance_expanded_Api_call,
     setActivities_api_call,
     setSessions_api_call,
+    setnutrition_api_call,
     setPlans_full_api_call,
     setAssessmentInstance_call,
   } = context;
@@ -161,10 +163,10 @@ export const useApiCalls = () => {
 
   const getNutrition=async()=>{
     try{
-      setLoading(true);
+      // setLoading(true);
       const res=await axios.get(`${API_BASE_URL}/nutition_session-template/full`);
       const data=res.data
-      setSessions_api_call(data);
+    setnutrition_api_call(data);
       console.log("✅ Sessions fetched successfully:", data);
     }catch(error){
       console.log(error)
@@ -267,13 +269,15 @@ const AddActivityToSession=async(
   activityId:string,
     sessionId:string,
     planInstanceId:string,
+    type?:string,
 )=>{
   try{
-    const res=await axios.patch(`${API_BASE_URL}/add-activity-to-session/${activityId}/${sessionId}/${planInstanceId}`,{
+    const res=await axios.patch(`${API_BASE_URL}/add-activity-to-session/${activityId}/${sessionId}/${planInstanceId}`,null,{
     params:{
-       activityId:activityId,
-        sessionId:sessionId,
-        planInstanceId:planInstanceId,
+      //  activityId:activityId,
+      //   sessionId:sessionId,
+      //   planInstanceId:planInstanceId,
+        type:type
     }
   })
   return res
@@ -589,7 +593,11 @@ const AddActivityToSession=async(
 
   const createNutritionActivity=async(activity: Activity_Api_call)=>{
     try{
-      const res=await axios.post(`${API_BASE_URL}/nutrition-activity-template`,activity);
+      const res=await axios.post(`${API_BASE_URL}/nutrition-activity-template`,activity,{
+        params:{
+          type:activity.type
+        }
+      });
       enqueueSnackbar("Nutrition created successfully!", {
         variant: "success",
         autoHideDuration: 3000,
@@ -708,6 +716,17 @@ const AddActivityToSession=async(
       return [];
     }
   };
+
+  const getAllNutrition=async()=>{
+    try{
+      const res=await axios.get(`${API_BASE_URL}/nutition_session-template`);
+      const data=res.data
+      return data 
+    }catch(error){
+      console.error("❌ Error fetching all sessions:", error);
+      return [];
+    }
+  }
   const getPlansForInterval = async (
     startDate: string,
     endDate: string,
@@ -890,6 +909,7 @@ const AddActivityToSession=async(
     getPlans,
     getPlanInstanceByPlanID,
     getAllSessions,
+    getAllNutrition,
     addSessionFromCalendar,
     getTags
   };
