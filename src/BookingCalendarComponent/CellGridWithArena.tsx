@@ -5,6 +5,9 @@ import TopBar from "./Topbar";
 import UserModal from "./UserModal";
 import Toast from "./Toast";
 import { LucideArrowRightSquare } from "lucide-react";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 export type CellState =
   | "available"
@@ -174,8 +177,38 @@ const CellGrid = () => {
   const [maxPlayers, setMaxPlayers] = useState<number>(1); // default 1
   const [difficultyLevel, setDifficultyLevel] = useState<string>("Beginner"); // default Beginner
 
+let arenaOpen = null;
+let arenaClose = null;
+const [openingTimeIST, setOpeningTimeIST] = useState<dayjs.Dayjs | null>(null);
+const [cols, setCols] = useState<number>(0);
+
+
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const fetchArena = async () => {
+  try {
+    const arenaRes = await axios.get(`https://play-os-backend.forgehub.in/arena/AREN_JZSW15`);
+    const openingTime = dayjs.utc(arenaRes.data.openingTime).tz("Asia/Kolkata");
+    const closingTime = dayjs.utc(arenaRes.data.closingTime).tz("Asia/Kolkata");
+
+    setOpeningTimeIST(openingTime);
+    const diffInMinutes = closingTime.diff(openingTime, "minute");
+    setCols(diffInMinutes / 30);
+
+  } catch (error) {
+    console.error("Failed to fetch arena:", error);
+  }
+};
+
+  useEffect(() => {
+    fetchArena();
+  },[])
+
   // 24 hours with 30-minute slots = 48 columns
-  const cols = 48;
+  // const cols = 36;
+  
   const rows = courtId.length;
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -238,7 +271,8 @@ const CellGrid = () => {
 
     // Format the selected time slot (single or multiple)
     const timeSlot = formatSelectedTimeRange(
-      selected.length > 0 ? selected : [[row, col]]
+      selected.length > 0 ? selected : [[row, col]],
+      openingTimeIST
     );
 
     // Use gameName from selectedCellDetails, fallback if needed
@@ -259,69 +293,63 @@ const CellGrid = () => {
   };
 
   // Format time range only if selection is valid
-  const formatSelectedTimeRange = (
-    selectedCells: Array<[number, number]>
-  ): string => {
-    if (!isValidSelection(selectedCells)) {
-      return "Invalid selection";
-    }
+const formatSelectedTimeRange = (
+  selectedCells: Array<[number, number]>,
+  openingTimeIST: dayjs.Dayjs | null
+): string => {
+  if (!isValidSelection(selectedCells) || !openingTimeIST) {
+    return "Invalid selection";
+  }
 
-    const colsSelected = selectedCells
-      .map(([_, col]) => col)
-      .sort((a, b) => a - b);
-    const firstCol = colsSelected[0];
-    const lastCol = colsSelected[colsSelected.length - 1];
+  const colsSelected = selectedCells
+    .map(([_, col]) => col)
+    .sort((a, b) => a - b);
+  const firstCol = colsSelected[0];
+  const lastCol = colsSelected[colsSelected.length - 1];
 
-    const formatTime = (col: number) => {
-      const hour = Math.floor(col / 2);
-      const minute = col % 2 === 0 ? 0 : 30;
-      const displayHour = hour % 12 === 0 ? 12 : hour % 12;
-      const ampm = hour < 12 ? "AM" : "PM";
-      return `${displayHour}:${minute.toString().padStart(2, "0")} ${ampm}`;
-    };
-
-    const startTimeStr = formatTime(firstCol);
-
-    let endHour = Math.floor(lastCol / 2);
-    let endMinute = lastCol % 2 === 0 ? 0 : 30;
-    endMinute += 30;
-    if (endMinute === 60) {
-      endMinute = 0;
-      endHour += 1;
-    }
-    const displayEndHour = endHour % 12 === 0 ? 12 : endHour % 12;
-    const endAmPm = endHour < 12 ? "AM" : "PM";
-    const endTimeStr = `${displayEndHour}:${endMinute
-      .toString()
-      .padStart(2, "0")} ${endAmPm}`;
-
-    return `${startTimeStr} - ${endTimeStr}`;
+  // Helper to format dayjs time to AM/PM string like "12:00 AM"
+  const formatLabel = (t: dayjs.Dayjs) => {
+    const h = t.hour();
+    const m = t.minute();
+    const displayHour = h % 12 === 0 ? 12 : h % 12;
+    const ampm = h < 12 ? "AM" : "PM";
+    return `${displayHour}:${m === 0 ? "00" : "30"} ${ampm}`;
   };
 
+  // Calculate start and end times from openingTimeIST plus slot offsets
+  const startTime = openingTimeIST.add(firstCol * 30, "minute");
+  // end time is end of (lastCol) slot → lastCol * 30 + 30 minutes
+  const endTime = openingTimeIST.add((lastCol + 1) * 30, "minute");
+
+  const startTimeStr = formatLabel(startTime);
+  const endTimeStr = formatLabel(endTime);
+
+  return `${startTimeStr} - ${endTimeStr}`;
+};
+
   // Generate time labels for 24 hours (12 AM to 12 AM)
-  const timeLabels = Array.from({ length: cols }, (_, i) => {
-    const hour = Math.floor(i / 2);
-    const minute = i % 2 === 0 ? "00" : "30";
-    const nextHour = Math.floor((i + 1) / 2);
-    const nextMinute = (i + 1) % 2 === 0 ? "00" : "30";
+const timeLabels = openingTimeIST && cols
+  ? Array.from({ length: cols }, (_, i) => {
+      const start = openingTimeIST.add(i * 30, "minute");
+      const end = start.add(30, "minute");
 
-    const formatHour = (h: number) => {
-      if (h === 0) return "12 AM";
-      if (h < 12) return `${h} AM`;
-      if (h === 12) return "12 PM";
-      return `${h - 12} PM`;
-    };
+      const formatHourShort = (h: number) => {
+        if (h === 0) return "12";
+        if (h <= 12) return h.toString();
+        return (h - 12).toString();
+      };
+      const formatLabel = (t: dayjs.Dayjs) => {
+        const h = t.hour();
+        const m = t.minute();
+        return `${formatHourShort(h)}:${m === 0 ? "00" : "30"}`;
+      };
 
-    const formatHourShort = (h: number) => {
-      if (h === 0) return "12";
-      if (h <= 12) return h.toString();
-      return (h - 12).toString();
-    };
+      return `${formatLabel(start)} - ${formatLabel(end)}`;
+    })
+  : [];
 
-    return `${formatHourShort(hour)}:${minute}  ${formatHourShort(
-      nextHour
-    )}:${nextMinute}`;
-  });
+
+
 
   const [courtSlots, setCourtSlots] = useState<Record<string, any[]>>({});
   const [courtBookIds, setCourtBookids] = useState<Record<string, any[]>>({});
@@ -1073,19 +1101,6 @@ const handleDrop = async (
 
   const [modalData, setModalData] = useState<ModalGame>();
 
-  function getUserNameFromToken(): string {
-  try {
-    const token = sessionStorage.getItem("token");
-    if (!token) return "Guest";
-
-    // Decode JWT payload (base64)
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.name || "Guest";
-  } catch {
-    return "Guest";
-  }
-}
-
   // Modify applyAction to handle multiple selected cells for booking
   const applyAction = async (action: CellState) => {
     if (selected.length === 0) return;
@@ -1361,26 +1376,37 @@ const handleDrop = async (
           }
         }
 
+        if (!openingTimeIST) {
+  showToast("Arena opening time is not loaded yet. Please wait and try again.");
+  return;
+}
         // Calculate startTime from first selected cell
-        const firstCol = colsSelected[0];
-        const hour = Math.floor(firstCol / 2);
-        const minute = firstCol % 2 === 0 ? 0 : 30;
-        const startTime = new Date(currentDate);
-        startTime.setHours(0, 0, 0, 0);
-        startTime.setHours(hour, minute, 0, 0);
+        // const firstCol = colsSelected[0];
+        // const hour = Math.floor(firstCol / 2);
+        // const minute = firstCol % 2 === 0 ? 0 : 30;
+        // const startTime = new Date(currentDate);
+        // startTime.setHours(0, 0, 0, 0);
+        // startTime.setHours(hour, minute, 0, 0);
 
-        // Calculate endTime from last selected cell + 30 minutes
-        const lastCol = colsSelected[colsSelected.length - 1];
-        const endHour = Math.floor(lastCol / 2);
-        const endMinute = lastCol % 2 === 0 ? 0 : 30;
-        const endTime = new Date(currentDate);
-        endTime.setHours(0, 0, 0, 0);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        // Add 30 minutes to endTime slot
-        endTime.setTime(endTime.getTime() + 30 * 60 * 1000);
+        // // Calculate endTime from last selected cell + 30 minutes
+        // const lastCol = colsSelected[colsSelected.length - 1];
+        // const endHour = Math.floor(lastCol / 2);
+        // const endMinute = lastCol % 2 === 0 ? 0 : 30;
+        // const endTime = new Date(currentDate);
+        // endTime.setHours(0, 0, 0, 0);
+        // endTime.setHours(endHour, endMinute, 0, 0);
+        // // Add 30 minutes to endTime slot
+        // endTime.setTime(endTime.getTime() + 30 * 60 * 1000);
+
+        const firstCol = colsSelected[0];
+const lastCol = colsSelected[colsSelected.length - 1];
+
+// Calculate start and end time using openingTimeIST + offset
+const startTime = openingTimeIST.add(firstCol * 30, "minute").toDate();
+const endTime = openingTimeIST.add((lastCol + 1) * 30, "minute").toDate();
 
         const bookingData = {
-          hostId: getUserNameFromToken(),
+          hostId: "USER_HZSU81",
           type: "game",
           sport: selectedCellDetails.availableSports.find(
             (s) => s.sportId === selectedSportId
@@ -1389,7 +1415,7 @@ const handleDrop = async (
           courtId: courtId[row].courtId,
           startTime: toLocalISOString(startTime),
           endTime: toLocalISOString(endTime),
-          bookedBy: getUserNameFromToken(),
+          bookedBy: "USER_HZSU81",
           difficultyLevel: difficultyLevel, // <-- added here
           maxPlayers: maxPlayers,
           priceType: "",
@@ -1801,7 +1827,7 @@ useEffect(() => {
 
               {/* Slots */}
               <div>
-                <strong>Slots:</strong> {formatSelectedTimeRange(selected)}
+                <strong>Slots:</strong> {formatSelectedTimeRange(selected, openingTimeIST)}
               </div>
 
               {/* Game */}

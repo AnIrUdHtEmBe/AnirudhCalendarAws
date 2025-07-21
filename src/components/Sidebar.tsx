@@ -91,12 +91,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       text: "Dashboard",
       path: "/Dashboard",
     },
-    {
-      icon: <ClipboardCheck size={20} />,
-      text: "Assessment",
-      path: "/assignment",
-    },
-    { icon: <LayoutDashboard size={20} />, text: "Dashboard", path: "/" },
+    // {
+    //   icon: <ClipboardCheck size={20} />,
+    //   text: "Assessment",
+    //   path: "/assignment",
+    // },
+    // { icon: <LayoutDashboard size={20} />, text: "Dashboard", path: "/" },
     // {
     //   icon: <ClipboardCheck size={20} />,
     //   text: "Assessment",
@@ -173,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
         <div className="menu">
           {/* Group 1: Dashboard to Plans */}
           <ul>
-            {menuItems.slice(0, 4).map((item, index) => (
+            {menuItems.slice(0, 5).map((item, index) => (
               <NavItem
                 key={index}
                 icon={item.icon}
@@ -190,7 +190,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
 
           {/* Group 2: Notifications to Help */}
           <ul>
-            {menuItems.slice(4).map((item, index) => (
+            {menuItems.slice(5).map((item, index) => (
               <NavItem
                 key={index + 5}
                 icon={item.icon}

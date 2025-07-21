@@ -38,7 +38,7 @@ import GameChatPage from "./Pages/GameChatPage";
 
 const PrivateRoute: React.FC = () => {
   const isAuthenticated = Boolean(sessionStorage.getItem("token")); // your auth check
-
+  
   if (!isAuthenticated) {
     // User not logged in, redirect to login page
     return <Navigate to="/" replace />;
@@ -63,7 +63,7 @@ function App() {
         <Layout>
           <Routes>
             <Route path="/" element={<LoginPage />} />
-            <Route
+            {/* <Route
               path="/"
               element={
                 selectComponent === "assessment" ? (
@@ -81,21 +81,24 @@ function App() {
                   <Dashboard />
                 )
               }
-            />
-            <Route
+            /> */}
+            {/* <Route
               path="/question-bank"
               element={
                 selectComponent === "AssessmentCreationPage2" ? (
                   <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
-                ) : selectComponent === "/assignment"?(
-                  <AssessmentPage />):
-                // selectComponent === "/question-bank"?(
-                  <QuestionBank/>
+                ) : selectComponent === "/assignment" ? (
+                  <AssessmentPage />
+                ) : (
+                  // selectComponent === "/question-bank"?(
+                  <QuestionBank />
+                )
                 // ):(
                 //   <Dashboard/>
                 // )
               }
-            />
+            /> */}
+            <Route element={<PrivateRoute />}>
             <Route
               path="/sessions"
               element={
@@ -106,40 +109,49 @@ function App() {
                 )
               }
             />
-            <Route
-              path="/nutrition_sessions"
-              element={
-                selectComponent === "All_nutrition_Sessions" ? (
-                  <AllNutritionSessionsPage />
-                ) : 
-                (
-                  <NutritionSessionsPage />
-                )
-              }
-            />
-            <Route
-              path="/bookingCalendar"
-              element={<BookingCalendarPage/>}
-            />
+            </Route>
 
-            
 
             <Route element={<PrivateRoute />}>
-            <Route
-              path="/pricingCalendarDaily"
-              element={<PricingCalendarDaily/>}
-            />
+              <Route
+                path="/nutrition_sessions"
+                element={
+                  selectComponent === "All_nutrition_Sessions" ? (
+                    <AllNutritionSessionsPage />
+                  ) : (
+                    <NutritionSessionsPage />
+                  )
+                }
+              />
+            </Route>
 
-            <Route
-              path="/question-bank"
-              element={<QuestionBank></QuestionBank>}
-            /> 
-            <Route
-              path="/plans"
-              element={
-                selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
-              }
-            />
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/bookingCalendar"
+                element={<BookingCalendarPage />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/pricingCalendarDaily"
+                element={<PricingCalendarDaily />}
+              />
+
+              <Route element={<PrivateRoute />}>
+              <Route
+                path="/question-bank"
+                element={<QuestionBank></QuestionBank>}
+                />
+                </Route>
+
+
+              <Route
+                path="/plans"
+                element={
+                  selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
+                }
+              />
               <Route
                 path="/Dashboard"
                 element={
@@ -187,25 +199,19 @@ function App() {
               />
             </Route>
 
-            <Route element={<PrivateRoute />}>
+            {/* <Route element={<PrivateRoute />}>
               <Route
                 path="/bookingCalendar"
                 element={<BookingCalendarPage />}
               />
+            </Route> */}
+
+            <Route element={<PrivateRoute />}>
+              <Route path="/gameChat" element={<GameChatPage />} />
             </Route>
 
             <Route element={<PrivateRoute />}>
-              <Route
-                path="/gameChat"
-                element={<GameChatPage />}
-              />
-            </Route>
-
-            <Route element={<PrivateRoute />}>
-              <Route
-                path="/logout"
-                element={<LogoutPage />}
-              />
+              <Route path="/logout" element={<LogoutPage />} />
             </Route>
 
             <Route element={<PrivateRoute />}>
@@ -215,19 +221,14 @@ function App() {
               />
             </Route>
 
-            <Route element={<PrivateRoute />}>
-              <Route
-                path="/pricingCalendarDaily"
-                element={<PricingCalendarDaily />}
-              />
-            </Route>
+            
 
-            <Route element={<PrivateRoute />}>
+            {/* <Route element={<PrivateRoute />}>
               <Route
                 path="/question-bank"
                 element={<QuestionBank></QuestionBank>}
               />
-            </Route>
+            </Route> */}
 
             <Route element={<PrivateRoute />}>
               <Route
@@ -241,10 +242,10 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route path="/profile" element={<UserProfile></UserProfile>} />
             </Route>
-            <Route
-            path="/response"
-            element={<ResponseViewPage/>}
-            />
+
+            <Route element={<PrivateRoute />}>
+            <Route path="/response" element={<ResponseViewPage />} />
+            </Route>
           </Routes>
         </Layout>
       </Router>

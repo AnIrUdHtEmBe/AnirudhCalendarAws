@@ -1,6 +1,9 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import TopBar from "../BookingCalendarComponent/Topbar";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 type Court = { courtId: string; name: string };
 type Slot = {
@@ -56,32 +59,59 @@ function formatWeekLabel(startDate: Date) {
 }
 
 // Generate 48 half-hour slots labels (12:00 AM to 11:30 PM)
-const cols = 48;
-const timeLabels = Array.from({ length: cols }, (_, i) => {
-  const hour = Math.floor(i / 2);
-  const minute = i % 2 === 0 ? "00" : "30";
-  const nextHour = Math.floor((i + 1) / 2);
-  const nextMinute = (i + 1) % 2 === 0 ? "00" : "30";
-
-  const formatHour = (h: number) => {
-    if (h === 0) return "12 AM";
-    if (h < 12) return `${h} AM`;
-    if (h === 12) return "12 PM";
-    return `${h - 12} PM`;
-  };
-
-  const formatHourShort = (h: number) => {
-    if (h === 0) return "12";
-    if (h <= 12) return h.toString();
-    return (h - 12).toString();
-  };
-
-  return `${formatHourShort(hour)}:${minute}  ${formatHourShort(
-    nextHour
-  )}:${nextMinute}`;
-});
 
 export default function PriceDaily() {
+
+let arenaOpen = null;
+let arenaClose = null;
+const [openingTimeIST, setOpeningTimeIST] = useState<dayjs.Dayjs | null>(null);
+const [cols, setCols] = useState<number>(0);
+
+
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const fetchArena = async () => {
+  try {
+    const arenaRes = await axios.get(`https://play-os-backend.forgehub.in/arena/AREN_JZSW15`);
+    const openingTime = dayjs.utc(arenaRes.data.openingTime).tz("Asia/Kolkata");
+    const closingTime = dayjs.utc(arenaRes.data.closingTime).tz("Asia/Kolkata");
+
+    setOpeningTimeIST(openingTime);
+    const diffInMinutes = closingTime.diff(openingTime, "minute");
+    setCols(diffInMinutes / 30);
+
+  } catch (error) {
+    console.error("Failed to fetch arena:", error);
+  }
+};
+
+  useEffect(() => {
+    fetchArena();
+  },[])
+  
+const timeLabels = openingTimeIST && cols
+  ? Array.from({ length: cols }, (_, i) => {
+      const start = openingTimeIST.add(i * 30, "minute");
+      const end = start.add(30, "minute");
+
+      const formatHourShort = (h: number) => {
+        if (h === 0) return "12";
+        if (h <= 12) return h.toString();
+        return (h - 12).toString();
+      };
+      const formatLabel = (t: dayjs.Dayjs) => {
+        const h = t.hour();
+        const m = t.minute();
+        return `${formatHourShort(h)}:${m === 0 ? "00" : "30"}`;
+      };
+
+      return `${formatLabel(start)} - ${formatLabel(end)}`;
+    })
+  : [];
+
+
   const [courtId, setCourtId] = useState<Court[]>([]);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
