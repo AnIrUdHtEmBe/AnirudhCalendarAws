@@ -1,7 +1,9 @@
 import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import TopBar from "../BookingCalendarComponent/Topbar";
-import Toast from "../BookingCalendarComponent/Toast";
+import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 
 type Court = { courtId: string; name: string };
 type Slot = {
@@ -57,40 +59,59 @@ function formatWeekLabel(startDate: Date) {
 }
 
 // Generate 48 half-hour slots labels (12:00 AM to 11:30 PM)
-const cols = 48;
-const timeLabels = Array.from({ length: cols }, (_, i) => {
-  const hour = Math.floor(i / 2);
-  const minute = i % 2 === 0 ? "00" : "30";
-  const nextHour = Math.floor((i + 1) / 2);
-  const nextMinute = (i + 1) % 2 === 0 ? "00" : "30";
-
-  const formatHour = (h: number) => {
-    if (h === 0) return "12 AM";
-    if (h < 12) return `${h} AM`;
-    if (h === 12) return "12 PM";
-    return `${h - 12} PM`;
-  };
-
-  const formatHourShort = (h: number) => {
-    if (h === 0) return "12";
-    if (h <= 12) return h.toString();
-    return (h - 12).toString();
-  };
-
-  return `${formatHourShort(hour)}:${minute}  ${formatHourShort(
-    nextHour
-  )}:${nextMinute}`;
-});
 
 export default function PriceDaily() {
-  const [changedSlots, setChangedSlots] = useState<Record<string, Set<string>>>({});
+
+let arenaOpen = null;
+let arenaClose = null;
+const [openingTimeIST, setOpeningTimeIST] = useState<dayjs.Dayjs | null>(null);
+const [cols, setCols] = useState<number>(0);
 
 
-   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
+
+const fetchArena = async () => {
+  try {
+    const arenaRes = await axios.get(`https://play-os-backend.forgehub.in/arena/AREN_JZSW15`);
+    const openingTime = dayjs.utc(arenaRes.data.openingTime).tz("Asia/Kolkata");
+    const closingTime = dayjs.utc(arenaRes.data.closingTime).tz("Asia/Kolkata");
+
+    setOpeningTimeIST(openingTime);
+    const diffInMinutes = closingTime.diff(openingTime, "minute");
+    setCols(diffInMinutes / 30);
+
+  } catch (error) {
+    console.error("Failed to fetch arena:", error);
+  }
+};
+
+  useEffect(() => {
+    fetchArena();
+  },[])
   
-    const showToast = (msg: string) => {
-      setToastMsg(msg);
-    };
+const timeLabels = openingTimeIST && cols
+  ? Array.from({ length: cols }, (_, i) => {
+      const start = openingTimeIST.add(i * 30, "minute");
+      const end = start.add(30, "minute");
+
+      const formatHourShort = (h: number) => {
+        if (h === 0) return "12";
+        if (h <= 12) return h.toString();
+        return (h - 12).toString();
+      };
+      const formatLabel = (t: dayjs.Dayjs) => {
+        const h = t.hour();
+        const m = t.minute();
+        return `${formatHourShort(h)}:${m === 0 ? "00" : "30"}`;
+      };
+
+      return `${formatLabel(start)} - ${formatLabel(end)}`;
+    })
+  : [];
+
+
 
   const [courtId, setCourtId] = useState<Court[]>([]);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
@@ -147,7 +168,7 @@ export default function PriceDaily() {
     const fetchCourtIDs = async () => {
       try {
         const response = await axios.get(
-          "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
+          "https://play-os-backend.forgehub.in/arena/AREN_JZSW15/courts"
         );
         if (Array.isArray(response.data)) {
           setCourtId(response.data);
@@ -159,7 +180,7 @@ export default function PriceDaily() {
                 const userId = court.name.replace("court_", "");
                 try {
                   const res = await axios.get(
-                    `https://play-os-backendv2.forgehub.in/human/${userId}`
+                    `https://play-os-backend.forgehub.in/human/${userId}`
                   );
                   nameMap[court.courtId] = res.data.name;
                 } catch {
@@ -193,7 +214,7 @@ export default function PriceDaily() {
         courtId.map(async (court) => {
           try {
             const res = await axios.get(
-              `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+              `https://play-os-backend.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
             );
             if (Array.isArray(res.data)) {
               slotsMap[court.courtId] = res.data;
@@ -229,7 +250,7 @@ export default function PriceDaily() {
           console.log("SlotId's", slot.slotId);
           try {
             const res = await axios.get(
-              `https://play-os-backendv2.forgehub.in/timeslot/${slot.slotId}`
+              `https://play-os-backend.forgehub.in/timeslot/${slot.slotId}`
             );
             if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
             newPrices[slot.courtId][slot.slotId] = String(res.data.price ?? "");
@@ -251,69 +272,60 @@ export default function PriceDaily() {
   }, [courtSlots]);
 
   // Handle input change for price
-const handleInputChange = (courtId: string, slotId: string, value: string) => {
-  // Validate input...
-  if (!/^\d*\.?\d*$/.test(value)) return;
+  const handleInputChange = (
+    courtId: string,
+    slotId: string,
+    value: string
+  ) => {
+    // Allow only numbers and one decimal point
+    if (!/^\d*\.?\d*$/.test(value)) return;
 
-  setPrices((prev) => {
-    const updatedPrices = {
+    setPrices((prev) => ({
       ...prev,
       [courtId]: {
         ...prev[courtId],
         [slotId]: value,
       },
-    };
-    return updatedPrices;
-  });
-
-  setChangedSlots((prev) => {
-    const newChanged = { ...prev };
-
-    if (!newChanged[courtId]) {
-      newChanged[courtId] = new Set();
-    }
-    newChanged[courtId].add(slotId);
-
-    return newChanged;
-  });
-};
-
+    }));
+  };
 
   // Save updated prices for all changed slots
-const handleSave = async () => {
-  try {
-    const allUpdates = [];
+  const handleSave = async () => {
+    try {
+      const allUpdates = [];
 
-    for (const courtIdKey in changedSlots) {
-      for (const slotIdKey of changedSlots[courtIdKey]) {
-        const priceStr = prices[courtIdKey]?.[slotIdKey];
-        if (!priceStr) continue;
+      for (const courtIdKey in prices) {
+        for (const slotIdKey in prices[courtIdKey]) {
+          const priceStr = prices[courtIdKey][slotIdKey];
+          if (priceStr === "") continue; // skip empty
+          const priceNum = parseInt(priceStr);
+          if (isNaN(priceNum)) continue;
 
-        const priceNum = parseInt(priceStr);
-        if (isNaN(priceNum)) continue;
-
-        allUpdates.push(
-          axios.patch(
-            `https://play-os-backendv2.forgehub.in/timeslot/${slotIdKey}`,
-            {
-              price: priceNum,
-              status: "available",
-              bookingInfo: "active",
-            }
-          )
-        );
+          // POST updated price for each slot
+          allUpdates.push(
+            axios.patch(
+              `https://play-os-backend.forgehub.in/timeslot/${slotIdKey}`,
+              {
+                price: priceNum,
+                status: "available",
+                bookingInfo: "active",
+              }
+            )
+          );
+          console.log("SlotIdKey", slotIdKey);
+          console.log("price, status, bookingInfo", priceNum);
+        }
       }
+
+      console.log(allUpdates, "All updates");
+
+      await Promise.all(allUpdates);
+      alert("Prices saved successfully!");
+    } catch (e) {
+      console.warn("Failed to save prices", e);
+      alert("Failed to save prices. Please try again.");
     }
-
-    await Promise.all(allUpdates);
-    alert("Prices saved successfully!");
-
-    // Clear changed slots after successful save
-    setChangedSlots({});
-  } catch (e) {
-    console.warn("Failed to save prices", e);
-  }
-};
+  };
 
   // Synchronize sidebar vertical scroll with grid vertical scroll
   const onGridScroll = () => {
@@ -554,7 +566,7 @@ const handleSave = async () => {
       {/* Bottom Bar */}
       <div className="w-full bg-white px-6 py-3 shadow-md flex items-center justify-between shrink-0 text-sm">
         <div className="min-w-[200px]">
-          {/* <strong>Court:</strong>{" "}
+          <strong>Court:</strong>{" "}
           {selectedCell && selectedCell.court
             ? resolvedNames[selectedCell.court] || selectedCell.court
             : "N/A"}
@@ -567,7 +579,7 @@ const handleSave = async () => {
                 month: "short",
                 year: "numeric",
               })
-            : "N/A"} */}
+            : "N/A"}
         </div>
         <button
           onClick={handleSave}

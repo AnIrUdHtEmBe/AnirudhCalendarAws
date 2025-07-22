@@ -117,7 +117,7 @@ export default function WeeklyPricingGrid() {
   const fetchCourtIDs = async () => {
     try {
       const response = await axios.get(
-        "https://play-os-backend.forgehub.in/arena/AREN_JZSW15/courts"
+        "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
       );
       if (Array.isArray(response.data)) {
         setCourtId(response.data);
@@ -129,7 +129,7 @@ export default function WeeklyPricingGrid() {
               const userId = court.name.replace("court_", "");
               try {
                 const res = await axios.get(
-                  `https://play-os-backend.forgehub.in/human/${userId}`
+                  `https://play-os-backendv2.forgehub.in/human/${userId}`
                 );
                 nameMap[court.courtId] = res.data.name;
               } catch {

@@ -38,7 +38,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post("http://127.0.0.1:8000/auth/login", {
+      const response = await axios.post("https://play-os-backendv2.forgehub.in/auth/login", {
         email: formState.email,
         password: formState.password,
         type: formState.type,

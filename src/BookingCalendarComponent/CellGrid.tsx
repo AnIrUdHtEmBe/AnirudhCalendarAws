@@ -332,7 +332,7 @@ const CellGrid = () => {
   const fetchCourtIDs = async () => {
     try {
       const response = await axios.get(
-        "https://play-os-backend.forgehub.in/arena/AREN_JZSW15/courts"
+        "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
       );
       if (Array.isArray(response.data)) {
         setCourtId(response.data);
@@ -344,7 +344,7 @@ const CellGrid = () => {
               const userId = court.name.replace("court_", "");
               try {
                 const res = await axios.get(
-                  `https://play-os-backend.forgehub.in/human/${userId}`
+                  `https://play-os-backendv2.forgehub.in/human/${userId}`
                 );
                 nameMap[court.courtId] = res.data.name;
               } catch {
@@ -371,7 +371,7 @@ const CellGrid = () => {
       courts.map(async (court) => {
         try {
           const res = await axios.get(
-            `https://play-os-backend.forgehub.in/court/${court.courtId}`
+            `https://play-os-backendv2.forgehub.in/court/${court.courtId}`
           );
           const courtDetails = res.data;
           console.log("court details ", courtDetails);
@@ -383,7 +383,7 @@ const CellGrid = () => {
             courtDetails.allowedSports.map(async (sportId: any) => {
               try {
                 const sportRes = await axios.get(
-                  `https://play-os-backend.forgehub.in/sports/id/${sportId}`
+                  `https://play-os-backendv2.forgehub.in/sports/id/${sportId}`
                 );
                 console.log("sport res data", sportRes);
 
@@ -420,7 +420,7 @@ const CellGrid = () => {
       courtId.map(async (court) => {
         try {
           const res = await axios.get(
-            `https://play-os-backend.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+            `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
           );
           const rawSlots = Array.isArray(res.data) ? res.data : [];
 
@@ -461,7 +461,7 @@ const CellGrid = () => {
       allSlots.map(async (slot) => {
         try {
           const res = await axios.get(
-            `https://play-os-backend.forgehub.in/timeslot/${slot.slotId}`
+            `https://play-os-backendv2.forgehub.in/timeslot/${slot.slotId}`
           );
           if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
           newPrices[slot.courtId][slot.slotId] = res.data.price ?? 0;
@@ -607,7 +607,7 @@ const CellGrid = () => {
       courtId.map(async (court) => {
         try {
           const res = await axios.get(
-            `https://play-os-backend.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
+            `https://play-os-backendv2.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
           );
           console.log("court bookings and date", res.data);
           console.log("cancelled through booking", res.data.bookings.status);
@@ -654,7 +654,7 @@ const CellGrid = () => {
         try {
           // Fetch slots for the court on this date
           const res = await axios.get(
-            `https://play-os-backend.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+            `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
           );
           console.log("block response new", res.data);
 
@@ -764,7 +764,7 @@ const CellGrid = () => {
     try {
       // 1. Fetch court details (including allowedSports)
       const courtRes = await axios.get(
-        `https://play-os-backend.forgehub.in/court/${court.courtId}`
+        `https://play-os-backendv2.forgehub.in/court/${court.courtId}`
       );
       selectedCourtDetails = courtRes.data;
 
@@ -777,7 +777,7 @@ const CellGrid = () => {
           async (sportId: string) => {
             try {
               const sportRes = await axios.get(
-                `https://play-os-backend.forgehub.in/sports/id/${sportId}`
+                `https://play-os-backendv2.forgehub.in/sports/id/${sportId}`
               );
               return sportRes.data;
             } catch (error) {
@@ -799,7 +799,7 @@ const CellGrid = () => {
       // 3. Fetch bookings for the court on the selected date
       try {
         const bookingsRes = await axios.get(
-          `https://play-os-backend.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
+          `https://play-os-backendv2.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
         );
         selectedBookingArray = bookingsRes?.data?.bookings || [];
 
@@ -823,7 +823,7 @@ const CellGrid = () => {
   try {
     // 1. Fetch sport name as before
     const sportRes = await axios.get(
-      `https://play-os-backend.forgehub.in/sports/id/${selectedCurrentBooking.sportId}`
+      `https://play-os-backendv2.forgehub.in/sports/id/${selectedCurrentBooking.sportId}`
     );
     selectedGameName = sportRes.data.name;
 
@@ -836,7 +836,7 @@ const CellGrid = () => {
 
     // 3. Fetch the game list for this sport, court, and date
     const gamesRes = await axios.get(
-      `https://play-os-backend.forgehub.in/game/games/by-sport`,
+      `https://play-os-backendv2.forgehub.in/game/games/by-sport`,
       {
         params: {
           sportId: selectedCurrentBooking.sportId,
@@ -997,7 +997,7 @@ const handleDrop = async (
 
       // --- fetch booking duration after you know gameId ---
       const fetchBookingDuration = async (gameId: any): Promise<number> => {
-        const res = await axios.get(`http://127.0.0.1:8000/game/${gameId}`);
+        const res = await axios.get(`https://play-os-backendv2.forgehub.in/game/${gameId}`);
         const { startTime, endTime } = res.data;
         const start = new Date(startTime);
         const end = new Date(endTime);
@@ -1027,13 +1027,13 @@ const handleDrop = async (
       const newEndTimeIST = toLocalISOString(newEndTime);
 
       console.log(
-        `http://127.0.0.1:8000/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+        `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
         "drag drop api log"
       );
 
       // Call the reschedule API
       const rescheduleResponse = await axios.patch(
-        `http://127.0.0.1:8000/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+        `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
         {
           params: {
             gameId: gameId,
@@ -1145,7 +1145,7 @@ const handleDrop = async (
         });
 
         if (overlappingSlots.length === 0) {
-          alert("No matching slot found for selected cells.");
+         showToast("No matching slot found for selected cells.");
           return;
         }
         console.log("overlapping slots", overlappingSlots);
@@ -1155,7 +1155,7 @@ const handleDrop = async (
           await Promise.all(
             overlappingSlots.map((slot) =>
               axios.post(
-                `https://play-os-backend.forgehub.in/court/courts/${slot.courtId}/timeslots/action`,
+                `https://play-os-backendv2.forgehub.in/court/courts/${slot.courtId}/timeslots/action`,
                 {
                   startTime: Math.floor(
                     new Date(slot.startTime).getTime() / 1000
@@ -1167,7 +1167,7 @@ const handleDrop = async (
               )
             )
           );
-          alert("Slot(s) successfully blocked.");
+          showToast("Slot(s) successfully blocked.");
 
           await fetchBookingsAndBlocked(currentDate);
 
@@ -1175,7 +1175,7 @@ const handleDrop = async (
           setSelectedSportId("");
         } catch (error) {
           console.error("Failed to block slot(s):", error);
-          alert("Failed to block slot(s). Please try again.");
+          showToast("Failed to block slot(s). Please try again.");
         }
       } else if (action === "unblock") {
         // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
@@ -1191,7 +1191,7 @@ const handleDrop = async (
         // Validate consecutive columns
         for (let i = 1; i < colsSelected.length; i++) {
           if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            alert("Please select consecutive time slots for blocking.");
+            showToast("Please select consecutive time slots for blocking.");
             return;
           }
         }
@@ -1221,7 +1221,7 @@ const handleDrop = async (
         });
 
         if (overlappingSlots.length === 0) {
-          alert("No matching slot found for selected cells.");
+          showToast("No matching slot found for selected cells.");
           return;
         }
 
@@ -1230,7 +1230,7 @@ const handleDrop = async (
           await Promise.all(
             overlappingSlots.map((slot) =>
               axios.post(
-                `https://play-os-backend.forgehub.in/court/courts/${slot.courtId}/timeslots/action`,
+                `https://play-os-backendv2.forgehub.in/court/courts/${slot.courtId}/timeslots/action`,
                 {
                   startTime: Math.floor(
                     new Date(slot.startTime).getTime() / 1000
@@ -1242,7 +1242,7 @@ const handleDrop = async (
               )
             )
           );
-          alert("Slot(s) successfully cancelled.");
+         showToast("Slot(s) successfully cancelled.");
 
           await fetchBookingsAndBlocked(currentDate);
 
@@ -1250,7 +1250,7 @@ const handleDrop = async (
           setSelectedSportId("");
         } catch (error) {
           console.error("Failed to cancel slot(s):", error);
-          alert("Failed to cancel slot(s). Please try again.");
+          showToast("Failed to cancel slot(s). Please try again.");
         }
       } else if (action === "unbook") {
         // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
@@ -1266,7 +1266,7 @@ const handleDrop = async (
         // Validate consecutive columns
         for (let i = 1; i < colsSelected.length; i++) {
           if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            alert("Please select consecutive time slots for blocking.");
+           showToast("Please select consecutive time slots for blocking.");
             return;
           }
         }
@@ -1296,7 +1296,7 @@ const handleDrop = async (
         });
 
         if (overlappingSlots.length === 0) {
-          alert("No matching slot found for selected cells.");
+          showToast("No matching slot found for selected cells.");
           return;
         }
 
@@ -1314,7 +1314,7 @@ const handleDrop = async (
           console.log("Unbook bookingId", bookingIdsToCancel);
           
         if (bookingIdsToCancel.length === 0) {
-          alert("No bookingId found for the selected slots.");
+          showToast("No bookingId found for the selected slots.");
           return;
         }
 
@@ -1323,12 +1323,12 @@ const handleDrop = async (
           await Promise.all(
             bookingIdsToCancel.map((bookingId) =>
               axios.patch(
-                `https://play-os-backend.forgehub.in/court/${bookingId}/cancel`,
+                `https://play-os-backendv2.forgehub.in/court/${bookingId}/cancel`,
                 
               )
             )
           );
-          alert("Slot(s) successfully cancelled.");
+         showToast("Slot(s) successfully cancelled.");
 
           await fetchBookingsAndBlocked(currentDate);
 
@@ -1336,7 +1336,7 @@ const handleDrop = async (
           setSelectedSportId("");
         } catch (error) {
           console.error("Failed to cancel slot(s):", error);
-          alert("Failed to cancel slot(s). Please try again.");
+          showToast("Failed to cancel slot(s). Please try again.");
         }
       } else if (action === "occupied") {
         // Existing booking logic here (unchanged)
@@ -1505,7 +1505,7 @@ const handleDrop = async (
     
     // Fetch games using the sportId
     const response = await axios.get(
-      `http://127.0.0.1:8000/game/games/by-sport?sportId=${cellBooking.sportId}&date=${dateStr}&courtId=ALL`
+      `https://play-os-backendv2.forgehub.in/game/games/by-sport?sportId=${cellBooking.sportId}&date=${dateStr}&courtId=ALL`
     );
     console.log(response.data, "Game fetch for dragdrop");
     

@@ -8,6 +8,7 @@ import React, {
 import { ChatMessageEvent, ChatMessageEventType } from "@ably/chat";
 import { useMessages } from "@ably/chat/react";
 import { Send } from "lucide-react";
+import axios from "axios";
 
 // Define the message type if not exported from @ably/chat:
 type Message = {
@@ -27,11 +28,15 @@ export default function GameChat({ roomName }: SimpleChatRoomProps) {
   const [loading, setLoading] = useState<boolean>(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [clientNames, setClientNames] = useState<Record<string, string>>({});
+
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
       if (event.type === ChatMessageEventType.Created) {
+         const newMsg = event.message as unknown as Message;
         setMessages((prev) => [...prev, event.message as unknown as Message]);
+        fetchSenderName(newMsg.clientId);
       }
     },
     onDiscontinuity: (error: Error) => {
@@ -47,6 +52,7 @@ export default function GameChat({ roomName }: SimpleChatRoomProps) {
         const initialMessages: Message[] = result.items as unknown as Message[];
         setMessages(initialMessages);
         setLoading(false);
+        initialMessages.forEach(msg => fetchSenderName(msg.clientId));
       });
     }
   }, [historyBeforeSubscribe, loading]);
@@ -85,6 +91,22 @@ export default function GameChat({ roomName }: SimpleChatRoomProps) {
       return "Guest";
     }
   }
+
+  const fetchSenderName = async (clientId: string) => {
+  if (!clientId || clientId === "Guest" || clientNames[clientId]) return; // already fetched or guest
+
+  try {
+    const res = await axios.get(`https://play-os-backendv2.forgehub.in/human/${clientId}`);
+    if (res.data?.name) {
+      setClientNames(prev => ({ ...prev, [clientId]: res.data.name }));
+    } else {
+      setClientNames(prev => ({ ...prev, [clientId]: clientId })); // fallback to clientId
+    }
+  } catch (error) {
+    console.error("Error fetching sender name", error);
+    setClientNames(prev => ({ ...prev, [clientId]: clientId })); // fallback
+  }
+};
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -153,7 +175,8 @@ export default function GameChat({ roomName }: SimpleChatRoomProps) {
                   {/* Name label (only others) */}
                   {!isMine && msg.clientId && (
                     <div className="text-xs font-semibold text-blue-700 mb-1">
-                      {msg.clientId}
+                      <div>{clientNames[msg.clientId] || msg.clientId}</div>
+
                     </div>
                   )}
                   {/* Message text */}

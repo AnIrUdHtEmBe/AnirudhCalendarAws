@@ -3,11 +3,10 @@ import { ChatClient, LogLevel } from "@ably/chat";
 import { AblyProvider } from "ably/react";
 import { ChatClientProvider, ChatRoomProvider } from "@ably/chat/react";
 import GameChat from "../BookingCalendarComponent/GameChat";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
-
-
 
 function getClientId() {
   try {
@@ -19,22 +18,55 @@ function getClientId() {
     return "Guest";
   }
 }
-const clientId = getClientId();
 
-let roomName = "room-game-" + (localStorage.getItem("currentGameName") || "DefaultRoom");
+const GameChatPage = () => {
 
-const realtimeClient = new Ably.Realtime({ key: API_KEY, clientId });
-const chatClient = new ChatClient(realtimeClient, { logLevel: LogLevel.Info });
+  const clientId = getClientId();
 
-const GameChatPage = () => (
-  
-  <AblyProvider client={realtimeClient}>
-    <ChatClientProvider client={chatClient}>
-      <ChatRoomProvider name={roomName}>
-        <GameChat roomName={roomName} />
-      </ChatRoomProvider>
-    </ChatClientProvider>
-  </AblyProvider>
-);
+  // useEffect(() => {
+  //   const fetchRoomName = async () => {
+  //     const gameId = localStorage.getItem("gameId");
+  //     if (!gameId) {
+  //       console.warn("No gameId found in localStorage");
+  //       return;
+  //     }
+  //     try {
+  //       const res = await axios.get(`https://play-os-backendv2.forgehub.in/game/${gameId}`);
+  //       const chatId = res.data.chatId;
+  //       if (chatId) {
+  //         setRoomName(`room-game-${chatId}`);
+  //       } else {
+  //         console.warn("No chatId in game response");
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to fetch chatId for gameId:", error);
+  //     }
+  //   };
+
+  //   fetchRoomName();
+  // }, []);
+
+  // Create Ably clients only when clientId is ready
+
+const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`
+
+  const realtimeClient = new Ably.Realtime({ key: API_KEY, clientId });
+  const chatClient = new ChatClient(realtimeClient, { logLevel: LogLevel.Info });
+
+  if (!roomName) {
+    // Optionally show loading or placeholder UI while fetching roomName
+    return <div>Loading chat room...</div>;
+  }
+
+  return (
+    <AblyProvider client={realtimeClient}>
+      <ChatClientProvider client={chatClient}>
+        <ChatRoomProvider name={roomName}>
+          <GameChat roomName={roomName} />
+        </ChatRoomProvider>
+      </ChatClientProvider>
+    </AblyProvider>
+  );
+};
 
 export default GameChatPage;

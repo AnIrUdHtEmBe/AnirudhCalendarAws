@@ -28,7 +28,8 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
 
   const fetchUserData = async () => {
     if (!cellData.bookingId) return;
-
+    console.log(cellData,"Cell Data Prop");
+    
     try {
       const bookingRes = await axios.get(
         `https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`
@@ -155,7 +156,71 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     onClose();
   };
 
+  const fetchGameChatId = async () => {
+    if (!cellData.bookingId) {
+      console.error("Missing bookingId");
+      return;
+    }
+
+    try {
+      // Step 1: Get booking details
+      const bookingRes = await axios.get(
+        `https://play-os-backendv2.forgehub.in/game/get_games_by_bookingId/${cellData.bookingId}`
+      );
+      const bookingData = bookingRes.data;
+      console.log("Booking data for gameId chatid:", bookingData);
+
+      // // Step 2: Extract date from startTime and sportId
+      // const startTime = bookingData.startTime;
+      // const date = startTime.split("T")[0]; // Extract date part (e.g., "2025-07-16")
+      // const sportId = bookingData.sportId;
+
+      // console.log("Extracted date:", date);
+      // console.log("Sport ID:", sportId);
+
+      // // Step 3: Fetch games by sport and date
+      // const gamesRes = await axios.get(
+      //   `https://play-os-backendv2.forgehub.in/game/games/by-sport?sportId=${sportId}&date=${date}&courtId=ALL`
+      // );
+      // const gamesData = gamesRes.data;
+      // console.log("Games data for game chatid:", gamesData);
+
+      // Step 4: Find the game with matching bookingId and extract chatId
+      const matchingGame = bookingData.find(
+        (game: any) => game.bookingId === cellData.bookingId
+      );
+
+      if (matchingGame && matchingGame.chatId) {
+        // Step 5: Store chatId in localStorage
+        localStorage.setItem("gameroomChatId", matchingGame.chatId);
+        console.log("ChatId stored in localStorage:", matchingGame.chatId);
+
+        enqueueSnackbar("Game chat loaded successfully", {
+          variant: "success",
+        });
+
+        return matchingGame.chatId;
+      } else {
+        console.warn("No matching game found or chatId not available");
+        enqueueSnackbar("Chat not available for this game", {
+          variant: "warning",
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch game chat details", err);
+      enqueueSnackbar("Failed to load game chat", {
+        variant: "error",
+      });
+    }
+  };
+
+  useEffect(() => {
+    fetchGameChatId();
+  }, [cellData.bookingId]);
+
   if (!isOpen) return null;
+
+  
 
   return (
     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
