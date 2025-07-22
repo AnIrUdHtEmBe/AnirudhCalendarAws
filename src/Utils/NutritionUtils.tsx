@@ -11,3 +11,9 @@ export const NutritionUtils = [
   "after workout",
   "post dinner"           // might overlap with "pre-bed snack"
 ];
+export const NutritionUnits=[
+  "grams",
+  "litre", "millilitre"
+  
+  // ,"glasses"
+]

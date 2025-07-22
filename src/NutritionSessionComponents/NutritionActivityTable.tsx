@@ -17,7 +17,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
-import { NutritionUtils } from "../Utils/NutritionUtils";
+import { NutritionUnits, NutritionUtils } from "../Utils/NutritionUtils";
 function NutritionActivityTable() {
   const context = useContext(DataContext);
   if (!context) {
@@ -360,7 +360,7 @@ useEffect(() => {
             onClick={() => setShowModal(true)}
           >
             <Plus />
-            <span>Create New Meal</span>
+            <span>Create New Item</span>
           </button>
           <button
             className="flex items-center space-x-2 text-white px-4 py-2 rounded-xl text-sm md:text-base btn2 "
@@ -380,7 +380,7 @@ useEffect(() => {
               <tr className="text-left text-gray-700 text-sm md:text-base">
                 {[
                   "Sl No.",
-                  "Activity",
+                  "Item",
                   "Description",
                   "Target",
                   "Unit",
@@ -426,7 +426,7 @@ useEffect(() => {
                       renderInput={(params) => (
                         <TextField
                           {...params}
-                          label="Select Activity"
+                          label="Select Item"
                           variant="outlined"
                           size="small"
                           sx={{ width: 250 }}
@@ -524,7 +524,7 @@ useEffect(() => {
                   <thead>
                     <tr className="border-b border-gray-200">
                       <th className="px-4 py-2">Sl.No</th>
-                      <th className="px-4 py-2">Nutrition Name</th>
+                      <th className="px-4 py-2">Item Name</th>
                       <th className="px-4 py-2">Description</th>
                       <th className="px-4 py-2">Target</th>
                       <th className="px-4 py-2">Unit</th>
@@ -575,7 +575,7 @@ useEffect(() => {
                             renderInput={(params) => (
                               <TextField
                                 {...params}
-                                label="Select Activity"
+                                label="Select Item"
                                 variant="outlined"
                                 size="small"
                                 sx={{ width: 200 }}
@@ -610,7 +610,7 @@ useEffect(() => {
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200">
                            <Autocomplete
-                              options ={ActivityUtils}
+                              options ={NutritionUnits}
                               getOptionsLable={(option :any) => option || ""}
                               value={activity.unit || ""}
                               onChange={(_ , newValue) => {

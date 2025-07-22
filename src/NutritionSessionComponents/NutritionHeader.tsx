@@ -14,18 +14,18 @@ function NutrtionHeader() {
     <div className="header-containerrr">
       <div className="header-topper">
         <FileText size={35} />
-        <span className="header-titler">{selectComponent === "/nutrition_sessions" || selectComponent === "dashboard" ? "Nutrition Creation" : "All Nutritions"}</span>
+        <span className="header-titler">{selectComponent === "/nutrition_sessions" || selectComponent === "dashboard" ? "Daily Nutrition Plan Creation" : "Existing Nutrition Plans"}</span>
       </div>
       <div className="header-tabsss">
         <button
           className={`text-xl font-medium ${ selectComponent === "/nutrition_sessions" || selectComponent === "dashboard" ? "border-b-3 " : ""}`}
           onClick={() => setSelectComponent("/nutrition_sessions")}
         >
-          Nutrition Creation
+          Daily Nutrition Plan Creation
         </button>
         <button className={`text-xl font-medium ${ selectComponent === "All_nutrition_Sessions" ? "border-b-3 " : ""}`}
          onClick={() => setSelectComponent("All_nutrition_Sessions")}
-        >All Nutritions</button>
+        >Existing Nutrition Plans</button>
       </div>
     </div>
   );

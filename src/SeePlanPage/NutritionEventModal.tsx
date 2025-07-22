@@ -46,7 +46,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
             emptyArr[index] = activity;
             setEmptyArr([...emptyArr]);
         } else {
-            console.error("Activity not found");
+            console.error("meal not found");
         }
     };
 
@@ -106,7 +106,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
             if (res) {
                 setDetails(res);
             } else {
-                console.error("Failed to fetch session details");
+                console.error("Failed to fetch meal details");
             }
         };
         fetchSessionDetails();
@@ -135,7 +135,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                 await regenerate();
                 onClose();
             } else {
-                console.error("session not updated")
+                console.error("meal not updated")
             }
         } else {
             console.error("Removal cancelled.");
@@ -152,7 +152,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                 // await regenerate();
                 onClose();
             } else {
-                console.error("activity not updated")
+                console.error("meal not updated")
             }
         } else {
             console.log("Removal cancelled.");
@@ -188,7 +188,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                     <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
                         <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                            Are you sure you want to remove this session?
+                            Are you sure you want to remove this meal?
                         </h2>
 
                         <label className="block mb-2 text-sm text-gray-700">
@@ -238,7 +238,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
                     <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
                         <h2 className="text-lg font-semibold text-gray-800 mb-4">
-                            Are you sure you want to remove this activity?
+                            Are you sure you want to remove this item?
                         </h2>
 
                         <label className="block mb-2 text-sm text-gray-700">
@@ -314,15 +314,15 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                         <div>
                             <p className="text-xl"><strong>Meals:</strong></p>
                             <ol className="list-decimal pl-5 text-xl">
-                                <li style={{listStyleType:"none"}}>
+                                <ol style={{listStyleType:"none"}}>
                                     <div className="flex flex-wrap  bg-gray-200 font-semibold border border-gray-300 rounded">
                                         <div className="w-1/5 p-2">Item</div>
-                                        <div className="w-1/5 p-2">description</div>
-                                        <div className="w-1/5 p-2">target</div>
-                                        <div className="w-1/5 p-2">type</div>
-                                        <div className="w-1/5 p-2"></div>
+                                        <div className="w-1/5 p-2">Description</div>
+                                        <div className="w-1/5 p-2">Target</div>
+                                        <div className="w-1/5 p-2">Type</div>
+                                        <div className="w-1/5 p-2">Remove</div>
                                     </div>
-                                </li>
+                                </ol>
                                 {Object.entries(details.activityDetails).map(
                                     ([activityId, activity]) => (
                                         <li key={activityId}>
@@ -417,7 +417,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                                             renderInput={(params) => (
                                                 <TextField
                                                     {...params}
-                                                    label="Select Activity"
+                                                    label="Select Item"
                                                     variant="outlined"
                                                     size="small"
                                                     sx={{ width: 250 }}
@@ -457,7 +457,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                         <button
                             onClick={(e) => handleActivityAdd(e)}
                             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                            Add Activity
+                            Add Item
                         </button>
                     </td>
                 </div>

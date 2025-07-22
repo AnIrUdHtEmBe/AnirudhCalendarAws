@@ -6,7 +6,7 @@ import {
   X
 } from "lucide-react";
 import { useApiCalls } from "../store/axios";
-import Header from "../AssessmentPageComponents/Header";
+// import Header from "../AssessmentPageComponents/Header";
 import AssignmentCreationModal from "../AssessmentPageComponents/AssignmentCreationModal";
 import "./QuestionPaper.css"
 import './Assessment.css'
@@ -26,12 +26,13 @@ function AssessmentPage() {
   const [loading, setLoading] = useState(true);
   
   
-  
+    console.log("][poiugytr")
     const navigate=useNavigate();
     const handleSelection=async(dataString:string)=>{
       if(dataString=='question'){
         // navigate('/question-bank')
         setSelectComponent('/question-bank')
+        console.log(dataString,"lkjhkkkkk")
         setheadingText("Questionnaire Creation")
       }
       // else if(dataString=='assignment'){
@@ -64,6 +65,7 @@ function AssessmentPage() {
   return (
     <div className="question-bank-container">
       <div >
+        <h1>'ilkugyf6t878y9u9</h1>
         {/* header */}
         <div className="question-bank-header-container">
           <div className="header-top">
@@ -126,7 +128,7 @@ function AssessmentPage() {
                       <th className="modal-th mandatory-header">Mandatory</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="modal-tbody">
                     {selectedAssessment?.questions.map(
                       (ques: any, index: number) => (
                         <tr key={ques.questionId} className="modal-table-row">

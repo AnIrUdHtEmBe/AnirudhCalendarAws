@@ -90,7 +90,7 @@ useEffect(() => {
   return (
     <div>
         <Button variant="contained" onClick={() => setOpen(true)} >
-             Add a Nutrtition
+             Add a Meal
         </Button>
         <Modal open={open} onClose={() => setOpen(false)}>
         <Box sx={modalStyle}>
@@ -108,7 +108,7 @@ useEffect(() => {
           </Typography>
 
           <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel id="plan-select-label">Select Session</InputLabel>
+            <InputLabel id="plan-select-label">Select Meal</InputLabel>
             <Select
               labelId="plan-select-label"
               value={option}

@@ -253,7 +253,7 @@
   font-family: 'roboto', sans-serif;
   font-weight: 500;
   box-shadow: none; /* Remove any shadow */
-  /* border: 2px solid gold; */
+  border: 2px solid gold;
 }
 
 
@@ -272,7 +272,8 @@
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  background: white;
+  background: red;
+  border: 2px solid red;
 }
 
 /* Make thead and tbody block elements */
@@ -314,7 +315,10 @@
 .modal-table-header-row {
   background-color: #f9fafb; /* similar to bg-gray-50 */
 }
-
+.modal-tbody{
+  overflow-y: auto;
+  overflow-x: hidden;
+}
 /* Table header cells */
 
 .modal-th {

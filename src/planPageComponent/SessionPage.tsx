@@ -47,7 +47,7 @@ function SessionPage() {
   const [sessionName, setSessionName] = useState("");
   const [category, setCategory] = useState("");
 
-  console.log(selectedIds,"eleczzzz")
+  // console.log(selectedIds,"eleczzzz")
   const {
     getSessions,
     getActivities,

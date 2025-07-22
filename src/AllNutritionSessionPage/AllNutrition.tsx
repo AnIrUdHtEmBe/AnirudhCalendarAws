@@ -178,8 +178,8 @@ function AllNutrition() {
               <tr className="header-table-row">
                 <th className=" thone">Sl.No</th>
                 {/* <th className=" thtwo">Session Name</th> */}
-                <th className=" ththree">Category</th>
-                <th className=" thtwo">Session Name</th>
+                {/* <th className=" ththree">Category</th> */}
+                <th className=" thtwo">Nutrition Name</th>
               </tr>
             </thead>
             <tbody>
@@ -193,7 +193,7 @@ function AllNutrition() {
                 >
                   <td className="table-cell-one">{index + 1}</td>
                   {/* <td className="table-cell-two">{session.title}</td> */}
-                  <td className="table-cell-three">{session.category}</td>
+                  {/* <td className="table-cell-three">{session.category}</td> */}
                   <td className="table-cell-two">{session.title}</td>
                 </tr>
               ))}
@@ -211,7 +211,7 @@ function AllNutrition() {
             <div className="input-group">
               <TextField
                 fullWidth
-                label="Session name"
+                label="Nutrition name"
                 variant="outlined"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}
@@ -367,7 +367,7 @@ function AllNutrition() {
               </tbody>
             </table>
           ) : (
-            <div className="empty-state">Select a session to view details.</div>
+            <div className="empty-state">Select a daily plans to view details.</div>
           )}
         </div>
       </div>

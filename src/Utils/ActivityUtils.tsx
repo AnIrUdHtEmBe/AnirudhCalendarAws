@@ -1,1 +1,1 @@
-export const ActivityUtils = [ "weight", "repetitions", "distance", "time","grams","meter","litre", "millilitre"]
+export const ActivityUtils = [ "weight", "repetitions", "distance", "time","meter","litre", "millilitre"]

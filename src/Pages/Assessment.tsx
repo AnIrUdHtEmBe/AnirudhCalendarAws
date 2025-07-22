@@ -229,7 +229,7 @@ const Assessment: React.FC = () => {
                     <tr className="modal-table-header-row">
                       <th className="modal-th slno-header">Sl.No</th>
                       <th className="modal-th question-headerrr">Questions</th>
-                      <th className="modal-th mandatory-header">Mandatory</th>
+                      <th className="modal-th mandatory-header">mmmmMandatory</th>
                     </tr>
                   </thead>
                   <tbody>

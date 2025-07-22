@@ -232,29 +232,8 @@ function ResponseViewPage() {
                             </div>
                         </div>
 
-                        {/* Right Summary */}
                         <div className="summary-panel">
-                            <div className="summary-header-wrapper">
-                                <div className="summary-header">
-                                    <div className="summary-title">Summary</div>
-                                    {/* <div className="summary-paper-title">
-                                        {" "}
-                                        {paperDetails.name || paperDetails.template.name}
-                                    </div> */}
-                                </div>
-                                {
-                                    <div className="font-normal text-lg">
-                                        {assessmentInstance_call.map((assess) => {
-                                            return (
-                                                <div>
-                                                    Score = <span className="font-bold">{assess.totalScore}</span>
-                                                </div>
-                                            )
-                                        })}
-
-                                    </div>
-                                }
-                            </div>
+                            
 
                             {/* {score.score === 0 ? (
                                 <div className="font-normal text-2xl flex items-center justify-center pt-[40px]">
@@ -285,7 +264,7 @@ function ResponseViewPage() {
                                         </tbody>
                                     </table>
                                 </div>
-                            )} */}
+                            )} 
 
 
                             <div className="plan-options">
@@ -299,21 +278,9 @@ function ResponseViewPage() {
                                         {plan.title}
                                     </button>
                                 ))}
-                            </div>
+                            </div>*/}
 
-                            {/* where to dave the next assessment date? */}
-                            <div className="mt-12 flex space-x-4 items-center">
-                                <Calendar></Calendar>{" "}
-                                {assessmentInstance_call.map((assess) => {
-                                    return (
-                                        <div >
-                                            <span className="font-normal text-xl">
-                                                Next assessment On:{""}{assess?.nextAssessmentOn || "none"}
-                                            </span>
-                                        </div>
-                                    )
-                                })}
-                            </div>
+                            
                             {/* <div className="proceed-button-wrapper">
                                 <button
                                     className={`flex items-center bg-blue-600 px-4 py-3 text-white rounded-xl space-x-4 absolute bottom-4 right-4 transition-opacity ${plann === null

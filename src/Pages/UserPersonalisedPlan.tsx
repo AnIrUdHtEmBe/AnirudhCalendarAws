@@ -518,11 +518,11 @@ useEffect(() => {
                 />
               </div>
 
-              {selectComponent === "planCreation" ? (
+              jjjj{selectComponent === "planCreation" ? (
                 <div className="right-panel-header-right-side-component">
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <DatePicker
-                      label="Select a date"
+                      label="Select start date"
                       value={selectedDate}
                       onChange={(newDate) => setSelectedDate(newDate)}
                       renderInput={(params) => (

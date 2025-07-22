@@ -54,8 +54,8 @@ function AddActivity({ userId , userDate ,planForAlacarte,getData }) {
         },
       ]);
      useEffect(() => {
-          getActivities();
-        }, []);
+          getActivities("","","");
+        }, [open]);
     const [selectedActivities, setSelectedActivities] = useState<{[id: number]: string;}>({});
     const updateTheActivitityById = async (activityId: string, index: number) => {
         const activity = await getActivityById(activityId);

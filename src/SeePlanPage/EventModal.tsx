@@ -312,15 +312,23 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
             <div>
               <p className="text-xl"><strong>Activities:</strong></p>
               <ol className="list-decimal pl-5 text-xl">
+                <ol style={{listStyleType:"none"}}>
+                                    <div className="flex flex-wrap  bg-gray-200 font-semibold border border-gray-300 rounded">
+                                        <div className="w-1/4 p-2">Item</div>
+                                        <div className="w-1/4 p-2">Description</div>
+                                        <div className="w-1/4 p-2">Target</div>
+                                        <div className="w-1/4 p-2">Remove</div>
+                                    </div>
+                                </ol>
                 {Object.entries(details.activityDetails).map(
                   ([activityId, activity]) => (
                     <li key={activityId}>
-                      <div  /*className="activity-each-row-event-modal"*/ className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4">
+                      <div  /*className="activity-each-row-event-modal" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4"*/ className="flex flex-wrap items-center">
 
-                        <div style={{ width: "200px" }}><strong>{activity.name}</strong>  </div>
-                        <div style={{ textAlign: "left", width: "200px" }}>{activity.description}</div>
-                        <div>{activity.activityInstanceId}</div>
-                        <div>
+                        <div className="w-1/4 p-2"><strong>{activity.name}</strong>  </div>
+                        <div className="w-1/4 p-2" >{activity.description}</div>
+                        {/* <div className="w-1/4 p-2" >{activity.activityInstanceId}</div> */}
+                        <div className="w-1/4 p-2">
                           {activity?.target}{activity?.unit == "weight"
                             ? "Kg"
                             : activity?.unit == "distance"

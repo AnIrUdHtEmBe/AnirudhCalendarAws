@@ -82,22 +82,7 @@ function App() {
                 )
               }
             /> */}
-            {/* <Route
-              path="/question-bank"
-              element={
-                selectComponent === "AssessmentCreationPage2" ? (
-                  <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
-                ) : selectComponent === "/assignment" ? (
-                  <AssessmentPage />
-                ) : (
-                  // selectComponent === "/question-bank"?(
-                  <QuestionBank />
-                )
-                // ):(
-                //   <Dashboard/>
-                // )
-              }
-            /> */}
+            
             <Route element={<PrivateRoute />}>
             <Route
               path="/sessions"
@@ -174,7 +159,7 @@ function App() {
             </Route>
 
             <Route element={<PrivateRoute />}>
-              <Route
+              {/* <Route
                 path="/assignment"
                 element={
                   selectComponent === "AssessmentCreationPage2" ? (
@@ -183,7 +168,40 @@ function App() {
                     <AssessmentPage />
                   )
                 }
-              />
+              /> */}
+              <Route element={<PrivateRoute />}>
+               {/* <Route
+              path="/question-bank"
+              element={
+                selectComponent === "AssessmentCreationPage2" ? (
+                  <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
+                ) : selectComponent === "/assignment"?(
+                  <AssessmentPage />):
+                // selectComponent === "/question-bank"?(
+                  <QuestionBank/>
+                // ):(
+                //   <Dashboard/>
+                // )
+              }
+            /> */}
+            <Route
+              path="/question-bank"
+              element={
+                (() => {
+                  console.log("jkhgtryutyrtyui:", selectComponent);
+                  if (selectComponent === "AssessmentCreationPage2") {
+                    return <AssignmetnCreationPageTwo />;
+                  } else if (selectComponent === "/assignment") {
+                    console.log("checking this")
+                    return <AssessmentPage/>;
+                  } else {
+                    return <QuestionBank />;
+                  }
+                })()
+              }
+            />
+
+            </Route>
             </Route>
 
             <Route element={<PrivateRoute />}>
