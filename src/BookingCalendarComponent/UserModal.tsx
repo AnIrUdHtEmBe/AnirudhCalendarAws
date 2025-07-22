@@ -32,7 +32,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     
     try {
       const bookingRes = await axios.get(
-        `https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`
+        `https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`
       );
       const bookingData = bookingRes.data;
       console.log("booking fetch", bookingRes);
@@ -45,7 +45,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
         joinedUsers.map(async (userId: string) => {
           try {
             const humanRes = await axios.get(
-              `https://play-os-backend.forgehub.in/human/${userId}`
+              `https://play-os-backendv2.forgehub.in/human/${userId}`
             );
             return {
               userId,
@@ -125,7 +125,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
           const userId = user.userId;
 
           // Construct your URL with bookingId and userId.
-          const url = `http://127.0.0.1:8000/booking/add-players/${cellData.bookingId}?userIds=${userId}&target_list=joinedUsers`;
+          const url = `https://play-os-backendv2.forgehub.in/booking/add-players/${cellData.bookingId}?userIds=${userId}&target_list=joinedUsers`;
           console.log("modal userid and bookingid", userId, cellData.bookingId);
 
           // POST request (body can be empty or with data if required)
