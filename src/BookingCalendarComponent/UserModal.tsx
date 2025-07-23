@@ -1,7 +1,22 @@
+import {
+  ChatClient,
+  ChatMessageEvent,
+  ChatMessageEventType,
+  LogLevel,
+} from "@ably/chat";
+import {
+  ChatClientProvider,
+  ChatRoomProvider,
+  useMessages,
+} from "@ably/chat/react";
 import axios from "axios";
+import { ChevronLeft, Send } from "lucide-react";
 import { enqueueSnackbar } from "notistack";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, ChangeEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import GameChat from "./GameChat";
+import { AblyProvider } from "ably/react";
+import * as Ably from "ably";
 
 interface CellModalProps {
   isOpen: boolean;
@@ -25,11 +40,18 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const navigate = useNavigate();
   // Hard-coded users for now - later replace with API call
   const [modalUsers, setModalUsers] = useState<UserAttendance[]>([]);
+  const [openGameChat, setOpenGameChat] = useState(false);
+  const [slotString, setSlotString] = useState<string>("");
+
+  useEffect(() => {
+    //@ts-ignore
+    return localStorage.setItem("roomGameName", cellData.gameName);
+  }, [cellData.courtName]);
 
   const fetchUserData = async () => {
     if (!cellData.bookingId) return;
-    console.log(cellData,"Cell Data Prop");
-    
+    console.log(cellData, "Cell Data Prop");
+
     try {
       const bookingRes = await axios.get(
         `https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`
@@ -195,9 +217,9 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
         localStorage.setItem("gameroomChatId", matchingGame.chatId);
         console.log("ChatId stored in localStorage:", matchingGame.chatId);
 
-        enqueueSnackbar("Game chat loaded successfully", {
-          variant: "success",
-        });
+        // enqueueSnackbar("Game chat loaded successfully", {
+        //   variant: "success",
+        // });
 
         return matchingGame.chatId;
       } else {
@@ -218,9 +240,66 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     fetchGameChatId();
   }, [cellData.bookingId]);
 
+  const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
+
+  function getClientId() {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).name : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }
+
+  // Fetch slot string when component mounts or when bookingId changes
+useEffect(() => {
+  async function fetchSlots() {
+    if (!cellData.bookingId) return;
+
+    try {
+      const apiRes = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
+      const startTimeUTC = apiRes.data.startTime;
+      const endTimeUTC = apiRes.data.endTime;
+
+      const startDate = new Date(startTimeUTC);
+      const endDate = new Date(endTimeUTC);
+
+      const options: Intl.DateTimeFormatOptions = {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata"
+      };
+
+      const startTimeIST = startDate.toLocaleTimeString("en-IN", options);
+      const endTimeIST = endDate.toLocaleTimeString("en-IN", options);
+
+      setSlotString(`${startTimeIST}  - ${endTimeIST} `);
+    } catch (error) {
+      console.error("Failed to fetch slot times", error);
+      setSlotString("Unavailable");
+    }
+  }
+
+  fetchSlots();
+}, [cellData.bookingId]);
+
   if (!isOpen) return null;
 
-  
+  const clientId = getClientId();
+
+  const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`;
+
+  const realtimeClient = new Ably.Realtime({ key: API_KEY, clientId });
+  const chatClient = new ChatClient(realtimeClient, {
+    logLevel: LogLevel.Info,
+  });
+
+
+
+
+
+
 
   return (
     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -235,7 +314,8 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     border-2 border-blue-400 rounded-lg shadow-md px-3 py-1 font-semibold text-blue-700 bg-blue-50 cursor-pointer transition duration-150 w-fit hover:bg-blue-100 hover:shadow-xl hover:scale-105 hover:border-blue-600 hover:ring-2 hover:ring-blue-300 active:scale-95 select-none
   "
             onClick={() => {
-              navigate("/gameChat");
+              // navigate("/gameChat");
+              setOpenGameChat(true);
             }}
           >
             Send message ...
@@ -348,6 +428,25 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
           >
             Submit
           </button>
+        </div>
+        <div>
+          {openGameChat && (
+            <div
+              className="fixed inset-0 z-[100] bg-white flex flex-col"
+              style={{ minHeight: "100vh" }}
+            >
+              <AblyProvider client={realtimeClient}>
+                <ChatClientProvider client={chatClient}>
+                  <ChatRoomProvider name={roomName}>
+                    <GameChat
+                      roomName={`${localStorage.getItem("roomGameName")}`}
+                      onClose={() => setOpenGameChat(false)}
+                    />
+                  </ChatRoomProvider>
+                </ChatClientProvider>
+              </AblyProvider>
+            </div>
+          )}
         </div>
       </div>
     </div>

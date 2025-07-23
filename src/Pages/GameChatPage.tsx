@@ -23,30 +23,7 @@ const GameChatPage = () => {
 
   const clientId = getClientId();
 
-  // useEffect(() => {
-  //   const fetchRoomName = async () => {
-  //     const gameId = localStorage.getItem("gameId");
-  //     if (!gameId) {
-  //       console.warn("No gameId found in localStorage");
-  //       return;
-  //     }
-  //     try {
-  //       const res = await axios.get(`https://play-os-backendv2.forgehub.in/game/${gameId}`);
-  //       const chatId = res.data.chatId;
-  //       if (chatId) {
-  //         setRoomName(`room-game-${chatId}`);
-  //       } else {
-  //         console.warn("No chatId in game response");
-  //       }
-  //     } catch (error) {
-  //       console.error("Failed to fetch chatId for gameId:", error);
-  //     }
-  //   };
 
-  //   fetchRoomName();
-  // }, []);
-
-  // Create Ably clients only when clientId is ready
 
 const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`
 
@@ -62,7 +39,10 @@ const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`
     <AblyProvider client={realtimeClient}>
       <ChatClientProvider client={chatClient}>
         <ChatRoomProvider name={roomName}>
-          <GameChat roomName={roomName} />
+          <GameChat roomName={localStorage.getItem("roomGameName") || ""} onClose={function (): void {
+            console.log("Hi from gamechatpage");
+            ;
+          } } />
         </ChatRoomProvider>
       </ChatClientProvider>
     </AblyProvider>
