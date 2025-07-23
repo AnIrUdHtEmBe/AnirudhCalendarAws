@@ -13,7 +13,7 @@ export type CellState =
   | "selected"
   | "unblock"
   | "unbook"
-  | "cancelled"
+  | "cancelled";
 
 interface CellProps {
   row?: number;
@@ -103,7 +103,8 @@ const Cell = ({
       "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
     unbook:
       "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
-      cancelled: "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
+    cancelled:
+      "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
   };
 
   if (label) {
@@ -117,7 +118,12 @@ const Cell = ({
     );
   }
 
-  const showRing = isSelected && (state === "occupied" || state === "blocked" || state === "unblock" || state === "unbook");
+  const showRing =
+    isSelected &&
+    (state === "occupied" ||
+      state === "blocked" ||
+      state === "unblock" ||
+      state === "unbook");
 
   return (
     <div
@@ -329,6 +335,47 @@ const CellGrid = () => {
     Record<string, Record<string, number>>
   >({});
 
+  function toDate(dateOrString: string | Date): Date {
+    return typeof dateOrString === "string"
+      ? new Date(dateOrString)
+      : dateOrString;
+  }
+
+  const calculateColumns = (
+    openTime: string | Date,
+    closeTime: string | Date
+  ) => {
+    const start = toDate(openTime);
+    const end = toDate(closeTime);
+
+    // Calculate difference in milliseconds
+    const diffMs = end.getTime() - start.getTime();
+
+    // Convert to minutes
+    const diffMin = diffMs / (1000 * 60);
+
+    // Each 30 min = 1 slot
+    const slots = diffMin / 30;
+
+    // Round to integer if needed
+    return Math.round(slots);
+  };
+
+  const fetchArenaDetails = async () => {
+    const apiRes = await axios.get(
+      `https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15`
+    );
+    const arenaStartTime = apiRes.data.openingTime;
+    const arenaEndTime = apiRes.data.closingTime;
+
+    const arenaOpen = toIST(arenaStartTime);
+    const arenaClose = toIST(arenaEndTime);
+
+    console.log("arena opne close", arenaOpen, arenaClose);
+    const numColumns = calculateColumns(arenaOpen, arenaClose);
+    console.log("Number of 30 min slots (columns):", numColumns);
+  };
+
   const fetchCourtIDs = async () => {
     try {
       const response = await axios.get(
@@ -362,6 +409,10 @@ const CellGrid = () => {
       console.error("Failed to fetch court IDs", error);
     }
   };
+
+  useEffect(() => {
+    fetchArenaDetails();
+  }, []);
 
   const fetchAllCourtDetails = async (courts: Court[]) => {
     const detailsMap: Record<string, CourtDetails> = {};
@@ -617,17 +668,17 @@ const CellGrid = () => {
             : [];
 
           bookingsMap[court.courtId] = bookings
-            .filter((b: any) => b.status === "active" || b.status === "rescheduled")
+            .filter(
+              (b: any) => b.status === "active" || b.status === "rescheduled"
+            )
             .map((b: any) => ({
               start: toIST(b.startTime),
               end: toIST(b.endTime),
             }));
 
-          
-
           // Filter cancelled bookings only
           cancelledBookingsMap[court.courtId] = bookings
-            .filter((b: any) => b.status === "cancelled" )
+            .filter((b: any) => b.status === "cancelled")
             .map((b: any) => ({
               start: toIST(b.startTime),
               end: toIST(b.endTime),
@@ -820,67 +871,74 @@ const CellGrid = () => {
 
         // If current booking exists, override gameName with booked sport's name
         if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
-  try {
-    // 1. Fetch sport name as before
-    const sportRes = await axios.get(
-      `https://play-os-backendv2.forgehub.in/sports/id/${selectedCurrentBooking.sportId}`
-    );
-    selectedGameName = sportRes.data.name;
+          try {
+            // 1. Fetch sport name as before
+            const sportRes = await axios.get(
+              `https://play-os-backendv2.forgehub.in/sports/id/${selectedCurrentBooking.sportId}`
+            );
+            selectedGameName = sportRes.data.name;
 
-    // 2. Compute cell timeslot start & end for the selected cell
-    const hour = Math.floor(col / 2);
-    const minute = col % 2 === 0 ? 0 : 30;
-    const slotStart = new Date(currentDate);
-    slotStart.setHours(hour, minute, 0, 0);
-    const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000); // or use original booking duration if not always 30
+            // 2. Compute cell timeslot start & end for the selected cell
+            const hour = Math.floor(col / 2);
+            const minute = col % 2 === 0 ? 0 : 30;
+            const slotStart = new Date(currentDate);
+            slotStart.setHours(hour, minute, 0, 0);
+            const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000); // or use original booking duration if not always 30
 
-    // 3. Fetch the game list for this sport, court, and date
-    const gamesRes = await axios.get(
-      `https://play-os-backendv2.forgehub.in/game/games/by-sport`,
-      {
-        params: {
-          sportId: selectedCurrentBooking.sportId,
-          date: dateStr,
-          courtId: court.courtId,
-        },
-      }
-    );
-    const games = gamesRes.data || [];
+            // 3. Fetch the game list for this sport, court, and date
+            const gamesRes = await axios.get(
+              `https://play-os-backendv2.forgehub.in/game/games/by-sport`,
+              {
+                params: {
+                  sportId: selectedCurrentBooking.sportId,
+                  date: dateStr,
+                  courtId: court.courtId,
+                },
+              }
+            );
+            const games = gamesRes.data || [];
 
-    // 4. Find the correct game for this timeslot/cell
-    const matchingGame = games.find((game: any) => {
-      const gameStart = new Date(game.startTime).getTime();
-      const gameEnd = new Date(game.endTime).getTime();
-      // exact match or overlap?
-      // (a) Exact match — cell exactly matches a game
-      if (gameStart === slotStart.getTime() && gameEnd === slotEnd.getTime()) return true;
-      // (b) OR if a cell is part of a game that's longer than 30 mins:
-      return slotStart.getTime() >= gameStart && slotEnd.getTime() <= gameEnd;
-      // You can change the matching logic if needed!
-    });
+            // 4. Find the correct game for this timeslot/cell
+            const matchingGame = games.find((game: any) => {
+              const gameStart = new Date(game.startTime).getTime();
+              const gameEnd = new Date(game.endTime).getTime();
+              // exact match or overlap?
+              // (a) Exact match — cell exactly matches a game
+              if (
+                gameStart === slotStart.getTime() &&
+                gameEnd === slotEnd.getTime()
+              )
+                return true;
+              // (b) OR if a cell is part of a game that's longer than 30 mins:
+              return (
+                slotStart.getTime() >= gameStart && slotEnd.getTime() <= gameEnd
+              );
+              // You can change the matching logic if needed!
+            });
 
-    if (matchingGame) {
-      // Set both gameId and chatId in localStorage (overwrite old)
-      console.log("latest game id and chatId", matchingGame.gameId, matchingGame.chatId);
-      
-      // localStorage.setItem("gameId", matchingGame.gameId);
-      // localStorage.setItem("chatId", matchingGame.chatId);
-    } else {
-      // Not found — clear or warn as you wish
-      // localStorage.removeItem("gameId");
-      // localStorage.removeItem("chatId");
-      // Optionally, toast or log: no matching game for cell
-      
-      
-    }
-  } catch (err) {
-    selectedGameName = "Unknown (booked sport not found)";
-    // localStorage.removeItem("gameId");
-    // localStorage.removeItem("chatId");
-    // Optionally log error
-  }
-}
+            if (matchingGame) {
+              // Set both gameId and chatId in localStorage (overwrite old)
+              console.log(
+                "latest game id and chatId",
+                matchingGame.gameId,
+                matchingGame.chatId
+              );
 
+              // localStorage.setItem("gameId", matchingGame.gameId);
+              // localStorage.setItem("chatId", matchingGame.chatId);
+            } else {
+              // Not found — clear or warn as you wish
+              // localStorage.removeItem("gameId");
+              // localStorage.removeItem("chatId");
+              // Optionally, toast or log: no matching game for cell
+            }
+          } catch (err) {
+            selectedGameName = "Unknown (booked sport not found)";
+            // localStorage.removeItem("gameId");
+            // localStorage.removeItem("chatId");
+            // Optionally log error
+          }
+        }
       } catch (bookingsError) {
         // Booking fetch failed, but do NOT clear court details or available sports
         console.error("Failed to fetch bookings:", bookingsError);
@@ -931,6 +989,7 @@ const CellGrid = () => {
     //    setSelectedCell(prev =>
     //   prev && prev.row === row && prev.col === col ? null : { row, col }
     // );
+
     setSelectedSportId("");
     setGrid((prev) => {
       const newG = prev.map((r) => [...r]);
@@ -978,94 +1037,96 @@ const CellGrid = () => {
     fetchGameIdForCell(row, col);
   };
 
-const handleDrop = async (
-  [fr, fc]: [number, number],
-  [tr, tc]: [number, number]
-) => {
-  // Check if target cell is available for dropping
-  const targetCellState = grid[tr][tc];
-  if (targetCellState === "occupied" || targetCellState === "blocked") {
-    console.log("Cannot drop on occupied/blocked cell");
-    return;
-  }
-
-  const sourceVal = grid[fr][fc];
-  if (sourceVal === "occupied" || sourceVal === "blocked") {
-    try {
-      // --- FIX: fetch gameId for the source cell first ---
-      const gameId = await fetchGameIdForCell(fr, fc);
-
-      // --- fetch booking duration after you know gameId ---
-      const fetchBookingDuration = async (gameId: any): Promise<number> => {
-        const res = await axios.get(`https://play-os-backendv2.forgehub.in/game/${gameId}`);
-        const { startTime, endTime } = res.data;
-        const start = new Date(startTime);
-        const end = new Date(endTime);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0; // Defensive
-        return Math.floor((end.getTime() - start.getTime()) / (60 * 1000)); // minutes
-      };
-      const bookingDurationMinutesRaw = await fetchBookingDuration(gameId);
-      const bookingDurationMinutes = Number(bookingDurationMinutesRaw);
-      if (isNaN(bookingDurationMinutes) || bookingDurationMinutes <= 0) {
-        showToast("Error: Could not determine booking duration.");
-        return;
-      }
-
-      // Calculate new start and end times for the target cell
-      const targetHour = Math.floor(tc / 2);
-      const targetMinute = tc % 2 === 0 ? 0 : 30;
-      const newStartTime = new Date(currentDate);
-      newStartTime.setHours(targetHour, targetMinute, 0, 0);
-      const newEndTime = new Date(newStartTime);
-      newEndTime.setMinutes(newStartTime.getMinutes() + bookingDurationMinutes);
-
-      // Get the target court
-      const targetCourt = courtId[tr];
-
-      // Convert times to IST format for the API
-      const newStartTimeIST = toLocalISOString(newStartTime);
-      const newEndTimeIST = toLocalISOString(newEndTime);
-
-      console.log(
-        `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
-        "drag drop api log"
-      );
-
-      // Call the reschedule API
-      const rescheduleResponse = await axios.patch(
-        `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
-        {
-          params: {
-            gameId: gameId,
-            newStartTime: newStartTimeIST,
-            newEndTime: newEndTimeIST,
-            courtId: targetCourt.courtId,
-          },
-        }
-      );
-
-      console.log("Reschedule successful:", rescheduleResponse.data);
-
-      // Update the grid after successful reschedule
-      setGrid((prev) => {
-        const newG = prev.map((r) => [...r]);
-        newG[fr][fc] = "available";
-        newG[tr][tc] = sourceVal;
-        return newG;
-      });
-
-      // Refresh bookings to reflect the changes
-      await fetchBookingsAndBlocked(currentDate);
-
-      showToast("Booking successfully rescheduled!");
-    } catch (error) {
-      console.error("Failed to reschedule booking:", error);
-      showToast("Failed to reschedule booking. Please try again.");
+  const handleDrop = async (
+    [fr, fc]: [number, number],
+    [tr, tc]: [number, number]
+  ) => {
+    // Check if target cell is available for dropping
+    const targetCellState = grid[tr][tc];
+    if (targetCellState === "occupied" || targetCellState === "blocked") {
+      console.log("Cannot drop on occupied/blocked cell");
+      return;
     }
-  }
-};
 
+    const sourceVal = grid[fr][fc];
+    if (sourceVal === "occupied" || sourceVal === "blocked") {
+      try {
+        // --- FIX: fetch gameId for the source cell first ---
+        const gameId = await fetchGameIdForCell(fr, fc);
 
+        // --- fetch booking duration after you know gameId ---
+        const fetchBookingDuration = async (gameId: any): Promise<number> => {
+          const res = await axios.get(
+            `https://play-os-backendv2.forgehub.in/game/${gameId}`
+          );
+          const { startTime, endTime } = res.data;
+          const start = new Date(startTime);
+          const end = new Date(endTime);
+          if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0; // Defensive
+          return Math.floor((end.getTime() - start.getTime()) / (60 * 1000)); // minutes
+        };
+        const bookingDurationMinutesRaw = await fetchBookingDuration(gameId);
+        const bookingDurationMinutes = Number(bookingDurationMinutesRaw);
+        if (isNaN(bookingDurationMinutes) || bookingDurationMinutes <= 0) {
+          showToast("Error: Could not determine booking duration.");
+          return;
+        }
+
+        // Calculate new start and end times for the target cell
+        const targetHour = Math.floor(tc / 2);
+        const targetMinute = tc % 2 === 0 ? 0 : 30;
+        const newStartTime = new Date(currentDate);
+        newStartTime.setHours(targetHour, targetMinute, 0, 0);
+        const newEndTime = new Date(newStartTime);
+        newEndTime.setMinutes(
+          newStartTime.getMinutes() + bookingDurationMinutes
+        );
+
+        // Get the target court
+        const targetCourt = courtId[tr];
+
+        // Convert times to IST format for the API
+        const newStartTimeIST = toLocalISOString(newStartTime);
+        const newEndTimeIST = toLocalISOString(newEndTime);
+
+        console.log(
+          `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+          "drag drop api log"
+        );
+
+        // Call the reschedule API
+        const rescheduleResponse = await axios.patch(
+          `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+          {
+            params: {
+              gameId: gameId,
+              newStartTime: newStartTimeIST,
+              newEndTime: newEndTimeIST,
+              courtId: targetCourt.courtId,
+            },
+          }
+        );
+
+        console.log("Reschedule successful:", rescheduleResponse.data);
+
+        // Update the grid after successful reschedule
+        setGrid((prev) => {
+          const newG = prev.map((r) => [...r]);
+          newG[fr][fc] = "available";
+          newG[tr][tc] = sourceVal;
+          return newG;
+        });
+
+        // Refresh bookings to reflect the changes
+        await fetchBookingsAndBlocked(currentDate);
+
+        showToast("Booking successfully rescheduled!");
+      } catch (error) {
+        console.error("Failed to reschedule booking:", error);
+        showToast("Failed to reschedule booking. Please try again.");
+      }
+    }
+  };
 
   type ModalGame = {
     gameId: string;
@@ -1074,17 +1135,17 @@ const handleDrop = async (
   const [modalData, setModalData] = useState<ModalGame>();
 
   function getUserNameFromToken(): string {
-  try {
-    const token = sessionStorage.getItem("token");
-    if (!token) return "Guest";
+    try {
+      const token = sessionStorage.getItem("token");
+      if (!token) return "Guest";
 
-    // Decode JWT payload (base64)
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.name || "Guest";
-  } catch {
-    return "Guest";
+      // Decode JWT payload (base64)
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload.name || "Guest";
+    } catch {
+      return "Guest";
+    }
   }
-}
 
   // Modify applyAction to handle multiple selected cells for booking
   const applyAction = async (action: CellState) => {
@@ -1105,7 +1166,9 @@ const handleDrop = async (
         // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
         const rowsSet = new Set(selected.map(([r]) => r));
         if (rowsSet.size > 1) {
-          showToast("Please select cells in the same court (row) for blocking.");
+          showToast(
+            "Please select cells in the same court (row) for blocking."
+          );
           return;
         }
 
@@ -1145,7 +1208,7 @@ const handleDrop = async (
         });
 
         if (overlappingSlots.length === 0) {
-         showToast("No matching slot found for selected cells.");
+          showToast("No matching slot found for selected cells.");
           return;
         }
         console.log("overlapping slots", overlappingSlots);
@@ -1181,7 +1244,9 @@ const handleDrop = async (
         // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
         const rowsSet = new Set(selected.map(([r]) => r));
         if (rowsSet.size > 1) {
-          showToast("Please select cells in the same court (row) for blocking.");
+          showToast(
+            "Please select cells in the same court (row) for blocking."
+          );
           return;
         }
 
@@ -1242,7 +1307,7 @@ const handleDrop = async (
               )
             )
           );
-         showToast("Slot(s) successfully cancelled.");
+          showToast("Slot(s) successfully cancelled.");
 
           await fetchBookingsAndBlocked(currentDate);
 
@@ -1256,7 +1321,9 @@ const handleDrop = async (
         // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
         const rowsSet = new Set(selected.map(([r]) => r));
         if (rowsSet.size > 1) {
-          showToast("Please select cells in the same court (row) for blocking.");
+          showToast(
+            "Please select cells in the same court (row) for blocking."
+          );
           return;
         }
 
@@ -1266,7 +1333,7 @@ const handleDrop = async (
         // Validate consecutive columns
         for (let i = 1; i < colsSelected.length; i++) {
           if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-           showToast("Please select consecutive time slots for blocking.");
+            showToast("Please select consecutive time slots for blocking.");
             return;
           }
         }
@@ -1311,8 +1378,8 @@ const handleDrop = async (
             return bookObj && bookObj.bookingId ? bookObj.bookingId : null;
           })
           .filter(Boolean); // Remove nulls
-          console.log("Unbook bookingId", bookingIdsToCancel);
-          
+        console.log("Unbook bookingId", bookingIdsToCancel);
+
         if (bookingIdsToCancel.length === 0) {
           showToast("No bookingId found for the selected slots.");
           return;
@@ -1323,12 +1390,11 @@ const handleDrop = async (
           await Promise.all(
             bookingIdsToCancel.map((bookingId) =>
               axios.patch(
-                `https://play-os-backendv2.forgehub.in/court/${bookingId}/cancel`,
-                
+                `https://play-os-backendv2.forgehub.in/court/${bookingId}/cancel`
               )
             )
           );
-         showToast("Slot(s) successfully cancelled.");
+          showToast("Slot(s) successfully cancelled.");
 
           await fetchBookingsAndBlocked(currentDate);
 
@@ -1479,75 +1545,75 @@ const handleDrop = async (
   };
 
   const fetchGameIdForCell = async (row: number, col: number) => {
-  try {
-    const court = courtId[row];
-    const dateStr = currentDate.toISOString().split("T")[0];
-    
-    // Get the sport ID from the cell's booking details
-    const hour = Math.floor(col / 2);
-    const minute = col % 2 === 0 ? 0 : 30;
-    const slotTime = new Date(currentDate);
-    slotTime.setHours(hour, minute, 0, 0);
-    
-    // Find the booking for this specific cell
-    const courtBookings = selectedCellDetails.bookings || [];
-    const cellBooking = courtBookings.find((booking: Booking) => {
-      const startTime = toIST(booking.startTime).getTime();
-      const endTime = toIST(booking.endTime).getTime();
-      const slotStartMillis = slotTime.getTime();
-      const slotEndMillis = slotStartMillis + 60 * 60 * 1000;
-      return slotStartMillis < endTime && slotEndMillis > startTime;
-    });
-    
-    if (!cellBooking || !cellBooking.sportId) {
-      throw new Error("No booking found for this cell");
-    }
-    
-    // Fetch games using the sportId
-    const response = await axios.get(
-      `https://play-os-backendv2.forgehub.in/game/games/by-sport?sportId=${cellBooking.sportId}&date=${dateStr}&courtId=ALL`
-    );
-    console.log(response.data, "Game fetch for dragdrop");
-    
-    const games = response.data;
-    
-    // Find the specific game that matches this cell's time and court
-    const matchingGame = games.find((game: any) => {
-      const gameStart = toIST(game.startTime).getTime();
-      const gameEnd = toIST(game.endTime).getTime();
-      const slotStartMillis = slotTime.getTime();
-      const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
-      
-      return game.courtId === court.courtId && 
-             slotStartMillis < gameEnd && 
-             slotEndMillis > gameStart;
-    });
-    
-    if (!matchingGame) {
-      throw new Error("No matching game found");
-    }
-    console.log("Latest gameId of selected cell", matchingGame.gameId);
-    
-    localStorage.setItem("gameId", matchingGame.gameId);
-    return matchingGame.gameId;
-    
-  } catch (error) {
-    console.error("Failed to fetch gameId:", error);
-    throw error;
-  }
-};
+    try {
+      const court = courtId[row];
+      const dateStr = currentDate.toISOString().split("T")[0];
 
-const currentGameName =
-  selectedCellDetails.availableSports.find(
-    (s) =>
-      s.sportId === selectedCellDetails.currentBooking?.sportId
-  )?.name || "Unknown";
+      // Get the sport ID from the cell's booking details
+      const hour = Math.floor(col / 2);
+      const minute = col % 2 === 0 ? 0 : 30;
+      const slotTime = new Date(currentDate);
+      slotTime.setHours(hour, minute, 0, 0);
 
-useEffect(() => {
-  if (currentGameName) {
-    localStorage.setItem("currentGameName", currentGameName);
-  }
-}, [currentGameName]);
+      // Find the booking for this specific cell
+      const courtBookings = selectedCellDetails.bookings || [];
+      const cellBooking = courtBookings.find((booking: Booking) => {
+        const startTime = toIST(booking.startTime).getTime();
+        const endTime = toIST(booking.endTime).getTime();
+        const slotStartMillis = slotTime.getTime();
+        const slotEndMillis = slotStartMillis + 60 * 60 * 1000;
+        return slotStartMillis < endTime && slotEndMillis > startTime;
+      });
+
+      if (!cellBooking || !cellBooking.sportId) {
+        throw new Error("No booking found for this cell");
+      }
+
+      // Fetch games using the sportId
+      const response = await axios.get(
+        `https://play-os-backendv2.forgehub.in/game/games/by-sport?sportId=${cellBooking.sportId}&date=${dateStr}&courtId=ALL`
+      );
+      console.log(response.data, "Game fetch for dragdrop");
+
+      const games = response.data;
+
+      // Find the specific game that matches this cell's time and court
+      const matchingGame = games.find((game: any) => {
+        const gameStart = toIST(game.startTime).getTime();
+        const gameEnd = toIST(game.endTime).getTime();
+        const slotStartMillis = slotTime.getTime();
+        const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+
+        return (
+          game.courtId === court.courtId &&
+          slotStartMillis < gameEnd &&
+          slotEndMillis > gameStart
+        );
+      });
+
+      if (!matchingGame) {
+        throw new Error("No matching game found");
+      }
+      console.log("Latest gameId of selected cell", matchingGame.gameId);
+
+      localStorage.setItem("gameId", matchingGame.gameId);
+      return matchingGame.gameId;
+    } catch (error) {
+      console.error("Failed to fetch gameId:", error);
+      throw error;
+    }
+  };
+
+  const currentGameName =
+    selectedCellDetails.availableSports.find(
+      (s) => s.sportId === selectedCellDetails.currentBooking?.sportId
+    )?.name || "Unknown";
+
+  useEffect(() => {
+    if (currentGameName) {
+      localStorage.setItem("currentGameName", currentGameName);
+    }
+  }, [currentGameName]);
 
   return (
     <div className="flex flex-col h-screen">
@@ -1555,11 +1621,12 @@ useEffect(() => {
       <TopBar />
       <div className="flex items-center justify-between px-4 py-2 bg-white shadow-sm shrink-0">
         <button
-          onClick={() =>
+          onClick={() => {
             setCurrentDate(
               (prev) => new Date(prev.getTime() - 24 * 60 * 60 * 1000)
-            )
-          }
+            );
+            setSelected([]);
+          }}
           className="px-3 py-1 bg-gray-300 rounded"
         >
           ← Prev
@@ -1584,17 +1651,21 @@ useEffect(() => {
             value={formatDateForInput(currentDate)}
             onChange={(e) => {
               const newDate = new Date(e.target.value);
-              if (!isNaN(newDate.getTime())) setCurrentDate(newDate);
+              if (!isNaN(newDate.getTime())) {
+                setCurrentDate(newDate);
+                setSelected([]);
+              }
             }}
             className="px-2 py-1 border border-gray-300 rounded text-xs"
           />
         </div>
         <button
-          onClick={() =>
+          onClick={() => {
             setCurrentDate(
               (prev) => new Date(prev.getTime() + 24 * 60 * 60 * 1000)
-            )
-          }
+            );
+            setSelected([]);
+          }}
           className="px-3 py-1 bg-gray-300 rounded"
         >
           Next →
@@ -1701,19 +1772,66 @@ useEffect(() => {
               }}
             >
               {grid.map((row, rIdx) =>
-                row.map((cell, cIdx) => (
-                  <Cell
-                    key={`${rIdx}-${cIdx}`}
-                    row={rIdx}
-                    col={cIdx}
-                    state={cell}
-                    onClick={updateCell}
-                    onDropAction={handleDrop}
-                    isSelected={
-                      selectedCell?.row === rIdx && selectedCell?.col === cIdx
+                row.map((cell, cIdx) => {
+                  let isDisabled = false;
+
+                  const hasAvailableSelected = selected.some(
+                    ([r, c]) =>
+                      grid[r][c] === "available" || grid[r][c] === "selected"
+                  );
+                  const hasOccupiedOrBlockedSelected = selected.some(
+                    ([r, c]) =>
+                      grid[r][c] === "occupied" || grid[r][c] === "blocked"
+                  );
+
+                  if (cell === "available") {
+                    if (hasOccupiedOrBlockedSelected) {
+                      // available cells are enabled to allow switching from occupied/blocked
+                      isDisabled = true;
+                    } else if (selected.length > 0) {
+                      const [selRow] = selected[0];
+                      const selCols = selected.map(([, col]) => col);
+                      const minCol = Math.min(...selCols);
+                      const maxCol = Math.max(...selCols);
+
+                      if (rIdx !== selRow) isDisabled = true;
+
+                      const isNextToSelection =
+                        cIdx === minCol - 1 || cIdx === maxCol + 1;
+                      if (
+                        !(selected.length === 1 && cIdx === minCol) &&
+                        !isNextToSelection
+                      )
+                        isDisabled = true;
                     }
-                  />
-                ))
+                  } else if (cell === "occupied" || cell === "blocked") {
+                    // Disabled if any available cell is already selected
+                    if (hasAvailableSelected) {
+                      isDisabled = true;
+                    }
+                  }
+
+                  return (
+                    <Cell
+                      key={`${rIdx}-${cIdx}`}
+                      row={rIdx}
+                      col={cIdx}
+                      state={cell}
+                      onClick={() => {
+                        if (!isDisabled) updateCell(rIdx, cIdx);
+                      }}
+                      onDropAction={handleDrop}
+                      isSelected={selected.some(
+                        ([r, c]) => r === rIdx && c === cIdx
+                      )}
+                      //@ts-ignore
+                      style={{
+                        cursor: isDisabled ? "not-allowed" : "pointer",
+                        pointerEvents: isDisabled ? "none" : "auto",
+                      }}
+                    />
+                  );
+                })
               )}
             </div>
           </div>
@@ -1728,20 +1846,26 @@ useEffect(() => {
           <div className="flex flex-col min-w-[200px] flex-1">
             <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
               <p>
-                <strong>Court Id:</strong>{" "}
+                <strong>Court Name:</strong>{" "}
                 {firstSelected
-                  ? courtId[firstSelected[0]]?.courtId ?? "Unknown"
+                  ? courtId[firstSelected[0]]?.name ?? "Unknown"
                   : "N/A"}
               </p>
               <p>
-                <strong>Host:</strong> anirudh
+                <strong>Host:</strong>{" "}
+                {localStorage.getItem("userName")?.replace(/^"|"$/g, "")}
               </p>
 
               {/* Bottom row: Sport Select dropdown - aligned left */}
               {firstSelected &&
-                ["available", "selected", "occupied", "blocked", "unbook", "unblock", "cancelled"].includes(
-                  grid[firstSelected[0]][firstSelected[1]]
-                ) && (
+                [
+                  "available",
+                  "selected",
+
+                  "unbook",
+                  "unblock",
+                  "cancelled",
+                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
                   <div className="flex items-center gap-2 justify-start w-full">
                     <label className="font-semibold">Sport:</label>
                     <select
@@ -1766,69 +1890,106 @@ useEffect(() => {
             {/* Top row: Difficulty, Max Players, Slots, Price - centered */}
             <div className="flex flex-wrap items-center gap-4 justify-center w-full mb-2">
               {/* Difficulty */}
+
               <div>
-                <label className="font-semibold mr-2">Difficulty:</label>
-                <select
-                  className="px-2 py-1 border border-gray-300 rounded text-sm"
-                  value={difficultyLevel}
-                  onChange={(e) => setDifficultyLevel(e.target.value)}
-                >
-                  <option value="Beginner">Beginner</option>
-                  <option value="Intermediate">Intermediate</option>
-                  <option value="Advanced">Advanced</option>
-                </select>
+                {firstSelected &&
+                  ["selected", "unbook", "unblock", "cancelled"].includes(
+                    grid[firstSelected[0]][firstSelected[1]]
+                  ) && (
+                    <>
+                      <label className="font-semibold mr-2">Difficulty:</label>
+                      <select
+                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                        value={difficultyLevel}
+                        onChange={(e) => setDifficultyLevel(e.target.value)}
+                      >
+                        <option value="Beginner">Beginner</option>
+                        <option value="Intermediate">Intermediate</option>
+                        <option value="Advanced">Advanced</option>
+                      </select>
+                    </>
+                  )}
               </div>
 
               {/* Max Players */}
               <div className="flex items-center gap-2">
-                <label className="font-semibold">Max Players:</label>
-                <button
-                  className="px-2 py-1 bg-gray-300 rounded"
-                  onClick={() => setMaxPlayers((prev) => Math.max(1, prev - 1))}
-                >
-                  -
-                </button>
-                <span className="w-8 text-center">{maxPlayers}</span>
-                <button
-                  className="px-2 py-1 bg-gray-300 rounded"
-                  onClick={() =>
-                    setMaxPlayers((prev) => Math.min(30, prev + 1))
-                  }
-                >
-                  +
-                </button>
+                {firstSelected &&
+                  ["selected", "unbook", "unblock", "cancelled"].includes(
+                    grid[firstSelected[0]][firstSelected[1]]
+                  ) && (
+                    <>
+                      <label className="font-semibold">Max Players:</label>
+                      <button
+                        className="px-2 py-1 bg-gray-300 rounded"
+                        onClick={() =>
+                          setMaxPlayers((prev) => Math.max(1, prev - 1))
+                        }
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center">{maxPlayers}</span>
+                      <button
+                        className="px-2 py-1 bg-gray-300 rounded"
+                        onClick={() =>
+                          setMaxPlayers((prev) => Math.min(30, prev + 1))
+                        }
+                      >
+                        +
+                      </button>
+                    </>
+                  )}
               </div>
 
               {/* Slots */}
-              <div>
-                <strong>Slots:</strong> {formatSelectedTimeRange(selected)}
-              </div>
+              {selected.length === 0 ? (
+                <div className="text-gray-500">
+                  <strong>Slots: </strong>Not Selected
+                </div>
+              ) : (
+                <div>
+                  <strong>Slots:</strong> {formatSelectedTimeRange(selected)}
+                </div>
+              )}
 
               {/* Game */}
               <div className="ml-4 md:ml-8 lg:ml-16 xl:ml-18 2xl:ml-21">
-                <strong>Games:</strong>{" "}
-                {selected.length > 0 ? (
-                  selectedCellDetails.currentBooking &&
-                  selectedCellDetails.currentBooking.sportId ? (
-                    // Show only the booked game's name
-                    <span>
-                      {"'" +
-                        (selectedCellDetails.availableSports.find(
-                          (s) =>
-                            s.sportId ===
-                            selectedCellDetails.currentBooking!.sportId
-                        )?.name || "Unknown") +
-                        "' "}
-                    </span>
-                  ) : (
-                    // Show all available sports
-                    selectedCellDetails.availableSports.map((sport) => (
-                      <span key={sport.sportId}>{"'" + sport.name + "' "}</span>
-                    ))
-                  )
-                ) : (
-                  ""
-                )}
+                {firstSelected &&
+                  [
+                    "selected",
+                    "occupied",
+                    "blocked",
+                    "unbook",
+                    "unblock",
+                    "cancelled",
+                  ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
+                    <>
+                      <strong>Allowed Sports:</strong>{" "}
+                      {selected.length > 0 ? (
+                        selectedCellDetails.currentBooking &&
+                        selectedCellDetails.currentBooking.sportId ? (
+                          // Show only the booked game's name
+                          <span>
+                            {"'" +
+                              (selectedCellDetails.availableSports.find(
+                                (s) =>
+                                  s.sportId ===
+                                  selectedCellDetails.currentBooking!.sportId
+                              )?.name || "Unknown") +
+                              "' "}
+                          </span>
+                        ) : (
+                          // Show all available sports
+                          selectedCellDetails.availableSports.map((sport) => (
+                            <span key={sport.sportId}>
+                              {"'" + sport.name + "' "}
+                            </span>
+                          ))
+                        )
+                      ) : (
+                        ""
+                      )}
+                    </>
+                  )}
               </div>
             </div>
           </div>
@@ -1851,9 +2012,13 @@ useEffect(() => {
 
             <div className="flex flex-wrap gap-2 justify-end w-full">
               {firstSelected &&
-                ["available", "selected", "unbook", "unblock", "cancelled"].includes(
-                  grid[firstSelected[0]][firstSelected[1]]
-                ) && (
+                [
+                  "available",
+                  "selected",
+                  "unbook",
+                  "unblock",
+                  "cancelled",
+                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
                   <>
                     <button
                       className="bg-green-500 text-white px-3 py-1 rounded"
@@ -1926,7 +2091,9 @@ useEffect(() => {
         onClose={closeModal}
         cellData={getCellData() ?? { courtName: "" }}
       />
-      {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
+      {toastMsg && (
+        <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+      )}
     </div>
   );
 };

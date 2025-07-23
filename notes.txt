@@ -1,0 +1,125 @@
+ {/* Grid Section - Scrollable with Visual Restriction */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Time Headers - Visually Clipped Container */}
+          <div 
+            className="shrink-0 relative"
+            style={{
+              overflow: 'hidden',
+              width: '100%',
+              height: '40px', // h-10 equivalent
+            }}
+          >
+            {/* Actual Time Headers - Full Width but Shifted */}
+            <div
+              className="overflow-x-auto overflow-y-hidden absolute"
+              ref={(el) => {
+                if (el && gridScrollRef.current) {
+                  el.scrollLeft = gridScrollRef.current.scrollLeft;
+                }
+              }}
+              style={{
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                background: "white",
+                width: '100%',
+                height: '100%',
+                left: `calc(4rem * -12)`, // Shift left to hide first 12 columns (midnight to 6AM)
+              }}
+            >
+              {/* Continuous border line from midnight to 12 PM */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: `calc(4rem * 48)`,
+                  height: "1px",
+                  backgroundColor: "#D1D5DB",
+                  pointerEvents: "none",
+                  zIndex: 10,
+                }}
+              />
+
+              <div
+                className="grid border border-gray-300 rounded-t-md bg-white"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {timeLabels.map((label, i) => (
+                  <div
+                    key={`header-${i}`}
+                    className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+                    style={{ userSelect: "none" }}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Content - Visually Clipped Container */}
+          <div 
+            className="flex-1 relative"
+            style={{
+              overflow: 'hidden',
+            }}
+          >
+            {/* Actual Grid Content - Full Width but Shifted */}
+            <div
+              className="overflow-auto absolute"
+              ref={gridScrollRef}
+              onScroll={(e) => {
+                const target = e.target as HTMLElement;
+
+                // Sync horizontal scroll with time headers
+                const timeHeaderEl = target.parentElement?.parentElement?.querySelector(
+                  ".overflow-x-auto.overflow-y-hidden.absolute"
+                ) as HTMLElement;
+                if (timeHeaderEl) {
+                  timeHeaderEl.scrollLeft = target.scrollLeft;
+                }
+
+                // Sync vertical scroll with left sidebar
+                const leftSidebarEl =
+                  target.parentElement?.parentElement?.parentElement?.querySelector(
+                    ".flex.flex-col.overflow-y-auto"
+                  ) as HTMLElement;
+                if (leftSidebarEl) {
+                  leftSidebarEl.scrollTop = target.scrollTop;
+                }
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                left: `calc(4rem * -12)`, // Same shift as headers to maintain alignment
+              }}
+            >
+              <div
+                className="grid border border-gray-200 rounded-b-md"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {grid.map((row, rIdx) =>
+                  row.map((cell, cIdx) => (
+                    <Cell
+                      key={`${rIdx}-${cIdx}`}
+                      row={rIdx}
+                      col={cIdx}
+                      state={cell}
+                      onClick={updateCell}
+                      onDropAction={handleDrop}
+                      isSelected={
+                        selectedCell?.row === rIdx && selectedCell?.col === cIdx
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>

@@ -251,38 +251,79 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     }
   }
 
-  // Fetch slot string when component mounts or when bookingId changes
+//   // Fetch slot string when component mounts or when bookingId changes
+// useEffect(() => {
+//   async function fetchSlots() {
+//     if (!cellData.bookingId) return;
+
+//     try {
+//       const apiRes = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
+//       const startTimeUTC = apiRes.data.startTime;
+//       const endTimeUTC = apiRes.data.endTime;
+
+//       const startDate = new Date(startTimeUTC);
+//       const endDate = new Date(endTimeUTC);
+
+//       const options: Intl.DateTimeFormatOptions = {
+//         hour: "2-digit",
+//         minute: "2-digit",
+//         hour12: true,
+//         timeZone: "Asia/Kolkata"
+//       };
+
+//       const startTimeIST = startDate.toLocaleTimeString("en-IN", options);
+//       const endTimeIST = endDate.toLocaleTimeString("en-IN", options);
+
+//       setSlotString(`${startTimeIST}  - ${endTimeIST} `);
+//     } catch (error) {
+//       console.error("Failed to fetch slot times", error);
+//       setSlotString("Unavailable");
+//     }
+//   }
+
+//   fetchSlots();
+// }, [cellData.bookingId]);
+
+
+const fetchTimeSlot = async () => {
+  const res = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
+  const bookStartTimeUtc = res.data.startTime; // e.g. "2025-07-22T22:00:00"
+  const bookEndTimeUtc = res.data.endTime;     // e.g. "2025-07-23T00:00:00"
+
+  // FIX: Ensure the date strings are parsed as UTC by appending 'Z' if it's not already there.
+  // This is crucial for new Date() to interpret them correctly regardless of local timezone.
+  const parsedStartTimeStr = bookStartTimeUtc.endsWith('Z') ? bookStartTimeUtc : bookStartTimeUtc + 'Z';
+  const parsedEndTimeStr = bookEndTimeUtc.endsWith('Z') ? bookEndTimeUtc : bookEndTimeUtc + 'Z';
+
+  const startDate = new Date(parsedStartTimeStr);
+  const endDate = new Date(parsedEndTimeStr);
+
+  const options: Intl.DateTimeFormatOptions = {
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kolkata' // Specify IST
+  };
+
+  const startTimeIst = startDate.toLocaleTimeString('en-IN', options);
+  const endTimeIst = endDate.toLocaleTimeString('en-IN', options);
+
+  return `${startTimeIst} - ${endTimeIst}`;
+};
+
+
 useEffect(() => {
-  async function fetchSlots() {
-    if (!cellData.bookingId) return;
-
-    try {
-      const apiRes = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
-      const startTimeUTC = apiRes.data.startTime;
-      const endTimeUTC = apiRes.data.endTime;
-
-      const startDate = new Date(startTimeUTC);
-      const endDate = new Date(endTimeUTC);
-
-      const options: Intl.DateTimeFormatOptions = {
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "Asia/Kolkata"
-      };
-
-      const startTimeIST = startDate.toLocaleTimeString("en-IN", options);
-      const endTimeIST = endDate.toLocaleTimeString("en-IN", options);
-
-      setSlotString(`${startTimeIST}  - ${endTimeIST} `);
-    } catch (error) {
-      console.error("Failed to fetch slot times", error);
-      setSlotString("Unavailable");
+    if (cellData && cellData.bookingId) { // Only fetch if bookingId exists
+      setSlotString('Loading...'); // Set loading state
+      fetchTimeSlot().then(data => {
+        setSlotString(data);
+      });
+    } else {
+      setSlotString('N/A'); // No booking ID
     }
-  }
+  }, [cellData]);
 
-  fetchSlots();
-}, [cellData.bookingId]);
+
 
   if (!isOpen) return null;
 
@@ -335,7 +376,7 @@ useEffect(() => {
           <div className="bg-gray-50 rounded-lg p-3 mb-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <strong>Time Slot:</strong> {cellData.timeSlot}
+                <strong>Time Slot:</strong> {slotString}
               </div>
               <div>
                 <strong>Game:</strong> {cellData.gameName}
@@ -439,7 +480,7 @@ useEffect(() => {
                 <ChatClientProvider client={chatClient}>
                   <ChatRoomProvider name={roomName}>
                     <GameChat
-                      roomName={`${localStorage.getItem("roomGameName")}`}
+                      roomName={`${localStorage.getItem("currentGameName")}`}
                       onClose={() => setOpenGameChat(false)}
                     />
                   </ChatRoomProvider>
