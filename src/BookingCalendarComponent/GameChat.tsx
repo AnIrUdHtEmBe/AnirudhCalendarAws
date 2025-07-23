@@ -9,6 +9,8 @@ import { ChatMessageEvent, ChatMessageEventType } from "@ably/chat";
 import { useMessages } from "@ably/chat/react";
 import { Send } from "lucide-react";
 import axios from "axios";
+import { ChevronLeft } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 
 // Define the message type if not exported from @ably/chat:
 type Message = {
@@ -16,20 +18,22 @@ type Message = {
   clientId: string;
   timestamp: string;
   [key: string]: any;
+  
 };
 
 interface SimpleChatRoomProps {
   roomName: string;
+  onClose: () => void;
 }
 
-export default function GameChat({ roomName }: SimpleChatRoomProps) {
+export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
-
+  const navigate = useNavigate();
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -112,6 +116,9 @@ export default function GameChat({ roomName }: SimpleChatRoomProps) {
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-none px-4 py-3 flex items-center gap-3">
+        <button onClick={onClose}>
+          <ChevronLeft />
+        </button>
         <div className="w-11 h-11 rounded-full bg-blue-100 flex items-center justify-center shadow-inner border-2 border-blue-300 text-2xl font-bold text-blue-700 mr-2">
           {roomName.toUpperCase().charAt(0)}
         </div>
