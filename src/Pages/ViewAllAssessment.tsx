@@ -11,7 +11,7 @@ import AssignmentCreationModal from "../AssessmentPageComponents/AssignmentCreat
 import "./QuestionPaper.css"
 import './Assessment.css'
 import { DataContext } from "../store/DataContext";
-function AssessmentPage() {
+function ViewAllAssessment() {
   const context = useContext(DataContext);
     if (!context) return <div>Loading...</div>;
   const {selectComponent,setSelectComponent,assessments_Api_call}=context
@@ -32,7 +32,7 @@ function AssessmentPage() {
       if(dataString=='question'){
         // navigate('/question-bank')
         setSelectComponent('/question-bank')
-        console.log(dataString,"lkjhkkkkk")
+        // console.log(dataString,"lkjhkkkkk")
         setheadingText("Questionnaire Creation")
       }
       // else if(dataString=='assignment'){
@@ -65,7 +65,6 @@ function AssessmentPage() {
   return (
     <div className="question-bank-container">
       <div >
-        <h1>'ilkugyf6t878y9u9</h1>
         {/* header */}
         <div className="question-bank-header-container">
           <div className="header-top">
@@ -120,6 +119,7 @@ function AssessmentPage() {
               </button>
               <div className="modal">
                 <h1 className="modal-titlebhav">{selectedAssessment?.name}</h1>
+                <div className="modal-table-div">
                 <table className="modal-table">
                   <thead>
                     <tr className="modal-table-header-row">
@@ -157,6 +157,7 @@ function AssessmentPage() {
                     ))} */}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           </div>
@@ -212,4 +213,4 @@ function AssessmentPage() {
 }
 
 
-export default AssessmentPage;
+export default ViewAllAssessment;
