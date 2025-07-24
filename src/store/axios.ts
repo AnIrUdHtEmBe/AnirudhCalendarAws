@@ -11,12 +11,14 @@ import {
 // import { Dispatch, SetStateAction } from 'react';
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
-// const API_BASE_URL = "https://forge-play-backend.forgehub.in";
+const API_BASE_URL = "https://forge-play-backend.forgehub.in";
 // const API_BASE_URL="http://127.0.0.1:8000"
-const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
-// const API_BASE_URL2="https://play-os-backend.forgehub.in";
+// const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
+const API_BASE_URL2="https://play-os-backend.forgehub.in";
 // const API_BASE_URL2=" http://127.0.0.1:8000"
-const API_BASE_URL2='https://play-os-backendv2.forgehub.in'
+// const API_BASE_URL2='https://play-os-backendv2.forgehub.in'
+
+// kkkkk
 export const useApiCalls = () => {
   const context = useContext(DataContext);
   if (!context) {
@@ -71,7 +73,12 @@ export const useApiCalls = () => {
       const res_2=await axios.patch(`${API_BASE_URL2}/human/${res.data.userId.userId}`,data2);
       // console.log("Customer updated successfully:", res_2.data);
       customers_fetching(); // Refresh the customer list after creation
+      return res_2
     } catch (error) {
+       enqueueSnackbar("Please fill all details!", {
+        variant: "warning",
+        autoHideDuration: 3000,
+      });
       console.error("❌ Error creating customer:", error);
     }
   };
@@ -427,6 +434,7 @@ const AddActivityToSession=async(
         `${API_BASE_URL}/plan-instances?planTemplateId=${planTemplateId}&userId=${userId}`,
         plan
       );
+      return res
       // console.log("Plan instance created successfully:", res.data);
       // alert(
       //   "Plan instance created successfully! You can now view it in the Plans section."

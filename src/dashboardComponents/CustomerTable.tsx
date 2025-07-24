@@ -158,9 +158,33 @@ const CustomerTable = () => {
       weight: Number(formData.weight) || null,
       healthCondition: formData.healthCondition || null,
     };
+    const phoneRegex = /^[0-9]{10}$/; // 10-digit numeric only
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!phoneRegex.test(payload.mobile)) {
+      enqueueSnackbar("Invalid phone number. It should be 10 digits.", {
+        variant: "warning",
+        autoHideDuration: 3000,
+      });
+      return;
+    }
+
+    if (!emailRegex.test(payload.email)) {
+      enqueueSnackbar("Invalid email address.", {
+        variant: "warning",
+        autoHideDuration: 3000,
+      });
+      return;
+    }
+
     console.log(payload,"payload")
-    await customer_creation(payload); // assuming this returns a promise
+
+    const res=await customer_creation(payload); // assuming this returns a promise
+    if(res)
+    {
     setModalOpen(false);
+
+    }
     // Optionally, reset form fields here
   };
 
@@ -657,6 +681,8 @@ const CustomerTable = () => {
           </form>
         </Modal>
       </div>
+
+      
     </div>
   );
 };

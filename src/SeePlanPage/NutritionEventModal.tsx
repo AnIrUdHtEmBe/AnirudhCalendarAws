@@ -328,7 +328,7 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                                         <li key={activityId}>
                                             <div  /*className="activity-each-row-event-modal"*/className="flex flex-wrap">
 
-                                                <div className="w-1/5 p-2"><strong>{activity.name}</strong>  </div>
+                                                <div className="w-1/5 p-2"><strong className="nameCell">{activity.name}</strong>  </div>
                                                 <div className="w-1/5 p-2">{activity.description}</div>
                                                 {/* <div className="w-1/5 p-2">{activity.activityInstanceId}</div> */}
                                                 <div className="w-1/5 p-2">
@@ -348,6 +348,8 @@ export default function NutrtitionEventModal({ isOpen, onClose, eventData, sessi
                                                                                 ? "L"
                                                                                 : activity?.unit == "millilitre"
                                                                                     ? "ml"
+                                                                                    : activity?.unit == "glasses"
+                                                                                    ? "glasses"
                                                                                     : ""
                                                     }
 

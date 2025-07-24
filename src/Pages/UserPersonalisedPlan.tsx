@@ -38,11 +38,13 @@ import {
 } from "@mui/icons-material";
 import Header from "../planPageComponent/Header";
 import { useApiCalls } from "../store/axios";
+import { useNavigate } from "react-router-dom";
 
 function SessionPage() {
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const {
     selectComponent,
+    setSelectComponent,
     sessions_api_call,
     activities_api_call,
     setSessions_api_call,
@@ -151,6 +153,7 @@ useEffect(() => {
 
 
   const user = JSON.parse(localStorage.getItem("user") || "error");
+  const navigate=useNavigate()
   console.log(user);
 
   const [activePlan, setActivePlan] = useState<Session_Api_call | null>(null);
@@ -185,7 +188,7 @@ useEffect(() => {
     }
   }, [selectedIds, filteredPlans?.length]);
 
-  const createANewPlan = () => {
+  const createANewPlan = async() => {
     const sessionTemplateIds: string[] = [];
     const scheduledDates: string[] = [];
 
@@ -202,7 +205,11 @@ useEffect(() => {
       scheduledDates,
     };
 
-    createPlanInstance(plans.templateId, user.userId, planToSubmit);
+    const res= await createPlanInstance(plans.templateId, user.userId, planToSubmit);
+    if(res){
+      navigate('/Dashboard')
+      setSelectComponent("seePlan")
+    }
   };
 
   const toggleSelectAll = () => {
@@ -518,10 +525,11 @@ useEffect(() => {
                 />
               </div>
 
-              jjjj{selectComponent === "planCreation" ? (
+              {selectComponent === "planCreation" ? (
                 <div className="right-panel-header-right-side-component">
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <DatePicker
+                    disablePast     
                       label="Select start date"
                       value={selectedDate}
                       onChange={(newDate) => setSelectedDate(newDate)}
@@ -597,7 +605,7 @@ useEffect(() => {
                       <MinusCircle size={20} className="text-red-500" />
                     </button>
                     <button onClick={() => handleClearWeek(weekIndex)}>
-                      Clear Week
+                      Clear 
                     </button>
                   </React.Fragment>
                 ))}
