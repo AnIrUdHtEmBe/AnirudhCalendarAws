@@ -13,7 +13,7 @@ import Assessment from "./Pages/Assessment";
 import QuestionPaper from "./Pages/QuestionPaper";
 import Responses from "./Pages/Responses";
 // import PlanCreation from "./Pages/PlanCreation";
-import AssessmentPage from "./Pages/AssessmentPage";
+import AssessmentPage from "./Pages/ViewAllAssessment";
 // import QuestionBankPage from "./Pages/QuestionBankPage";
 import PlansPage from "./Pages/PlansPage";
 import AssignmetnCreationPageTwo from "./Pages/AssignmetnCreationPageTwo";
@@ -50,6 +50,7 @@ const PrivateRoute: React.FC = () => {
 import ResponseViewPage from "./Pages/ResponseViewPage";
 import NutritionSessionsPage from "./Pages/NutritionSessionPage";
 import AllNutritionSessionsPage from "./Pages/AllNutritionSessionPage";
+import ViewAllAssessment from "./Pages/ViewAllAssessment";
 
 // changes
 function App() {
@@ -123,12 +124,7 @@ function App() {
                 element={<PricingCalendarDaily />}
               />
 
-              <Route element={<PrivateRoute />}>
-              <Route
-                path="/question-bank"
-                element={<QuestionBank></QuestionBank>}
-                />
-                </Route>
+              
 
 
               <Route
@@ -170,34 +166,19 @@ function App() {
                 }
               /> */}
               <Route element={<PrivateRoute />}>
-               {/* <Route
+               
+            <Route
               path="/question-bank"
               element={
                 selectComponent === "AssessmentCreationPage2" ? (
                   <AssignmetnCreationPageTwo></AssignmetnCreationPageTwo>
                 ) : selectComponent === "/assignment"?(
-                  <AssessmentPage />):
+                  <ViewAllAssessment />):
                 // selectComponent === "/question-bank"?(
                   <QuestionBank/>
                 // ):(
                 //   <Dashboard/>
                 // )
-              }
-            /> */}
-            <Route
-              path="/question-bank"
-              element={
-                (() => {
-                  console.log("jkhgtryutyrtyui:", selectComponent);
-                  if (selectComponent === "AssessmentCreationPage2") {
-                    return <AssignmetnCreationPageTwo />;
-                  } else if (selectComponent === "/assignment") {
-                    console.log("checking this")
-                    return <AssessmentPage/>;
-                  } else {
-                    return <QuestionBank />;
-                  }
-                })()
               }
             />
 
@@ -238,15 +219,6 @@ function App() {
                 element={<PricingCalendarPage />}
               />
             </Route>
-
-            
-
-            {/* <Route element={<PrivateRoute />}>
-              <Route
-                path="/question-bank"
-                element={<QuestionBank></QuestionBank>}
-              />
-            </Route> */}
 
             <Route element={<PrivateRoute />}>
               <Route

@@ -464,6 +464,8 @@ useEffect(() => {
                       ? "L"
                       : activity.unit == "millilitre"
                       ? "ml"
+                      : activity?.unit == "glasses"
+                                                            ? "glasses"
                       : ""}
                   </td>
                   <td  className="px-4 py-7 border-b border-b-gray-200 text-center">

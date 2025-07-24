@@ -32,7 +32,7 @@ import { useApiCalls } from "../store/axios";
 import { DataContext } from "../store/DataContext";
 import { LowPriority } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import AssessmentPage from "../Pages/AssessmentPage";
+import AssessmentPage from "../Pages/ViewAllAssessment";
 
 const questionTypes = [
   { label: "Text Input", value: "text", icon: <ShortTextIcon /> },
@@ -73,7 +73,7 @@ const QuestionBank = () => {
       // navigate('/assignment')
       console.log("reached assignme")
       setSelectComponent('/assignment')
-      setheadingText("Assignments")
+      setheadingText("Assignmentsnnnnnnn")
     }
   }
   // used to fetch question

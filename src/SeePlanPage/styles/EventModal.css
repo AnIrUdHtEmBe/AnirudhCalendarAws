@@ -22,3 +22,9 @@
     align-items: center;
     justify-content:space-between;
 }
+/* styles.css */
+.nameCell {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}

@@ -26,12 +26,14 @@ const modalStyle: React.CSSProperties = {
   borderRadius: "16px",
   minWidth: "740px",
   maxWidth: "95vw",
+  maxHeight:"70vh",
   boxShadow: "0 8px 40px rgba(0,0,0,0.18), 0 1.5px 4px rgba(0,0,0,0.08)",
   position: "relative",
   display: "flex",
   flexDirection: "column",
   gap: "1.2rem",
   animation: "modalIn 0.22s cubic-bezier(0.4,0,0.2,1)",
+   overflowY: "auto",    
 };
 
 const closeButtonStyle: React.CSSProperties = {

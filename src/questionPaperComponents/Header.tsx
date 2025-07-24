@@ -19,7 +19,8 @@ const Header: React.FC<HeaderProps> = () => {
     month: "short",
     day: "numeric",
   });
-
+  const userDetail = JSON.parse(localStorage.getItem("user"));
+  console.log(userDetail.name)
   return (
     <header className="bg-white z-10 w-full">
       {/* Top row with icon and title */}
@@ -28,7 +29,7 @@ const Header: React.FC<HeaderProps> = () => {
         <div className="flex flex-col sm:flex-row items-center gap-2  sm:gap-4 p-4 sm:px-10">
           <FileText size={48} className="text-gray-800 " />
           <h1 className="text-xl sm:text-2xl md:text-[24px] font-normal text-gray-800 text-center sm:text-left">
-            Assessment {assignment?.id ?? ""}
+            {userDetail.name}'s {""} Assessment {assignment?.id ?? ""}
           </h1>
         </div>
 

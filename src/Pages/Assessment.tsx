@@ -224,12 +224,13 @@ const Assessment: React.FC = () => {
               </button>
               <div className="modal">
                 <h1 className="modal-titlebhav">{selectedAssessment?.name}</h1>
+                <div className="modal-table-div">
                 <table className="modal-table">
                   <thead>
                     <tr className="modal-table-header-row">
                       <th className="modal-th slno-header">Sl.No</th>
                       <th className="modal-th question-headerrr">Questions</th>
-                      <th className="modal-th mandatory-header">mmmmMandatory</th>
+                      <th className="modal-th mandatory-header">Mandatory</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -248,6 +249,7 @@ const Assessment: React.FC = () => {
                     )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           </div>
