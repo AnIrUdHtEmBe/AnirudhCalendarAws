@@ -11,6 +11,7 @@ import { Send } from "lucide-react";
 import axios from "axios";
 import { ChevronLeft } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL_Latest } from "./AxiosApi";
 
 // Define the message type if not exported from @ably/chat:
 type Message = {
@@ -100,7 +101,7 @@ export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
   if (!clientId || clientId === "Guest" || clientNames[clientId]) return; // already fetched or guest
 
   try {
-    const res = await axios.get(`https://play-os-backendv2.forgehub.in/human/${clientId}`);
+    const res = await axios.get(`${API_BASE_URL_Latest}/human/${clientId}`);
     if (res.data?.name) {
       setClientNames(prev => ({ ...prev, [clientId]: res.data.name }));
     } else {

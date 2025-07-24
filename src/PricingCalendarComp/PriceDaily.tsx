@@ -2,6 +2,7 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import TopBar from "../BookingCalendarComponent/Topbar";
 import Toast from "../BookingCalendarComponent/Toast";
+import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
 
 type Court = { courtId: string; name: string };
 type Slot = {
@@ -147,7 +148,7 @@ export default function PriceDaily() {
     const fetchCourtIDs = async () => {
       try {
         const response = await axios.get(
-          "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
+          `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
         );
         if (Array.isArray(response.data)) {
           setCourtId(response.data);
@@ -159,7 +160,7 @@ export default function PriceDaily() {
                 const userId = court.name.replace("court_", "");
                 try {
                   const res = await axios.get(
-                    `https://play-os-backendv2.forgehub.in/human/${userId}`
+                    `${API_BASE_URL_Latest}/human/${userId}`
                   );
                   nameMap[court.courtId] = res.data.name;
                 } catch {
@@ -193,7 +194,7 @@ export default function PriceDaily() {
         courtId.map(async (court) => {
           try {
             const res = await axios.get(
-              `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+              `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
             );
             if (Array.isArray(res.data)) {
               slotsMap[court.courtId] = res.data;
@@ -229,7 +230,7 @@ export default function PriceDaily() {
           console.log("SlotId's", slot.slotId);
           try {
             const res = await axios.get(
-              `https://play-os-backendv2.forgehub.in/timeslot/${slot.slotId}`
+              `${API_BASE_URL_Latest}/timeslot/${slot.slotId}`
             );
             if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
             newPrices[slot.courtId][slot.slotId] = String(res.data.price ?? "");
@@ -294,7 +295,7 @@ const handleSave = async () => {
 
         allUpdates.push(
           axios.patch(
-            `https://play-os-backendv2.forgehub.in/timeslot/${slotIdKey}`,
+            `${API_BASE_URL_Latest}/timeslot/${slotIdKey}`,
             {
               price: priceNum,
               status: "available",

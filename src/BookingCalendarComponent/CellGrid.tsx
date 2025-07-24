@@ -5,6 +5,8 @@ import TopBar from "./Topbar";
 import UserModal from "./UserModal";
 import Toast from "./Toast";
 import { LucideArrowRightSquare } from "lucide-react";
+import { API_BASE_URL_Latest } from "./AxiosApi";
+import LoadingScreen from "./LoadingScreen";
 
 export type CellState =
   | "available"
@@ -20,6 +22,8 @@ interface CellProps {
   col?: number;
   state?: CellState;
   label?: string;
+  style?: any;
+  classNames?: any;
   onClick?: (row: number, col: number) => void;
   onDropAction?: (from: [number, number], to: [number, number]) => void;
   isSelected?: any;
@@ -89,6 +93,8 @@ const Cell = ({
   col,
   state,
   label,
+  style,
+  classNames,
   onClick,
   onDropAction,
   isSelected,
@@ -128,17 +134,20 @@ const Cell = ({
   return (
     <div
       className={clsx(
+        classNames,
         "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors",
         state && colorMap[state],
         showRing &&
           isSelected &&
           "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
       )}
+      style={style}
       onClick={() => {
         if (row !== undefined && col !== undefined && onClick) {
           onClick(row, col);
         }
       }}
+      // style={style}
       draggable={state === "occupied" || state === "blocked"}
       onDragStart={(e) => {
         if (row !== undefined && col !== undefined) {
@@ -212,6 +221,7 @@ const CellGrid = () => {
 
   const [selectedSportId, setSelectedSportId] = useState<string>("");
   const [isLoadingCellDetails, setIsLoadingCellDetails] = useState(false);
+  const [loadingScreen, setLoadingScreen] = useState(true);
 
   // Check if all selected cells are in the same row and columns are consecutive
   const isValidSelection = (
@@ -362,9 +372,7 @@ const CellGrid = () => {
   };
 
   const fetchArenaDetails = async () => {
-    const apiRes = await axios.get(
-      `https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15`
-    );
+    const apiRes = await axios.get(`${API_BASE_URL_Latest}/arena/AREN_JZSW15`);
     const arenaStartTime = apiRes.data.openingTime;
     const arenaEndTime = apiRes.data.closingTime;
 
@@ -379,7 +387,7 @@ const CellGrid = () => {
   const fetchCourtIDs = async () => {
     try {
       const response = await axios.get(
-        "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
+        `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
       );
       if (Array.isArray(response.data)) {
         setCourtId(response.data);
@@ -391,7 +399,7 @@ const CellGrid = () => {
               const userId = court.name.replace("court_", "");
               try {
                 const res = await axios.get(
-                  `https://play-os-backendv2.forgehub.in/human/${userId}`
+                  `${API_BASE_URL_Latest}/human/${userId}`
                 );
                 nameMap[court.courtId] = res.data.name;
               } catch {
@@ -410,6 +418,17 @@ const CellGrid = () => {
     }
   };
 
+
+useEffect(() => {
+    // Set a timer to hide loading screen after 10 seconds
+    const timer = setTimeout(() => {
+      setLoadingScreen(false);
+    }, 5000);
+
+    // Cleanup timer if component unmounts early
+    return () => clearTimeout(timer);
+  }, []);
+
   useEffect(() => {
     fetchArenaDetails();
   }, []);
@@ -422,7 +441,7 @@ const CellGrid = () => {
       courts.map(async (court) => {
         try {
           const res = await axios.get(
-            `https://play-os-backendv2.forgehub.in/court/${court.courtId}`
+            `${API_BASE_URL_Latest}/court/${court.courtId}`
           );
           const courtDetails = res.data;
           console.log("court details ", courtDetails);
@@ -434,7 +453,7 @@ const CellGrid = () => {
             courtDetails.allowedSports.map(async (sportId: any) => {
               try {
                 const sportRes = await axios.get(
-                  `https://play-os-backendv2.forgehub.in/sports/id/${sportId}`
+                  `${API_BASE_URL_Latest}/sports/id/${sportId}`
                 );
                 console.log("sport res data", sportRes);
 
@@ -471,7 +490,7 @@ const CellGrid = () => {
       courtId.map(async (court) => {
         try {
           const res = await axios.get(
-            `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+            `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
           );
           const rawSlots = Array.isArray(res.data) ? res.data : [];
 
@@ -512,7 +531,7 @@ const CellGrid = () => {
       allSlots.map(async (slot) => {
         try {
           const res = await axios.get(
-            `https://play-os-backendv2.forgehub.in/timeslot/${slot.slotId}`
+            `${API_BASE_URL_Latest}/timeslot/${slot.slotId}`
           );
           if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
           newPrices[slot.courtId][slot.slotId] = res.data.price ?? 0;
@@ -658,7 +677,7 @@ const CellGrid = () => {
       courtId.map(async (court) => {
         try {
           const res = await axios.get(
-            `https://play-os-backendv2.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
+            `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
           );
           console.log("court bookings and date", res.data);
           console.log("cancelled through booking", res.data.bookings.status);
@@ -705,7 +724,7 @@ const CellGrid = () => {
         try {
           // Fetch slots for the court on this date
           const res = await axios.get(
-            `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+            `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
           );
           console.log("block response new", res.data);
 
@@ -815,7 +834,7 @@ const CellGrid = () => {
     try {
       // 1. Fetch court details (including allowedSports)
       const courtRes = await axios.get(
-        `https://play-os-backendv2.forgehub.in/court/${court.courtId}`
+        `${API_BASE_URL_Latest}/court/${court.courtId}`
       );
       selectedCourtDetails = courtRes.data;
 
@@ -828,7 +847,7 @@ const CellGrid = () => {
           async (sportId: string) => {
             try {
               const sportRes = await axios.get(
-                `https://play-os-backendv2.forgehub.in/sports/id/${sportId}`
+                `${API_BASE_URL_Latest}/sports/id/${sportId}`
               );
               return sportRes.data;
             } catch (error) {
@@ -850,7 +869,7 @@ const CellGrid = () => {
       // 3. Fetch bookings for the court on the selected date
       try {
         const bookingsRes = await axios.get(
-          `https://play-os-backendv2.forgehub.in/court/${court.courtId}/bookings?date=${dateStr}`
+          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
         );
         selectedBookingArray = bookingsRes?.data?.bookings || [];
 
@@ -874,7 +893,7 @@ const CellGrid = () => {
           try {
             // 1. Fetch sport name as before
             const sportRes = await axios.get(
-              `https://play-os-backendv2.forgehub.in/sports/id/${selectedCurrentBooking.sportId}`
+              `${API_BASE_URL_Latest}/sports/id/${selectedCurrentBooking.sportId}`
             );
             selectedGameName = sportRes.data.name;
 
@@ -887,7 +906,7 @@ const CellGrid = () => {
 
             // 3. Fetch the game list for this sport, court, and date
             const gamesRes = await axios.get(
-              `https://play-os-backendv2.forgehub.in/game/games/by-sport`,
+              `${API_BASE_URL_Latest}/game/games/by-sport`,
               {
                 params: {
                   sportId: selectedCurrentBooking.sportId,
@@ -1056,9 +1075,7 @@ const CellGrid = () => {
 
         // --- fetch booking duration after you know gameId ---
         const fetchBookingDuration = async (gameId: any): Promise<number> => {
-          const res = await axios.get(
-            `https://play-os-backendv2.forgehub.in/game/${gameId}`
-          );
+          const res = await axios.get(`${API_BASE_URL_Latest}/game/${gameId}`);
           const { startTime, endTime } = res.data;
           const start = new Date(startTime);
           const end = new Date(endTime);
@@ -1090,13 +1107,13 @@ const CellGrid = () => {
         const newEndTimeIST = toLocalISOString(newEndTime);
 
         console.log(
-          `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+          `${API_BASE_URL_Latest}/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
           "drag drop api log"
         );
 
         // Call the reschedule API
         const rescheduleResponse = await axios.patch(
-          `https://play-os-backendv2.forgehub.in/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+          `${API_BASE_URL_Latest}/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
           {
             params: {
               gameId: gameId,
@@ -1141,7 +1158,7 @@ const CellGrid = () => {
 
       // Decode JWT payload (base64)
       const payload = JSON.parse(atob(token.split(".")[1]));
-      return payload.name || "Guest";
+      return payload.sub || "Guest";
     } catch {
       return "Guest";
     }
@@ -1218,7 +1235,7 @@ const CellGrid = () => {
           await Promise.all(
             overlappingSlots.map((slot) =>
               axios.post(
-                `https://play-os-backendv2.forgehub.in/court/courts/${slot.courtId}/timeslots/action`,
+                `${API_BASE_URL_Latest}/court/courts/${slot.courtId}/timeslots/action`,
                 {
                   startTime: Math.floor(
                     new Date(slot.startTime).getTime() / 1000
@@ -1295,7 +1312,7 @@ const CellGrid = () => {
           await Promise.all(
             overlappingSlots.map((slot) =>
               axios.post(
-                `https://play-os-backendv2.forgehub.in/court/courts/${slot.courtId}/timeslots/action`,
+                `${API_BASE_URL_Latest}/court/courts/${slot.courtId}/timeslots/action`,
                 {
                   startTime: Math.floor(
                     new Date(slot.startTime).getTime() / 1000
@@ -1387,20 +1404,25 @@ const CellGrid = () => {
 
         // PATCH request to update timeslot as blocked
         try {
-          await Promise.all(
-            bookingIdsToCancel.map((bookingId) =>
-              axios.patch(
-                `https://play-os-backendv2.forgehub.in/court/${bookingId}/cancel`
-              )
-            )
-          );
-          showToast("Slot(s) successfully cancelled.");
+  await Promise.all(
+    bookingIdsToCancel.map(async (bookingId) => {
+      const gameIdCancel = await axios.get(
+        `${API_BASE_URL_Latest}/game/get_games_by_bookingId/${bookingId}`
+      );
+      console.log("fetchig gameid for cancellation", gameIdCancel);
+      
+      const cancelGameId = gameIdCancel.data[0].gameId;
+      await axios.patch(`${API_BASE_URL_Latest}/game/cancel/${cancelGameId}`);
+    })
+  );
 
-          await fetchBookingsAndBlocked(currentDate);
+  showToast("Slot(s) successfully cancelled.");
 
-          setSelected([]);
-          setSelectedSportId("");
-        } catch (error) {
+  await fetchBookingsAndBlocked(currentDate);
+
+  setSelected([]);
+  setSelectedSportId("");
+} catch (error) {
           console.error("Failed to cancel slot(s):", error);
           showToast("Failed to cancel slot(s). Please try again.");
         }
@@ -1458,6 +1480,7 @@ const CellGrid = () => {
           bookedBy: getUserNameFromToken(),
           difficultyLevel: difficultyLevel, // <-- added here
           maxPlayers: maxPlayers,
+          slotRemaining: maxPlayers - 1,
           priceType: "",
           rackPrice: 0,
           quotePrice: 0,
@@ -1469,7 +1492,7 @@ const CellGrid = () => {
 
         try {
           const response = await axios.post(
-            "https://play-os-backendv2.forgehub.in/game/create",
+            `${API_BASE_URL_Latest}/game/create`,
             bookingData
           );
           console.log("Booking created:", response.data);
@@ -1571,7 +1594,7 @@ const CellGrid = () => {
 
       // Fetch games using the sportId
       const response = await axios.get(
-        `https://play-os-backendv2.forgehub.in/game/games/by-sport?sportId=${cellBooking.sportId}&date=${dateStr}&courtId=ALL`
+        `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${cellBooking.sportId}&date=${dateStr}&courtId=ALL`
       );
       console.log(response.data, "Game fetch for dragdrop");
 
@@ -1614,6 +1637,10 @@ const CellGrid = () => {
       localStorage.setItem("currentGameName", currentGameName);
     }
   }, [currentGameName]);
+
+  if(loadingScreen){
+    return <LoadingScreen />
+  }
 
   return (
     <div className="flex flex-col h-screen">
@@ -1784,6 +1811,23 @@ const CellGrid = () => {
                       grid[r][c] === "occupied" || grid[r][c] === "blocked"
                   );
 
+                  if (cell === "selected") {
+                    // Find all selected cells in this row
+                    const selectedInRow = selected
+                      .filter(([r, _]) => r === rIdx)
+                      .map(([_, col]) => col);
+
+                    if (selectedInRow.length > 0) {
+                      const minSelectedCol = Math.min(...selectedInRow);
+                      const maxSelectedCol = Math.max(...selectedInRow);
+
+                      // Disable this cell if it is not at the edges of selection
+                      if (cIdx !== minSelectedCol && cIdx !== maxSelectedCol) {
+                        isDisabled = true;
+                      }
+                    }
+                  }
+
                   if (cell === "available") {
                     if (hasOccupiedOrBlockedSelected) {
                       // available cells are enabled to allow switching from occupied/blocked
@@ -1810,7 +1854,9 @@ const CellGrid = () => {
                       isDisabled = true;
                     }
                   }
-
+                  const hoverClass = isDisabled
+                    ? "hover:bg-red-500"
+                    : "hover:bg-green-300";
                   return (
                     <Cell
                       key={`${rIdx}-${cIdx}`}
@@ -1824,11 +1870,12 @@ const CellGrid = () => {
                       isSelected={selected.some(
                         ([r, c]) => r === rIdx && c === cIdx
                       )}
-                      //@ts-ignore
                       style={{
                         cursor: isDisabled ? "not-allowed" : "pointer",
                         pointerEvents: isDisabled ? "none" : "auto",
+                        // Tailwind's red-500 hex
                       }}
+                      classNames={hoverClass}
                     />
                   );
                 })

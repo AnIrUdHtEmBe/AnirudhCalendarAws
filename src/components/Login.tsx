@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { enqueueSnackbar } from "notistack";
+import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
 
 const USER_TYPES = [
   "admin",
@@ -38,7 +39,7 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post("https://play-os-backendv2.forgehub.in/auth/login", {
+      const response = await axios.post(`${API_BASE_URL_Latest}/auth/login`, {
         email: formState.email,
         password: formState.password,
         type: formState.type,

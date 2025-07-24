@@ -2,6 +2,7 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import TopBar from "../BookingCalendarComponent/Topbar";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
 
 type Court = { courtId: string; name: string };
 
@@ -117,7 +118,7 @@ export default function WeeklyPricingGrid() {
   const fetchCourtIDs = async () => {
     try {
       const response = await axios.get(
-        "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
+        `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
       );
       if (Array.isArray(response.data)) {
         setCourtId(response.data);
@@ -129,7 +130,7 @@ export default function WeeklyPricingGrid() {
               const userId = court.name.replace("court_", "");
               try {
                 const res = await axios.get(
-                  `https://play-os-backendv2.forgehub.in/human/${userId}`
+                  `${API_BASE_URL_Latest}/human/${userId}`
                 );
                 nameMap[court.courtId] = res.data.name;
               } catch {

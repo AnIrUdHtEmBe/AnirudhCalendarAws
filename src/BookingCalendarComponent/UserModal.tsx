@@ -17,6 +17,7 @@ import { useNavigate } from "react-router-dom";
 import GameChat from "./GameChat";
 import { AblyProvider } from "ably/react";
 import * as Ably from "ably";
+import { API_BASE_URL_Latest } from "./AxiosApi";
 
 interface CellModalProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
 
     try {
       const bookingRes = await axios.get(
-        `https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`
+        `${API_BASE_URL_Latest}/booking/${cellData.bookingId}`
       );
       const bookingData = bookingRes.data;
       console.log("booking fetch", bookingRes);
@@ -67,7 +68,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
         joinedUsers.map(async (userId: string) => {
           try {
             const humanRes = await axios.get(
-              `https://play-os-backendv2.forgehub.in/human/${userId}`
+              `${API_BASE_URL_Latest}/human/${userId}`
             );
             return {
               userId,
@@ -147,7 +148,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
           const userId = user.userId;
 
           // Construct your URL with bookingId and userId.
-          const url = `https://play-os-backendv2.forgehub.in/booking/add-players/${cellData.bookingId}?userIds=${userId}&target_list=joinedUsers`;
+          const url = `${API_BASE_URL_Latest}/booking/add-players/${cellData.bookingId}?userIds=${userId}&target_list=joinedUsers`;
           console.log("modal userid and bookingid", userId, cellData.bookingId);
 
           // POST request (body can be empty or with data if required)
@@ -187,7 +188,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     try {
       // Step 1: Get booking details
       const bookingRes = await axios.get(
-        `https://play-os-backendv2.forgehub.in/game/get_games_by_bookingId/${cellData.bookingId}`
+        `${API_BASE_URL_Latest}/game/get_games_by_bookingId/${cellData.bookingId}`
       );
       const bookingData = bookingRes.data;
       console.log("Booking data for gameId chatid:", bookingData);
@@ -286,7 +287,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
 
 
 const fetchTimeSlot = async () => {
-  const res = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
+  const res = await axios.get(`${API_BASE_URL_Latest}/booking/${cellData.bookingId}`);
   const bookStartTimeUtc = res.data.startTime; // e.g. "2025-07-22T22:00:00"
   const bookEndTimeUtc = res.data.endTime;     // e.g. "2025-07-23T00:00:00"
 
