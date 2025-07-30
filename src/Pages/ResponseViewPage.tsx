@@ -13,14 +13,15 @@ import "./Responses.css";
 // import { Comment, ReplayOutlined, RestaurantRounded } from "@mui/icons-material";
 // import { StickyNote } from "lucide-react";
 import { useApiCalls } from "../store/axios";
+import ResponseViewPageHeader from "./ResponseViewPageHeader";
 
 function ResponseViewPage() {
-    // const ScoreZoneData = [
-    //     { name: "Kick Start", from: 0, to: 30 },
-    //     { name: "Momentum", from: 31, to: 60 },
-    //     { name: "Performance", from: 61, to: 80 },
-    //     { name: "Elite", from: 81, to: 100 },
-    // ];
+    const ScoreZoneData = [
+        { name: "Kick Start", from: 0, to: 30 },
+        { name: "Momentum", from: 31, to: 60 },
+        { name: "Performance", from: 61, to: 80 },
+        { name: "Elite", from: 81, to: 100 },
+    ];
 
 
     // const [selectedDate, setselectedDate] = useState("")
@@ -31,9 +32,9 @@ function ResponseViewPage() {
     const [loading, setLoading] = useState(true);
     const location = useLocation();
 
-    // const [score, setScore] = useState<{ score: number; index: number }>({score: 0,index: -1, });
+    const [score, setScore] = useState<{ score: number; index: number }>({score: 0,index: -1, });
 
-    // const [calcLoading, setCalcLoading] = useState(true);
+    const [calcLoading, setCalcLoading] = useState(true);
 
     const {
         // starting_assessment_by_user,
@@ -115,35 +116,35 @@ function ResponseViewPage() {
         localStorage.setItem("selectedPlan", JSON.stringify(plan));
     };
 
-    // useEffect(() => {
-    //     if (!assessmentInstance_call?.[0]?.answers) {
-    //         setCalcLoading(true);
-    //         return;
-    //     }
+    useEffect(() => {
+        if (!assessmentInstance_call?.[0]?.answers) {
+            setCalcLoading(true);
+            return;
+        }
 
-    //     let totalScore = 0;
-    //     try {
-    //         assessmentInstance_expanded_Api_call[0].answers.forEach((answer) => {
-    //             totalScore += answer.scoreValue || 0;
-    //         });
-    //     } catch (error) {
-    //         console.error("Score calculation error:", error);
-    //         setCalcLoading(false);
-    //         return;
-    //     }
+        let totalScore = 0;
+        try {
+            assessmentInstance_expanded_Api_call[0].answers.forEach((answer) => {
+                totalScore += answer.scoreValue || 0;
+            });
+        } catch (error) {
+            console.error("Score calculation error:", error);
+            setCalcLoading(false);
+            return;
+        }
 
-    //     // Determine score zone
-    //     let scoreIndex = -1;
-    //     if (totalScore >= 0 && totalScore <= 30) scoreIndex = 0;
-    //     else if (totalScore <= 60) scoreIndex = 1;
-    //     else if (totalScore <= 80) scoreIndex = 2;
-    //     else if (totalScore <= 100) scoreIndex = 3;
+        // Determine score zone
+        let scoreIndex = -1;
+        if (totalScore >= 0 && totalScore <= 30) scoreIndex = 0;
+        else if (totalScore <= 60) scoreIndex = 1;
+        else if (totalScore <= 80) scoreIndex = 2;
+        else if (totalScore <= 100) scoreIndex = 3;
 
-    //     setScore({ score: totalScore, index: scoreIndex });
-    //     setCalcLoading(false);
-    // }, [assessmentInstance_expanded_Api_call]); // Add proper dependency
+        setScore({ score: totalScore, index: scoreIndex });
+        setCalcLoading(false);
+    }, [assessmentInstance_expanded_Api_call]); // Add proper dependency
 
-    //   console.log("Total Score:", score);
+      console.log("Total Score:", score);
     if (!context || loading) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -152,16 +153,16 @@ function ResponseViewPage() {
         );
     }
 
-    console.log(assessmentInstance_call.map((assess) => {
-        console.log(assess)
-    }), "kiewofuwoebfwu")
+    // console.log(assessmentInstance_call.map((assess) => {
+    //     console.log(assess)
+    // }), "kiewofuwoebfwu")
 
 
     return (
         <div className="responses-root">
             {/* Fixed Header */}
             {/* <div className="sticky-header"> */}
-            <Header />
+            <ResponseViewPageHeader />
             {/* </div> */}
 
             <div className="main-containers">
@@ -234,10 +235,31 @@ function ResponseViewPage() {
 
                         <div className="summary-panel">
                             
+                                <div className="summary-header-wrapper">
+                                    <div className="summary-header">
+                                    <div className="summary-title">Summary</div>
+                                    <div className="summary-paper-title">
+                                        
+                                            {assessmentInstance_call.map((assess) => {
+                                                return (
+                                                    <div>{assess.template.name}</div>
+                                                )
+                                            })}
 
-                            {/* {score.score === 0 ? (
+                                        
+                                    </div>
+                                    </div>
+                                    {calcLoading ? (
+                                    <div>Calculating score...</div>
+                                    ) : (
+                                    <div className="font-normal text-lg">
+                                        Score = <span className="font-bold">{score.score}</span>
+                                    </div>
+                                    )}
+                                </div>
+                             {score.score === 0 ? (
                                 <div className="font-normal text-2xl flex items-center justify-center pt-[40px]">
-                                    Welcome to Forge , Below are Your recommended Plans
+                                    Welcome to Forge 
                                 </div>
                             ) : (
                                 <div className="summary-table-wrapper">
@@ -267,7 +289,7 @@ function ResponseViewPage() {
                             )} 
 
 
-                            <div className="plan-options">
+                           {/* <div className="plan-options">
                                 {plans_full_api_call.map((plan, i) => (
                                     <button
                                         key={i}

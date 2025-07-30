@@ -242,8 +242,8 @@ function AllNutrition() {
               <thead className="activities-table-header">
                 <tr>
                   <th className="actone">Sl.No</th>
-                  <th className="acttwo">Activity</th>
-                  <th className="actthree">Description</th>
+                  <th id="acttwo">Activity</th>
+                  <th className="actthree" id="acttwo">Description</th>
                   <th className="actfour"> Target</th>
                   <th>Unit</th>
                   <th>Type</th>
@@ -263,11 +263,19 @@ function AllNutrition() {
                       ) : (
                         <>
                           <td className="activity-cell font-bold">{slNo++}</td>
-                          <td className="activity-cell">
+                          <td className="activity-cell" id="acttwo">
                             <FormControl fullWidth>
                               <Select
                                 labelId={`activity-select-label-${index}`}
                                 value={item.activityId}
+                                 MenuProps={{
+                                  PaperProps: {
+                                    style: {
+                                      maxHeight: 200, // or whatever you need
+                                      overflowY: 'auto',
+                                    },
+                                  },
+                                }}
                                 onChange={async (e) => {
                                   const selectedId = e.target.value;
                                   console.log("Selected ID:", selectedId);
@@ -323,7 +331,7 @@ function AllNutrition() {
                               </Select>
                             </FormControl>
                           </td>
-                          <td className="activity-cell">{item.description}</td>
+                          <td className="activity-cell"id="acttwo">{item.description}</td>
                           <td className="activity-cell">{item.target}</td>
                           <td className="activity-cell">
                             {item.unit === "weight"

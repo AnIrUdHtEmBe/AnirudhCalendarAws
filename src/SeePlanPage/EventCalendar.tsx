@@ -165,6 +165,11 @@ useEffect(() => {
     if (arg.event.title === "DUMMY") {
       return ['event-alacarte'];
     }
+    const sessionTemplateId = arg.event.id;
+    if (sessionTemplateId?.startsWith("SENT")) {
+      return["event-sent-orange"];
+    }
+
     return [];
   }}
       eventContent={(arg) => {

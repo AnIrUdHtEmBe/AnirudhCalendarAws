@@ -101,7 +101,7 @@ function AllSession() {
   };
 
   console.log("Selected Plan:", selecteddPlan);
-  
+
 
   const filterPlansAccordingTo = (category: string) => {
     if (activeFilter === category) {
@@ -113,11 +113,11 @@ function AllSession() {
     }
   };
 
-  const handleDelete = async (index : number) => {
+  const handleDelete = async (index: number) => {
     console.log("Deleting activity at index:", index);
     selecteddPlan?.activities.splice(index, 1);
     selecteddPlan?.activityIds.splice(index, 1);
-    
+
     setSelectedPlan({
       ...selecteddPlan,
       activities: [...selecteddPlan.activities],
@@ -138,25 +138,22 @@ function AllSession() {
           </div>
           <div className="flex justify-between items-center gap-5">
             <button
-              className={`filter-btn ${
-                activeFilter === "Fitness" ? "filter-btn-active" : ""
-              }`}
+              className={`filter-btn ${activeFilter === "Fitness" ? "filter-btn-active" : ""
+                }`}
               onClick={() => filterPlansAccordingTo("Fitness")}
             >
               <Dumbbell size={20} />
             </button>
             <button
-              className={`filter-btn ${
-                activeFilter === "Wellness" ? "filter-btn-active" : ""
-              }`}
+              className={`filter-btn ${activeFilter === "Wellness" ? "filter-btn-active" : ""
+                }`}
               onClick={() => filterPlansAccordingTo("Wellness")}
             >
               <Mediation style={{ fontSize: "20px" }} />
             </button>
             <button
-              className={`filter-btn ${
-                activeFilter === "Sports" ? "filter-btn-active" : ""
-              }`}
+              className={`filter-btn ${activeFilter === "Sports" ? "filter-btn-active" : ""
+                }`}
               onClick={() => filterPlansAccordingTo("Sports")}
             >
               <NordicWalking style={{ fontSize: "20px" }} />
@@ -248,8 +245,8 @@ function AllSession() {
               <thead className="activities-table-header">
                 <tr>
                   <th className="actone">Sl.No</th>
-                  <th className="acttwo">Activity</th>
-                  <th className="actthree">Description</th>
+                  <th id="acttwo">Activity</th>
+                  <th className="actthree" id="acttwo">Description</th>
                   <th className="actfour"> Target</th>
                   <th>Unit</th>
                   <th></th>
@@ -260,19 +257,27 @@ function AllSession() {
                   (item: Activity_Api_call, index: number) => (
                     <tr key={index} className="activity-row">
                       {loadingRowIndex === index ? (
-                         <td colSpan={5} className="activity-cell text-center py-4">
-                         <div className="flex items-center justify-center gap-2">
-                           <CircularProgress size={30} className="text-blue-500" />
-                         </div>
-                       </td>
+                        <td colSpan={5} className="activity-cell text-center py-4">
+                          <div className="flex items-center justify-center gap-2">
+                            <CircularProgress size={30} className="text-blue-500" />
+                          </div>
+                        </td>
                       ) : (
                         <>
                           <td className="activity-cell font-bold">{slNo++}</td>
-                          <td className="activity-cell">
+                          <td className="activity-cell" id="acttwo">
                             <FormControl fullWidth>
                               <Select
                                 labelId={`activity-select-label-${index}`}
                                 value={item.activityId}
+                                MenuProps={{
+                                  PaperProps: {
+                                    style: {
+                                      maxHeight: 200, // or whatever you need
+                                      overflowY: 'auto',
+                                    },
+                                  },
+                                }}
                                 onChange={async (e) => {
                                   const selectedId = e.target.value;
                                   console.log("Selected ID:", selectedId);
@@ -328,20 +333,20 @@ function AllSession() {
                               </Select>
                             </FormControl>
                           </td>
-                          <td className="activity-cell">{item.description}</td>
+                          <td className="activity-cell" id="acttwo">{item.description}</td>
                           <td className="activity-cell">{item.target}</td>
                           <td className="activity-cell">
                             {item.unit === "weight"
                               ? "Kg"
                               : item.unit === "time"
-                              ? "Min"
-                              : item.unit === "distance"
-                              ? "Km"
-                              : item.unit === "repetitions"
-                              ? "Reps"
-                              : ""}
+                                ? "Min"
+                                : item.unit === "distance"
+                                  ? "Km"
+                                  : item.unit === "repetitions"
+                                    ? "Reps"
+                                    : ""}
                           </td>
-                          <td><MinusCircle className="text-red-500" onClick={ () => handleDelete(index)}></MinusCircle></td>
+                          <td><MinusCircle className="text-red-500" onClick={() => handleDelete(index)}></MinusCircle></td>
                         </>
                       )}
                     </tr>

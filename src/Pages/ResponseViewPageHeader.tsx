@@ -1,10 +1,11 @@
-import React, { useContext } from "react";
+import React, { useContext,useState } from "react";
 import { Calendar, FileText } from "lucide-react";
 import { DataContext } from "../store/DataContext";
+import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {}
 
-const Header: React.FC<HeaderProps> = () => {
+const ResponseViewPageHeader: React.FC<HeaderProps> = () => {
   const assignment = JSON.parse(
     localStorage.getItem("assessmentDetails") || "{}"
   );
@@ -12,7 +13,7 @@ const Header: React.FC<HeaderProps> = () => {
 
   if (!context) return <div>Loading...</div>;
 
-  const { selectComponent } = context;
+  const { selectComponent,setSelectComponent } = context;
 
   const today = new Date().toLocaleDateString("en-US", {
     year: "numeric",
@@ -21,18 +22,21 @@ const Header: React.FC<HeaderProps> = () => {
   });
   const userDetail = JSON.parse(localStorage.getItem("user"));
   console.log(userDetail.name)
+  const navigate=useNavigate();
   return (
     <header className="bg-white z-10 w-full">
       {/* Top row with icon and title */}
       
       <div className="flex flex-row  justify-between items-center ">
         <div className="flex flex-col sm:flex-row items-center gap-2  sm:gap-4 p-4 sm:px-10">
-          <div>
+          <div className="cursor-pointer" onClick={()=> {
+                setSelectComponent("seePlan")
+                navigate('/Dashboard')}}>
             <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" className="back-icon" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M217.9 256L345 129c9.4-9.4 9.4-24.6 0-33.9-9.4-9.4-24.6-9.3-34 0L167 239c-9.1 9.1-9.3 23.7-.7 33.1L310.9 417c4.7 4.7 10.9 7 17 7s12.3-2.3 17-7c9.4-9.4 9.4-24.6 0-33.9L217.9 256z">
             </path></svg>
           </div>
           <FileText size={28} className="text-gray-800 " />
-          <h1 className="text-xl sm:text-2xl md:text-[24px] font-normal text-gray-800 text-center sm:text-left">
+          <h1 className="text-xl sm:text-xl md:text-[24px] font-normal text-gray-800 text-center sm:text-left">
             {userDetail.name}'s {""} Assessment {assignment?.id ?? ""}
           </h1>
         </div>
@@ -69,4 +73,4 @@ const Header: React.FC<HeaderProps> = () => {
   );
 };
 
-export default Header;
+export default ResponseViewPageHeader;

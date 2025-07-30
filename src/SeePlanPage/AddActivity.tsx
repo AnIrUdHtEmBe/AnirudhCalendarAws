@@ -209,6 +209,7 @@ const handleConfirm = async () => {
                 value={date}
                 onChange={(newValue) => setDate(newValue)}
                 sx={{ width: '100%', mb: 2 }}
+                format="DD-MM-YYYY"
             />
             </LocalizationProvider>
           {/* Confirm Button */}
