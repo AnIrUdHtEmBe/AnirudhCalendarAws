@@ -90,7 +90,7 @@ useEffect(() => {
   return (
     <div>
         <Button variant="contained" onClick={() => setOpen(true)} >
-             Add a Meal
+             Add a Daily Meal
         </Button>
         <Modal open={open} onClose={() => setOpen(false)}>
         <Box sx={modalStyle}>
@@ -113,6 +113,14 @@ useEffect(() => {
               labelId="plan-select-label"
               value={option}
               label="Select Plan"
+               MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 200, // or whatever you need
+                              overflowY: 'auto',
+                            },
+                          },
+                        }}
               onChange={(e) => setOption(e.target.value)}
             >
               {sessions.map((session) => (
@@ -128,6 +136,7 @@ useEffect(() => {
                 value={date}
                 onChange={(newValue) => setDate(newValue)}
                 sx={{ width: '100%', mb: 2 }}
+                format="DD-MM-YYYY"
             />
             </LocalizationProvider>
           {/* Confirm Button */}

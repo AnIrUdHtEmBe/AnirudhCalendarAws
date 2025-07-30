@@ -22,7 +22,7 @@ export default function DateRangePicker({ startDate, userDate ,setStartDate, end
           value={startDate}
           onChange={(newValue) => setStartDate(newValue)}
           maxDate={endDate}
-          
+           format="DD-MM-YYYY"
         />
         
         <DatePicker
@@ -30,7 +30,7 @@ export default function DateRangePicker({ startDate, userDate ,setStartDate, end
           value={endDate}
           onChange={(newValue) => setEndDate(newValue)}
           minDate={startDate}
-          
+           format="DD-MM-YYYY"
         />
       
       </Stack>

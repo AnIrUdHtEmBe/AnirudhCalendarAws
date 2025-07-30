@@ -115,6 +115,14 @@ function AddPlanInstance({userId}) {
               labelId="plan-select-label"
               value={option}
               label="Select Plan"
+               MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 200, // or whatever you need
+                              overflowY: 'auto',
+                            },
+                          },
+                        }}
               onChange={(e) => setOption(e.target.value)}
             >
               {plans.map((plan) => (

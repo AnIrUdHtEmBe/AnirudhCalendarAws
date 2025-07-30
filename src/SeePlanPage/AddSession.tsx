@@ -112,6 +112,14 @@ const handleConfirm = async () => {
               labelId="plan-select-label"
               value={option}
               label="Select Plan"
+               MenuProps={{
+                          PaperProps: {
+                            style: {
+                              maxHeight: 200, // or whatever you need
+                              overflowY: 'auto',
+                            },
+                          },
+                        }}
               onChange={(e) => setOption(e.target.value)}
             >
               {sessions.map((session) => (
@@ -127,6 +135,7 @@ const handleConfirm = async () => {
                 value={date}
                 onChange={(newValue) => setDate(newValue)}
                 sx={{ width: '100%', mb: 2 }}
+                format="DD-MM-YYYY"
             />
             </LocalizationProvider>
           {/* Confirm Button */}

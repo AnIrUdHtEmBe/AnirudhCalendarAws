@@ -20,6 +20,16 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { Password, People } from "@mui/icons-material";
 import Modal from "./Modal";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+ 
+  InputLabel,
+  FormControl,
+  Box
+} from '@mui/material';
 import { enqueueSnackbar } from "notistack";
 
 const actions = ["Go to profile", "See plan", "Take Assessment"];
@@ -562,7 +572,7 @@ const CustomerTable = () => {
       </div>
 
       <div>
-        <Modal isOpen={modalOpen} onClose={handleCloseModal}>
+        {/*<Modal isOpen={modalOpen} onClose={handleCloseModal}>
           <h2 style={modalHeaderStyle}>Create New Customer</h2>
           <form style={modalFormStyle} onSubmit={handleFormSubmit}>
             <input
@@ -679,7 +689,123 @@ const CustomerTable = () => {
               Create
             </button>
           </form>
-        </Modal>
+        </Modal>*/}
+        <Dialog open={modalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
+      <DialogTitle>Create New Customer</DialogTitle>
+      <DialogContent>
+        <Box
+          component="form"
+          onSubmit={handleFormSubmit}
+          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
+        >
+          <TextField
+            label="Name"
+            name="name"
+            value={formData.name}
+            onChange={handleInputChange}
+            required
+          />
+          <TextField
+            label="Age"
+            type="number"
+            name="age"
+            value={formData.age}
+            onChange={handleInputChange}
+            required
+          />
+          <FormControl fullWidth required>
+            <InputLabel>Type</InputLabel>
+            <Select
+              name="type"
+              value={formData.type}
+              label="Type"
+              onChange={handleInputChange}
+            >
+              <MenuItem value="forge">Forge</MenuItem>
+              <MenuItem value="play">Play</MenuItem>
+              <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
+              <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
+              <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+              <MenuItem value="employee">EMPLOYEE</MenuItem>
+              <MenuItem value="other">OTHERS</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl fullWidth required>
+            <InputLabel>Gender</InputLabel>
+            <Select
+              name="gender"
+              value={formData.gender}
+              label="Gender"
+              onChange={handleInputChange}
+            >
+              <MenuItem value="male">Male</MenuItem>
+              <MenuItem value="female">Female</MenuItem>
+              <MenuItem value="other">Other</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Mobile"
+            name="mobile"
+            value={formData.mobile}
+            onChange={handleInputChange}
+          />
+          <TextField
+            label="Email"
+            name="email"
+            type="email"
+            value={formData.email}
+            onChange={handleInputChange}
+          />
+          <TextField
+            label="Password"
+            name="password"
+            type="text"
+            value={formData.password}
+            onChange={handleInputChange}
+          />
+          <FormControl fullWidth>
+            <InputLabel>Membership</InputLabel>
+            <Select
+              name="membershipType"
+              value={formData.membershipType}
+              label="Membership"
+              onChange={handleInputChange}
+            >
+              <MenuItem value="premium">PREMIUM</MenuItem>
+              <MenuItem value="basic">BASIC</MenuItem>
+              <MenuItem value="vip">VIP</MenuItem>
+            </Select>
+          </FormControl>
+          <TextField
+            label="Height (cm)"
+            name="height"
+            type="number"
+            value={formData.height}
+            onChange={handleInputChange}
+          />
+          <TextField
+            label="Weight (kg)"
+            name="weight"
+            type="number"
+            step="0.1"
+            value={formData.weight}
+            onChange={handleInputChange}
+          />
+          <TextField
+            label="Health Condition"
+            name="healthCondition"
+            value={formData.healthCondition}
+            onChange={handleInputChange}
+          />
+          <DialogActions>
+            <Button onClick={handleCloseModal}>Cancel</Button>
+            <Button type="submit" variant="contained" color="primary">
+              Create
+            </Button>
+          </DialogActions>
+        </Box>
+      </DialogContent>
+    </Dialog>
       </div>
 
       

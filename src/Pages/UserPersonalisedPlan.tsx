@@ -48,7 +48,7 @@ function SessionPage() {
     sessions_api_call,
     activities_api_call,
     setSessions_api_call,
-    
+
   } = useContext(DataContext)!;
   const [planName, setPlanName] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -69,83 +69,99 @@ function SessionPage() {
     getPlansFull,
     getExpandedPlanByPlanId
   } = useApiCalls();
-  
+
   useEffect(() => {
     getSessions();
     getActivities();
     getPlansFull();
   }, []);
-  
-function deduplicatePlanInLocalStorage() {
-  const plans = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
 
-  const sessions = Array.isArray(plans.sessions) ? plans.sessions : [];
+  function deduplicatePlanInLocalStorage() {
+    const plans = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
 
-  const uniqueSessionsMap = new Map();
+    const sessions = Array.isArray(plans.sessions) ? plans.sessions : [];
+    
 
-  sessions.forEach((session) => {
-    if (session?.sessionId && !uniqueSessionsMap.has(session.sessionId)) {
-      uniqueSessionsMap.set(session.sessionId, session);
-    }
-  });
+    const uniqueSessionsMap = new Map();
 
-  const updatedPlans = {
-    ...plans,
-    sessions: Array.from(uniqueSessionsMap.values())
-  };
+    sessions.forEach((session) => {
+      if (session?.sessionId && !uniqueSessionsMap.has(session.sessionId)) {
+        uniqueSessionsMap.set(session.sessionId, session);
+      }
+    });
 
-  localStorage.setItem("selectedPlan", JSON.stringify(updatedPlans));
+    const updatedPlans = {
+      ...plans,
+      sessions: Array.from(uniqueSessionsMap.values())
+    };
 
-  console.log("✅ Deduplicated and saved plan:", updatedPlans);
-}
+    localStorage.setItem("selectedPlan", JSON.stringify(updatedPlans));
 
-const plans = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
-
-
-
-
-
-async function updateLocalStorage() {
-  const storedPlan = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
-
-  if (!storedPlan.templateId) {
-    console.error("❌ No templateId found in localStorage.");
-    return;
+    console.log("✅ Deduplicated and saved plan:", updatedPlans);
   }
 
-  const ans = [storedPlan.templateId];
+  // const plans = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
+  let plans: any = {};
+try {
+  const raw = localStorage.getItem("selectedPlan");
+  if (raw) {
+    plans = JSON.parse(raw);
+  }
+} catch (e) {
+  console.error("Invalid JSON in localStorage: selectedPlan", e);
+}
+  const [loading, setLoading] = useState(false)
+  if (loading)
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-4 border-blue-500"></div>
+      </div>
+    );
 
-  const res = await getExpandedPlanByPlanId(ans);
 
-  if (res && Array.isArray(res) && res.length > 0) {
-    localStorage.setItem("selectedPlan", JSON.stringify(res[0]));
 
-    // Deduplicate
+
+  async function updateLocalStorage() {
+    const storedPlan = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
+
+    if (!storedPlan.templateId) {
+      console.error("❌ No templateId found in localStorage.");
+      return;
+    }
+
+    const ans = [storedPlan.templateId];
+
+    const res = await getExpandedPlanByPlanId(ans);
+
+    if (res && Array.isArray(res) && res.length > 0) {
+      localStorage.setItem("selectedPlan", JSON.stringify(res[0]));
+
+      // Deduplicate
+      deduplicatePlanInLocalStorage();
+
+      // Update state
+      const updatedPlan = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
+      setPlan(updatedPlan);
+    } else {
+      console.error("❌ No valid plan data received.");
+    }
+  }
+
+  const [plan, setPlan] = useState(null);
+
+
+  useEffect(() => {
     deduplicatePlanInLocalStorage();
 
-    // Update state
-    const updatedPlan = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
-    setPlan(updatedPlan);
-  } else {
-    console.error("❌ No valid plan data received.");
-  }
-}
+    const storedPlan = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
+    setPlan(storedPlan);
+  }, []);
 
- const [plan, setPlan] = useState(null);
 
-  
-useEffect(() => {
-  deduplicatePlanInLocalStorage();
-
-  const storedPlan = JSON.parse(localStorage.getItem("selectedPlan") || "{}");
-  setPlan(storedPlan);
-}, []);
-
-  
 
   const handleUpdatePlan = async () => {
     await updateLocalStorage();
-    
+
     const updatedPlan = JSON.parse(localStorage.getItem("selectedPlan"));
     setPlan(updatedPlan); // This triggers re-render with updated plan
   };
@@ -153,7 +169,7 @@ useEffect(() => {
 
 
   const user = JSON.parse(localStorage.getItem("user") || "error");
-  const navigate=useNavigate()
+  const navigate = useNavigate()
   console.log(user);
 
   const [activePlan, setActivePlan] = useState<Session_Api_call | null>(null);
@@ -161,11 +177,11 @@ useEffect(() => {
     [key: number]: any;
   }>({});
 
- const filteredPlans = plan?.sessions?.filter(
-  (session) =>
-    session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    session.category?.toLowerCase().includes(searchTerm.toLowerCase())
-) || [];
+  const filteredPlans = plan?.sessions?.filter(
+    (session) =>
+      session.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      session.category?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
 
   const filterPlansAccordingTo = (category: string) => {
@@ -187,28 +203,38 @@ useEffect(() => {
         selectedIds.length > 0 && selectedIds.length < filteredPlans.length;
     }
   }, [selectedIds, filteredPlans?.length]);
+const [isClicked, setIsClicked] = useState(false);
+  const createANewPlan = async () => {
+    
+    try {
+      setIsClicked(true);
+      const sessionTemplateIds: string[] = [];
+      const scheduledDates: string[] = [];
 
-  const createANewPlan = async() => {
-    const sessionTemplateIds: string[] = [];
-    const scheduledDates: string[] = [];
+      Object.entries(gridAssignments).forEach(([keyStr, value]) => {
+        const key = parseInt(keyStr, 10);
+        const dateForSession = dayjs(selectedDate).add(key, "day"); // Add days to base date
 
-    Object.entries(gridAssignments).forEach(([keyStr, value]) => {
-      const key = parseInt(keyStr, 10);
-      const dateForSession = dayjs(selectedDate).add(key, "day"); // Add days to base date
+        sessionTemplateIds.push(value.sessionId);
+        scheduledDates.push(dateForSession.format("YYYY-MM-DD"));
+      });
 
-      sessionTemplateIds.push(value.sessionId);
-      scheduledDates.push(dateForSession.format("YYYY-MM-DD"));
-    });
+      const planToSubmit: Plan_Instance_Api_call = {
+        sessionTemplateIds,
+        scheduledDates,
+      };
 
-    const planToSubmit: Plan_Instance_Api_call = {
-      sessionTemplateIds,
-      scheduledDates,
-    };
 
-    const res= await createPlanInstance(plans.templateId, user.userId, planToSubmit);
-    if(res){
-      navigate('/Dashboard')
-      setSelectComponent("seePlan")
+      const res = await createPlanInstance(plans.templateId, user.userId, planToSubmit);
+      setLoading(true);
+      if (res) {
+        navigate('/Dashboard')
+        setSelectComponent("seePlan")
+      }
+    } catch (err) {
+      console.error("plan creation failed!")
+    } finally {
+      setLoading(false)
     }
   };
 
@@ -226,7 +252,7 @@ useEffect(() => {
   const handleSaveSesion = async () => {
     try {
       await patchSession(previewSession.sessionId, {
-        title: sessionName == "" ?  previewSession.title : sessionName,
+        title: sessionName == "" ? previewSession.title : sessionName,
         description: previewSession.description,
         category: category == "" ? previewSession.category : category,
         activityIds: previewSession?.activityIds,
@@ -280,7 +306,7 @@ useEffect(() => {
   };
 
   const [len, setLen] = useState(30);
-  const [weeks, setWeeks] = useState([0, 1, 2, 3 ,4 ,5]); // represents 4 weeks initially
+  const [weeks, setWeeks] = useState([0, 1, 2, 3, 4, 5]); // represents 4 weeks initially
 
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [previewSession, setPreviewSession] = useState<any>(null);
@@ -425,25 +451,22 @@ useEffect(() => {
 
             <div className="button-group">
               <button
-                className={`filter-btn ${
-                  activeFilter === "Fitness" ? "filter-btn-active" : ""
-                }`}
+                className={`filter-btn ${activeFilter === "Fitness" ? "filter-btn-active" : ""
+                  }`}
                 onClick={() => filterPlansAccordingTo("Fitness")}
               >
                 <Dumbbell size={20} />
               </button>
               <button
-                className={`filter-btn ${
-                  activeFilter === "Wellness" ? "filter-btn-active" : ""
-                }`}
+                className={`filter-btn ${activeFilter === "Wellness" ? "filter-btn-active" : ""
+                  }`}
                 onClick={() => filterPlansAccordingTo("Wellness")}
               >
                 <Mediation style={{ fontSize: "20px" }} />
               </button>
               <button
-                className={`filter-btn ${
-                  activeFilter === "Sports" ? "filter-btn-active" : ""
-                }`}
+                className={`filter-btn ${activeFilter === "Sports" ? "filter-btn-active" : ""
+                  }`}
                 onClick={() => filterPlansAccordingTo("Sports")}
               >
                 <NordicWalking style={{ fontSize: "20px" }} />
@@ -529,9 +552,10 @@ useEffect(() => {
                 <div className="right-panel-header-right-side-component">
                   <LocalizationProvider dateAdapter={AdapterDayjs}>
                     <DatePicker
-                    disablePast     
+                      disablePast
                       label="Select start date"
                       value={selectedDate}
+                      format="DD-MM-YYYY"
                       onChange={(newDate) => setSelectedDate(newDate)}
                       renderInput={(params) => (
                         <TextField
@@ -575,11 +599,10 @@ useEffect(() => {
                       return (
                         <div
                           key={index}
-                          className={`calendar-cell ${
-                            activePlan && !(selectedIds.length > 1)
+                          className={`calendar-cell ${activePlan && !(selectedIds.length > 1)
                               ? "clickable"
                               : ""
-                          } ${selectedIds.length > 1 ? "disabled" : ""}`}
+                            } ${selectedIds.length > 1 ? "disabled" : ""}`}
                           onClick={() => {
                             if (!(selectedIds.length > 1)) {
                               handleGridCellClick(index);
@@ -605,7 +628,7 @@ useEffect(() => {
                       <MinusCircle size={20} className="text-red-500" />
                     </button>
                     <button onClick={() => handleClearWeek(weekIndex)}>
-                      Clear 
+                      Clear
                     </button>
                   </React.Fragment>
                 ))}
@@ -628,7 +651,10 @@ useEffect(() => {
               </button>
               <button
                 onClick={createANewPlan}
-                className="bg-blue-600 text-white px-4 py-2 rounded-md flex items-center space-x-10"
+                disabled={isClicked}
+                className={`bg-blue-600 text-white px-4 py-2 rounded-md flex items-center space-x-10 ${
+    isClicked ? 'opacity-50 cursor-not-allowed' : ''
+  }`}
               >
                 <span>Confirm</span>
                 <ArrowRight size={20} />

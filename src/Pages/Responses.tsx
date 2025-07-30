@@ -301,6 +301,7 @@ function Responses() {
                   <span className="font-normal text-xl">
                     Next assessment On:<input
                       type="date"
+                      min={new Date().toISOString().split("T")[0]} 
                       className="border border-gray-300 rounded px-3 py-2 text-lg"
                       onChange={(e) => (setselectedDate(e.target.value))}
                     />
@@ -319,6 +320,7 @@ function Responses() {
                     }`}
                   disabled={plann === null}
                   onClick={async () => {
+                    setLoading(true)
                     try {
                       const res = await updateNextAssessmentDate(
                         JSON.parse(localStorage.getItem("assessmentInstanceId")),
