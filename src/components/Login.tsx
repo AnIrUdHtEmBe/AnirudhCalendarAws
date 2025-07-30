@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { enqueueSnackbar } from "notistack";
+import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
 
 const USER_TYPES = [
   "admin",
@@ -20,7 +21,7 @@ type UserType = typeof USER_TYPES[number];
 const Login: React.FC = () => {
   const [formState, setFormState] = useState({
     type: "play" as UserType,
-    email: "",
+    loginId: "",
     password: "",
   });
   const [loading, setLoading] = useState(false);
@@ -38,10 +39,10 @@ const Login: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const response = await axios.post("https://play-os-backend.forgehub.in/auth/login", {
-        email: formState.email,
+      const response = await axios.post(`${API_BASE_URL_Latest}/auth/login`, {
+        loginId: formState.loginId,
         password: formState.password,
-        type: formState.type,
+        
       });
 
       if (response.status === 200 && response.data.accessToken) {
@@ -63,7 +64,7 @@ const Login: React.FC = () => {
       <div className="bg-white shadow-md rounded-lg max-w-md w-full p-8">
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Login</h2>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
+          {/* <div>
             <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
               User Type
             </label>
@@ -81,23 +82,24 @@ const Login: React.FC = () => {
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+            <label htmlFor="loginId" className="block text-sm font-medium text-gray-700 mb-1">
+              Email Or Mobile
             </label>
             <input
-              type="email"
-              name="email"
-              id="email"
-              placeholder="Email"
-              value={formState.email}
+              type="text"
+              name="loginId"
+              id="loginId"
+              placeholder="Email or Mobile"
+              value={formState.loginId}
               onChange={handleChange}
               required
               className="w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
+          
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">

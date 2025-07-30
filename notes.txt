@@ -1,0 +1,679 @@
+ {/* Grid Section - Scrollable with Visual Restriction */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Time Headers - Visually Clipped Container */}
+          <div 
+            className="shrink-0 relative"
+            style={{
+              overflow: 'hidden',
+              width: '100%',
+              height: '40px', // h-10 equivalent
+            }}
+          >
+            {/* Actual Time Headers - Full Width but Shifted */}
+            <div
+              className="overflow-x-auto overflow-y-hidden absolute"
+              ref={(el) => {
+                if (el && gridScrollRef.current) {
+                  el.scrollLeft = gridScrollRef.current.scrollLeft;
+                }
+              }}
+              style={{
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                background: "white",
+                width: '100%',
+                height: '100%',
+                left: `calc(4rem * -12)`, // Shift left to hide first 12 columns (midnight to 6AM)
+              }}
+            >
+              {/* Continuous border line from midnight to 12 PM */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: `calc(4rem * 48)`,
+                  height: "1px",
+                  backgroundColor: "#D1D5DB",
+                  pointerEvents: "none",
+                  zIndex: 10,
+                }}
+              />
+
+              <div
+                className="grid border border-gray-300 rounded-t-md bg-white"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {timeLabels.map((label, i) => (
+                  <div
+                    key={`header-${i}`}
+                    className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+                    style={{ userSelect: "none" }}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Content - Visually Clipped Container */}
+          <div 
+            className="flex-1 relative"
+            style={{
+              overflow: 'hidden',
+            }}
+          >
+            {/* Actual Grid Content - Full Width but Shifted */}
+            <div
+              className="overflow-auto absolute"
+              ref={gridScrollRef}
+              onScroll={(e) => {
+                const target = e.target as HTMLElement;
+
+                // Sync horizontal scroll with time headers
+                const timeHeaderEl = target.parentElement?.parentElement?.querySelector(
+                  ".overflow-x-auto.overflow-y-hidden.absolute"
+                ) as HTMLElement;
+                if (timeHeaderEl) {
+                  timeHeaderEl.scrollLeft = target.scrollLeft;
+                }
+
+                // Sync vertical scroll with left sidebar
+                const leftSidebarEl =
+                  target.parentElement?.parentElement?.parentElement?.querySelector(
+                    ".flex.flex-col.overflow-y-auto"
+                  ) as HTMLElement;
+                if (leftSidebarEl) {
+                  leftSidebarEl.scrollTop = target.scrollTop;
+                }
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                left: `calc(4rem * -12)`, // Same shift as headers to maintain alignment
+              }}
+            >
+              <div
+                className="grid border border-gray-200 rounded-b-md"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {grid.map((row, rIdx) =>
+                  row.map((cell, cIdx) => (
+                    <Cell
+                      key={`${rIdx}-${cIdx}`}
+                      row={rIdx}
+                      col={cIdx}
+                      state={cell}
+                      onClick={updateCell}
+                      onDropAction={handleDrop}
+                      isSelected={
+                        selectedCell?.row === rIdx && selectedCell?.col === cIdx
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+
+NEW FROM CLAUDE LATEST
+
+return (
+    <div className="flex flex-col h-screen">
+      {/* Top Nav - Fixed */}
+      <TopBar />
+      <div className="flex items-center justify-between px-4 py-2 bg-white shadow-sm shrink-0">
+        <button
+          onClick={() =>
+            setCurrentDate(
+              (prev) => new Date(prev.getTime() - 24 * 60 * 60 * 1000)
+            )
+          }
+          className="px-3 py-1 bg-gray-300 rounded"
+        >
+          ← Prev
+        </button>
+        <span className="text-xs font-semibold">
+          {currentDate.toLocaleDateString("en-IN", {
+            weekday: "short",
+            year: "numeric",
+            month: "short",
+            day: "numeric",
+          })}
+          {isLoadingBookings && (
+            <span className="ml-2 text-blue-500">Loading...</span>
+          )}
+        </span>
+        <div className="flex items-center gap-4">
+          {/* <span className="text-sm font-semibold">
+            {formatWeekLabel(getWeekStart(currentDate))}
+          </span> */}
+          <input
+            type="date"
+            value={formatDateForInput(currentDate)}
+            onChange={(e) => {
+              const newDate = new Date(e.target.value);
+              if (!isNaN(newDate.getTime())) setCurrentDate(newDate);
+            }}
+            className="px-2 py-1 border border-gray-300 rounded text-xs"
+          />
+        </div>
+        <button
+          onClick={() =>
+            setCurrentDate(
+              (prev) => new Date(prev.getTime() + 24 * 60 * 60 * 1000)
+            )
+          }
+          className="px-3 py-1 bg-gray-300 rounded"
+        >
+          Next →
+        </button>
+      </div>
+
+      {/* Main Content Area - Flexible */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Synchronized with grid vertical scroll */}
+        <div className="flex flex-col w-24 shrink-0 bg-white">
+          <div className="h-10 shrink-0" />
+          <div
+            className="flex flex-col overflow-y-auto overflow-x-hidden"
+            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          >
+            {courtId.map((court) => (
+              <div
+                key={court.courtId}
+                className="h-10 flex items-center  justify-center border border-gray-200 text-xs text-center shrink-0"
+              >
+                {resolvedNames[court.courtId] ?? court.name}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Grid Section - Scrollable */}
+        {/* Grid Section - Scrollable with Visual Restriction */}
+        <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Time Headers - Visually Clipped Container */}
+          <div 
+            className="shrink-0 relative"
+            style={{
+              overflow: 'hidden',
+              width: '100%',
+              height: '40px', // h-10 equivalent
+            }}
+          >
+            {/* Actual Time Headers - Full Width but Shifted */}
+            <div
+              className="overflow-x-auto overflow-y-hidden absolute"
+              ref={(el) => {
+                if (el && gridScrollRef.current) {
+                  el.scrollLeft = gridScrollRef.current.scrollLeft;
+                }
+              }}
+              style={{
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                background: "white",
+                width: '100%',
+                height: '100%',
+                left: `calc(4rem * -12)`, // Shift left to hide first 12 columns (midnight to 6AM)
+              }}
+            >
+              {/* Continuous border line from midnight to 12 PM */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: `calc(4rem * 48)`,
+                  height: "1px",
+                  backgroundColor: "#D1D5DB",
+                  pointerEvents: "none",
+                  zIndex: 10,
+                }}
+              />
+
+              <div
+                className="grid border border-gray-300 rounded-t-md bg-white"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {timeLabels.map((label, i) => (
+                  <div
+                    key={`header-${i}`}
+                    className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+                    style={{ userSelect: "none" }}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid Content - Visually Clipped Container */}
+          <div 
+            className="flex-1 relative"
+            style={{
+              overflow: 'hidden',
+            }}
+          >
+            {/* Actual Grid Content - Full Width but Shifted */}
+            <div
+              className="overflow-auto absolute"
+              ref={gridScrollRef}
+              onScroll={(e) => {
+                const target = e.target as HTMLElement;
+
+                // Sync horizontal scroll with time headers
+                const timeHeaderEl = target.parentElement?.parentElement?.querySelector(
+                  ".overflow-x-auto.overflow-y-hidden.absolute"
+                ) as HTMLElement;
+                if (timeHeaderEl) {
+                  timeHeaderEl.scrollLeft = target.scrollLeft;
+                }
+
+                // Sync vertical scroll with left sidebar
+                const leftSidebarEl =
+                  target.parentElement?.parentElement?.parentElement?.querySelector(
+                    ".flex.flex-col.overflow-y-auto"
+                  ) as HTMLElement;
+                if (leftSidebarEl) {
+                  leftSidebarEl.scrollTop = target.scrollTop;
+                }
+              }}
+              style={{
+                width: '100%',
+                height: '100%',
+                left: `calc(4rem * -12)`, // Same shift as headers to maintain alignment
+              }}
+            >
+              <div
+                className="grid border border-gray-200 rounded-b-md"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {grid.map((row, rIdx) =>
+                  row.map((cell, cIdx) => (
+                    <Cell
+                      key={`${rIdx}-${cIdx}`}
+                      row={rIdx}
+                      col={cIdx}
+                      state={cell}
+                      onClick={updateCell}
+                      onDropAction={handleDrop}
+                      isSelected={
+                        selectedCell?.row === rIdx && selectedCell?.col === cIdx
+                      }
+                    />
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Bar - Fixed */}
+      <div className="w-full bg-white px-6 py-3 shadow-md flex flex-col gap-2 shrink-0 text-sm">
+        {/* Main Row: Left, Center, Right */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          {/* Left Side: Court Id and Host */}
+          <div className="flex flex-col min-w-[200px] flex-1">
+            <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
+              <p>
+                <strong>Court Id:</strong>{" "}
+                {firstSelected
+                  ? courtId[firstSelected[0]]?.courtId ?? "Unknown"
+                  : "N/A"}
+              </p>
+              <p>
+                <strong>Host:</strong> anirudh
+              </p>
+
+              {/* Bottom row: Sport Select dropdown - aligned left */}
+              {firstSelected &&
+                [
+                  "available",
+                  "selected",
+                  "occupied",
+                  "blocked",
+                  "unbook",
+                  "unblock",
+                  "cancelled",
+                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
+                  <div className="flex items-center gap-2 justify-start w-full">
+                    <label className="font-semibold">Sport:</label>
+                    <select
+                      value={selectedSportId}
+                      onChange={(e) => setSelectedSportId(e.target.value)}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="">Select a sport</option>
+                      {selectedCellDetails.availableSports.map((sport) => (
+                        <option key={sport.sportId} value={sport.sportId}>
+                          {sport.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+            </div>
+          </div>
+
+          {/* Center: Difficulty, Max Players, Slots, Price, and Sport dropdown */}
+          <div className="flex flex-col min-w-[350px] flex-1">
+            {/* Top row: Difficulty, Max Players, Slots, Price - centered */}
+            <div className="flex flex-wrap items-center gap-4 justify-center w-full mb-2">
+              {/* Difficulty */}
+              <div>
+                <label className="font-semibold mr-2">Difficulty:</label>
+                <select
+                  className="px-2 py-1 border border-gray-300 rounded text-sm"
+                  value={difficultyLevel}
+                  onChange={(e) => setDifficultyLevel(e.target.value)}
+                >
+                  <option value="Beginner">Beginner</option>
+                  <option value="Intermediate">Intermediate</option>
+                  <option value="Advanced">Advanced</option>
+                </select>
+              </div>
+
+              {/* Max Players */}
+              <div className="flex items-center gap-2">
+                <label className="font-semibold">Max Players:</label>
+                <button
+                  className="px-2 py-1 bg-gray-300 rounded"
+                  onClick={() => setMaxPlayers((prev) => Math.max(1, prev - 1))}
+                >
+                  -
+                </button>
+                <span className="w-8 text-center">{maxPlayers}</span>
+                <button
+                  className="px-2 py-1 bg-gray-300 rounded"
+                  onClick={() =>
+                    setMaxPlayers((prev) => Math.min(30, prev + 1))
+                  }
+                >
+                  +
+                </button>
+              </div>
+
+              {/* Slots */}
+              <div>
+                <strong>Slots:</strong> {formatSelectedTimeRange(selected)}
+              </div>
+
+              {/* Game */}
+              <div className="ml-4 md:ml-8 lg:ml-16 xl:ml-18 2xl:ml-21">
+                <strong>Games:</strong>{" "}
+                {selected.length > 0 ? (
+                  selectedCellDetails.currentBooking &&
+                  selectedCellDetails.currentBooking.sportId ? (
+                    // Show only the booked game's name
+                    <span>
+                      {"'" +
+                        (selectedCellDetails.availableSports.find(
+                          (s) =>
+                            s.sportId ===
+                            selectedCellDetails.currentBooking!.sportId
+                        )?.name || "Unknown") +
+                        "' "}
+                    </span>
+                  ) : (
+                    // Show all available sports
+                    selectedCellDetails.availableSports.map((sport) => (
+                      <span key={sport.sportId}>{"'" + sport.name + "' "}</span>
+                    ))
+                  )
+                ) : (
+                  ""
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side: Buttons and Status */}
+          <div className="flex flex-col items-end gap-2 min-w-[200px] flex-1">
+            {/* <div>
+              <strong>Price:</strong>{" "}
+              {slotPrices !== null && slotPrices !== undefined
+                ? slotPrices
+                : "N/A"}
+            </div> */}
+
+            {firstSelected && (
+              <span className="text-sm text-timeSlot mb-2">
+                <strong>Status:</strong>{" "}
+                {grid[firstSelected[0]][firstSelected[1]]}
+              </span>
+            )}
+
+            <div className="flex flex-wrap gap-2 justify-end w-full">
+              {firstSelected &&
+                [
+                  "available",
+                  "selected",
+                  "unbook",
+                  "unblock",
+                  "cancelled",
+                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
+                  <>
+                    <button
+                      className="bg-green-500 text-white px-3 py-1 rounded"
+                      onClick={() => applyAction("occupied")}
+                    >
+                      Create Game
+                    </button>
+                    <button
+                      className="bg-red-500 text-white px-3 py-1 rounded"
+                      onClick={() => applyAction("blocked")}
+                    >
+                      Block
+                    </button>
+                  </>
+                )}
+              {firstSelected && (
+                <>
+                  <button
+                    className="bg-gray-500 text-white px-3 py-1 rounded"
+                    onClick={() => {
+                      applyAction("unblock");
+                      setSelected([]);
+                    }}
+                  >
+                    Un-Block
+                  </button>
+
+                  <button
+                    className="bg-yellow-500 text-white px-3 py-1 rounded"
+                    onClick={() => {
+                      applyAction("unbook");
+                      setSelected([]);
+                    }}
+                  >
+                    Un-Book
+                  </button>
+
+                  {["occupied", "blocked"].includes(
+                    grid[firstSelected[0]][firstSelected[1]]
+                  ) && (
+                    <button
+                      onClick={openModal}
+                      className="bg-blue-500 text-white px-3 py-1 rounded"
+                    >
+                      View Details
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Current Date - Full Width */}
+        <div className="text-xs text-gray-500 text-center mt-1 w-full">
+          Current date:{" "}
+          {currentDate.toLocaleDateString("en-IN", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: true,
+          })}
+        </div>
+      </div>
+      <UserModal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        cellData={getCellData() ?? { courtName: "" }}
+      />
+      {toastMsg && (
+        <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+      )}
+    </div>
+  );
+};
+
+export default CellGrid;
+
+
+
+
+
+
+  if (cell === "available" && hasOccupiedOrBlockedSelected) {
+    // Clear occupied/blocked selections and select only this cell
+    newSelected = selected.filter(
+      ([r, c]) => !(grid[r][c] === "occupied" || grid[r][c] === "blocked")
+    );
+
+    if (!newSelected.some(([r, c]) => r === row && c === col)) {
+      newSelected.push([row, col]);
+    }
+
+    // Update grid state for this cell - mark selected
+    newG[row][col] = "selected";
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Time Headers - Synchronized with grid horizontal scroll */}
+          <div
+            className="shrink-0 overflow-x-auto overflow-y-hidden relative"
+            ref={(el) => {
+              if (el && gridScrollRef.current) {
+                el.scrollLeft = gridScrollRef.current.scrollLeft;
+              }
+            }}
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              background: "white",
+            }}
+          >
+            {/* Continuous border line from midnight to 12 PM */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: `calc(4rem * 48)`,
+                height: "1px",
+                backgroundColor: "#D1D5DB",
+                pointerEvents: "none",
+                zIndex: 10,
+              }}
+            />
+
+            <div
+              className="grid border border-gray-300 rounded-t-md bg-white"
+              style={{
+                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+              }}
+            >
+              {timeLabels.map((label, i) => (
+                <div
+                  key={`header-${i}`}
+                  className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+                  style={{ userSelect: "none" }}
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid Content - Scrollable */}
+          <div
+            className="flex-1 overflow-auto"
+            ref={gridScrollRef}
+            onScroll={(e) => {
+              const target = e.target as HTMLElement;
+
+              const leftSidebarEl =
+                target.parentElement?.parentElement?.querySelector(
+                  ".flex.flex-col.overflow-y-auto.overflow-x-hidden"
+                ) as HTMLElement;
+              if (leftSidebarEl) {
+                leftSidebarEl.scrollTop = target.scrollTop;
+              }
+
+              // Sync horizontal scroll with time headers
+              const timeHeaderEl = target.parentElement?.querySelector(
+                ".shrink-0"
+              ) as HTMLElement;
+              if (timeHeaderEl) {
+                timeHeaderEl.scrollLeft = target.scrollLeft;
+              }
+
+              // Sync vertical scroll with left sidebar
+              
+            }}
+          >
+            <div
+              className="grid border border-gray-200 rounded-b-md"
+              style={{
+                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+              }}
+            >

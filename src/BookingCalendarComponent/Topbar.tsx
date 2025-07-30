@@ -1,7 +1,49 @@
 import BackButton from "./BackButton";
 // import DateSelector from "./DateSelector";
 import LegendBoxes from "./LegendBoxes";
-import TabSwitch from "./TabSwitch";
+import { useLocation, useNavigate } from "react-router-dom";
+
+const tabs = [
+  { label: "All", path: "/bookingCalendar" },
+  { label: "Fitness", path: "/bookingCalendar" },
+  { label: "Wellness", path: "/bookingCalendar" },
+  { label: "Sports", path: "/bookingCalendar" },
+  { label: "Nutrition", path: "/nutrition" },
+];
+
+function TabSwitch() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get activeTab from URL params or default to "All"
+  const urlParams = new URLSearchParams(location.search);
+  const activeTab = urlParams.get('tab') || "All";
+  
+  const handleTabClick = (tab: typeof tabs[0]) => {
+    if (tab.label === "Nutrition") {
+      navigate(tab.path);
+    } else {
+      // For booking calendar tabs, add tab as URL parameter
+      navigate(`${tab.path}?tab=${tab.label}`);
+    }
+  };
+  
+  return (
+    <div className="flex bg-gray-200 rounded-full p-1 w-fit mx-auto mt-4">
+      {tabs.map((tab) => (
+        <button
+          key={tab.label}
+          onClick={() => handleTabClick(tab)}
+          className={`px-4 py-1 text-sm rounded-full ${
+            activeTab === tab.label ? "bg-gray-700 text-white" : "text-gray-600"
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export default function TopBar() {
   return (
@@ -29,4 +71,3 @@ export default function TopBar() {
     </div>
   );
 }
-

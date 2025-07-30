@@ -7,6 +7,7 @@ import Toast from "./Toast";
 import { LucideArrowRightSquare } from "lucide-react";
 import { API_BASE_URL_Latest } from "./AxiosApi";
 import LoadingScreen from "./LoadingScreen";
+import './CellGridLatest.css'
 
 export type CellState =
   | "available"
@@ -173,7 +174,7 @@ const Cell = ({
   );
 };
 
-const CellGrid = () => {
+const CellGridLatest = () => {
   const [courtId, setCourtId] = useState<Court[]>([]);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
@@ -203,6 +204,11 @@ const CellGrid = () => {
   // selected is now an array of selected cells
   const [selected, setSelected] = useState<Array<[number, number]>>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState(false);
+  const [arenaOpeningTime, setArenaOpeningTime] = useState<Date | null>(null);
+  const [arenaClosingTime, setArenaClosingTime] = useState<Date | null>(null);
+  const [visibleStartSlot, setVisibleStartSlot] = useState(12); // default to 12 (6 AM)
+  const [visibleSlotCount, setVisibleSlotCount] = useState(36); // default to 36 slots
+  const [visibleEndSlot, setVisibleEndSlot] = useState(48); // default to 48 (end of day)
 
   // New state for selected cell details
   const [selectedCellDetails, setSelectedCellDetails] = useState<{
@@ -311,7 +317,7 @@ const CellGrid = () => {
       .toString()
       .padStart(2, "0")} ${endAmPm}`;
 
-    return `${startTimeStr} - ${endTimeStr}`;
+    return `${startTimeStr} - ${endTimeStr} `;
   };
 
   // Generate time labels for 24 hours (12 AM to 12 AM)
@@ -334,9 +340,7 @@ const CellGrid = () => {
       return (h - 12).toString();
     };
 
-    return `${formatHourShort(hour)}:${minute}  ${formatHourShort(
-      nextHour
-    )}:${nextMinute}`;
+    return `${formatHourShort(hour)}:${minute}  `;
   });
 
   const [courtSlots, setCourtSlots] = useState<Record<string, any[]>>({});
@@ -369,6 +373,42 @@ const CellGrid = () => {
 
     // Round to integer if needed
     return Math.round(slots);
+  };
+
+  const fetchArenaData = async () => {
+    try {
+      const response = await fetch(
+        "https://play-os-backend.forgehub.in/arena/AREN_JZSW15"
+      );
+      const arenaData = await response.json();
+
+      // Convert from UTC to IST
+      const openingTimeIST = toIST(arenaData.openingTime);
+      const closingTimeIST = toIST(arenaData.closingTime);
+
+      setArenaOpeningTime(openingTimeIST);
+      setArenaClosingTime(closingTimeIST);
+
+      // Calculate opening slot (each slot is 30 minutes, starting from midnight)
+      const openingHour = openingTimeIST.getHours();
+      const openingMinute = openingTimeIST.getMinutes();
+      const openingSlot = openingHour * 2 + (openingMinute >= 30 ? 1 : 0);
+
+      // Calculate closing slot
+      const closingHour = closingTimeIST.getHours();
+      const closingMinute = closingTimeIST.getMinutes();
+      const closingSlot = closingHour * 2 + (closingMinute >= 30 ? 1 : 0);
+
+      // Calculate visible slots
+      const totalVisibleSlots = closingSlot - openingSlot;
+
+      setVisibleStartSlot(openingSlot);
+      setVisibleEndSlot(closingSlot);
+      setVisibleSlotCount(totalVisibleSlots);
+    } catch (error) {
+      console.error("Error fetching arena data:", error);
+      // Keep default values on error
+    }
   };
 
   const fetchArenaDetails = async () => {
@@ -417,8 +457,6 @@ const CellGrid = () => {
       console.error("Failed to fetch court IDs", error);
     }
   };
-
-
 
   useEffect(() => {
     fetchArenaDetails();
@@ -1001,7 +1039,7 @@ const CellGrid = () => {
     // );
     const cell = grid[row][col];
     let newSelected: [number, number][] = [];
-  let newGrid = grid.map((r) => [...r]);
+    let newGrid = grid.map((r) => [...r]);
 
     setSelectedSportId("");
     setGrid((prev) => {
@@ -1009,24 +1047,24 @@ const CellGrid = () => {
       const curr = newG[row][col];
 
       const hasOccupiedOrBlockedSelected = selected.some(
-    ([r, c]) => grid[r][c] === "occupied" || grid[r][c] === "blocked"
-  );
+        ([r, c]) => grid[r][c] === "occupied" || grid[r][c] === "blocked"
+      );
 
-  if (cell === "available" && hasOccupiedOrBlockedSelected) {
-    // Clear all selected occupied/blocked cells, select only this available cell
-    const newSelection = selected.filter(
-      ([r, c]) => !(grid[r][c] === "occupied" || grid[r][c] === "blocked")
-    );
+      if (cell === "available" && hasOccupiedOrBlockedSelected) {
+        // Clear all selected occupied/blocked cells, select only this available cell
+        const newSelection = selected.filter(
+          ([r, c]) => !(grid[r][c] === "occupied" || grid[r][c] === "blocked")
+        );
 
-    // Add this available cell if not already selected
-    if (!newSelection.some(([r, c]) => r === row && c === col)) {
-      newSelection.push([row, col]);
-    }
-    
-    newG[row][col] = "selected"
-    setSelected(newSelection);
-    return newG;
-  }
+        // Add this available cell if not already selected
+        if (!newSelection.some(([r, c]) => r === row && c === col)) {
+          newSelection.push([row, col]);
+        }
+
+        newG[row][col] = "selected";
+        setSelected(newSelection);
+        return newG;
+      }
 
       if (curr === "available" || curr === "selected") {
         // Toggle selection of this cell
@@ -1547,10 +1585,8 @@ const CellGrid = () => {
   };
 
   // Modify cancelBooking to cancel bookings for all selected cells with bookings
-const leftSidebarRef = useRef<HTMLDivElement>(null);
+  const leftSidebarRef = useRef<HTMLDivElement>(null);
   const gridScrollRef = useRef<HTMLDivElement>(null);
-
-   
 
   useEffect(() => {
     if (!leftSidebarRef.current) return;
@@ -1672,7 +1708,7 @@ const leftSidebarRef = useRef<HTMLDivElement>(null);
     }
   }, [currentGameName]);
 
-    useEffect(() => {
+  useEffect(() => {
     // Set a timer to hide loading screen after 10 seconds
     const timer = setTimeout(() => {
       setLoadingScreen(false);
@@ -1682,7 +1718,36 @@ const leftSidebarRef = useRef<HTMLDivElement>(null);
     return () => clearTimeout(timer);
   }, []);
 
- 
+  // Add this state to track sidebar width
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Add this useEffect to detect sidebar collapse state
+  useEffect(() => {
+    const checkSidebarCollapsed = () => {
+      const sidebar = document.querySelector(".sidebar");
+      if (sidebar) {
+        // Check if sidebar has the 'collapsed' class
+        setIsSidebarCollapsed(sidebar.classList.contains("collapsed"));
+      }
+    };
+
+    // Initial check
+    checkSidebarCollapsed();
+
+    // Use MutationObserver to watch for class changes on sidebar
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) {
+      const observer = new MutationObserver(checkSidebarCollapsed);
+      observer.observe(sidebar, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, []);
 
   if (loadingScreen) {
     return <LoadingScreen />;
@@ -1720,9 +1785,6 @@ const leftSidebarRef = useRef<HTMLDivElement>(null);
           )}
         </span>
         <div className="flex items-center gap-4">
-          {/* <span className="text-sm font-semibold">
-            {formatWeekLabel(getWeekStart(currentDate))}
-          </span> */}
           <input
             type="date"
             value={formatDateForInput(currentDate)}
@@ -1765,184 +1827,221 @@ const leftSidebarRef = useRef<HTMLDivElement>(null);
           <div
             ref={leftSidebarRef}
             className="flex flex-col overflow-y-auto overflow-x-hidden"
-            style={{overflowY: "hidden", scrollbarWidth: "none", msOverflowStyle: "none" }}
+            style={{
+              overflowY: "hidden",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              paddingBottom: "20px",
+            }}
           >
-            
-              {courtId.map((court) => (
-                <div
-                  key={court.courtId}
-                  className="h-10 flex items-center  justify-center border border-gray-200 text-xs text-center shrink-0"
-                >
-                  {resolvedNames[court.courtId] ?? court.name}
-                </div>
-              ))}
-            
+            {courtId.map((court) => (
+              <div
+                key={court.courtId}
+                className="h-10 flex items-center  justify-center border border-gray-200 text-xs text-center shrink-0"
+              >
+                {resolvedNames[court.courtId] ?? court.name}
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Grid Section - Scrollable */}
+        {/* Grid Section - Scrollable with Visual Restriction */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Time Headers - Synchronized with grid horizontal scroll */}
+          {/* Time Headers - Visually Clipped Container */}
           <div
-            className="shrink-0 overflow-x-auto overflow-y-hidden relative"
-            ref={(el) => {
-              if (el && gridScrollRef.current) {
-                el.scrollLeft = gridScrollRef.current.scrollLeft;
-              }
-            }}
+            className="shrink-0 relative"
             style={{
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-              background: "white",
+              overflow: "hidden",
+              width: "100%",
+
+              height: "40px", // h-10 equivalent
             }}
           >
-            {/* Continuous border line from midnight to 12 PM */}
+            {/* Actual Time Headers - Full Width but Shifted */}
             <div
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                width: `calc(4rem * 48)`,
-                height: "1px",
-                backgroundColor: "#D1D5DB",
-                pointerEvents: "none",
-                zIndex: 10,
+              className="overflow-x-auto overflow-y-hidden absolute"
+              ref={(el) => {
+                if (el && gridScrollRef.current) {
+                  el.scrollLeft = gridScrollRef.current.scrollLeft;
+                }
               }}
-            />
-
-            <div
-              className="grid border border-gray-300 rounded-t-md bg-white"
               style={{
-                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                background: "white",
+                // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
+                width: `calc(100% + ${4 * visibleStartSlot}rem)`,
+                // width: "100%",
+                height: "100%",
+                left: `calc(4rem * -${visibleStartSlot})`, // Shift left to hide first 12 columns (midnight to 6AM)
               }}
             >
-              {timeLabels.map((label, i) => (
-                <div
-                  key={`header-${i}`}
-                  className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
-                  style={{ userSelect: "none" }}
-                >
-                  {label}
-                </div>
-              ))}
+              {/* Continuous border line from midnight to 12 PM */}
+              <div
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: `calc(4rem * 48)`,
+                  height: "1px",
+                  backgroundColor: "#D1D5DB",
+                  pointerEvents: "none",
+                  zIndex: 10,
+                }}
+              />
+
+              <div
+                className="grid border border-gray-300 rounded-t-md bg-white"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {timeLabels.map((label, i) => (
+                  <div
+                    key={`header-${i}`}
+                    className="min-w-0 h-10 mr-7 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+                    style={{ userSelect: "none" }}
+                  >
+                    {label}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Grid Content - Scrollable */}
+          {/* Grid Content - Visually Clipped Container */}
           <div
-            className="flex-1 overflow-auto"
-            ref={gridScrollRef}
-            onScroll={(e) => {
-              const target = e.target as HTMLElement;
-
-              const leftSidebarEl =
-                target.parentElement?.parentElement?.querySelector(
-                  ".flex.flex-col.overflow-y-auto.overflow-x-hidden"
-                ) as HTMLElement;
-              if (leftSidebarEl) {
-                leftSidebarEl.scrollTop = target.scrollTop;
-              }
-
-              // Sync horizontal scroll with time headers
-              const timeHeaderEl = target.parentElement?.querySelector(
-                ".shrink-0"
-              ) as HTMLElement;
-              if (timeHeaderEl) {
-                timeHeaderEl.scrollLeft = target.scrollLeft;
-              }
-
-              // Sync vertical scroll with left sidebar
-              
+            className="flex-1 relative"
+            style={{
+              overflow: "hidden",
             }}
           >
+            {/* Actual Grid Content - Full Width but Shifted */}
             <div
-              className="grid border border-gray-200 rounded-b-md"
+              className="overflow-auto absolute custom-scrollbar"
+              ref={gridScrollRef}
+              onScroll={(e) => {
+                const target = e.target as HTMLElement;
+
+                const leftSidebarEl =
+                  target.parentElement?.parentElement?.parentElement?.querySelector(
+                    ".flex.flex-col.overflow-y-auto.overflow-x-hidden"
+                  ) as HTMLElement;
+                if (leftSidebarEl) {
+                  leftSidebarEl.scrollTop = target.scrollTop;
+                }
+
+                // Sync horizontal scroll with time headers
+                const timeHeaderEl =
+                  target.parentElement?.parentElement?.querySelector(
+                    ".overflow-x-auto.overflow-y-hidden.absolute"
+                  ) as HTMLElement;
+                if (timeHeaderEl) {
+                  timeHeaderEl.scrollLeft = target.scrollLeft;
+                }
+              }}
               style={{
-                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
+                width: `calc(100% + ${4 * visibleStartSlot}rem)`,
+                height: "100%",
+                left: `calc(4rem * -${visibleStartSlot})`,
+                 // Same shift as headers to maintain alignment
               }}
             >
-              {grid.map((row, rIdx) =>
-                row.map((cell, cIdx) => {
-                  let isDisabled = false;
+              <div
+                className="grid border border-gray-200 rounded-b-md"
+                style={{
+                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
+                }}
+              >
+                {grid.map((row, rIdx) =>
+                  row.map((cell, cIdx) => {
+                    let isDisabled = false;
 
-                  const hasAvailableSelected = selected.some(
-                    ([r, c]) =>
-                      grid[r][c] === "available" || grid[r][c] === "selected"
-                  );
-                  const hasOccupiedOrBlockedSelected = selected.some(
-                    ([r, c]) =>
-                      grid[r][c] === "occupied" || grid[r][c] === "blocked"
-                  );
+                    const hasAvailableSelected = selected.some(
+                      ([r, c]) =>
+                        grid[r][c] === "available" || grid[r][c] === "selected"
+                    );
+                    const hasOccupiedOrBlockedSelected = selected.some(
+                      ([r, c]) =>
+                        grid[r][c] === "occupied" || grid[r][c] === "blocked"
+                    );
 
-                  if (cell === "selected") {
-                    // Find all selected cells in this row
-                    const selectedInRow = selected
-                      .filter(([r, _]) => r === rIdx)
-                      .map(([_, col]) => col);
+                    if (cell === "selected") {
+                      // Find all selected cells in this row
+                      const selectedInRow = selected
+                        .filter(([r, _]) => r === rIdx)
+                        .map(([_, col]) => col);
 
-                    if (selectedInRow.length > 0) {
-                      const minSelectedCol = Math.min(...selectedInRow);
-                      const maxSelectedCol = Math.max(...selectedInRow);
+                      if (selectedInRow.length > 0) {
+                        const minSelectedCol = Math.min(...selectedInRow);
+                        const maxSelectedCol = Math.max(...selectedInRow);
 
-                      // Disable this cell if it is not at the edges of selection
-                      if (cIdx !== minSelectedCol && cIdx !== maxSelectedCol) {
+                        // Disable this cell if it is not at the edges of selection
+                        if (
+                          cIdx !== minSelectedCol &&
+                          cIdx !== maxSelectedCol
+                        ) {
+                          isDisabled = true;
+                        }
+                      }
+                    }
+
+                    if (cell === "available") {
+                      if (hasOccupiedOrBlockedSelected) {
+                        // available cells are enabled to allow switching from occupied/blocked
+                        // isDisabled = true;
+                      } else if (selected.length > 0) {
+                        const [selRow] = selected[0];
+                        const selCols = selected.map(([, col]) => col);
+                        const minCol = Math.min(...selCols);
+                        const maxCol = Math.max(...selCols);
+
+                        if (rIdx !== selRow) isDisabled = true;
+
+                        const isNextToSelection =
+                          cIdx === minCol - 1 || cIdx === maxCol + 1;
+                        if (
+                          !(selected.length === 1 && cIdx === minCol) &&
+                          !isNextToSelection
+                        )
+                          isDisabled = true;
+                      }
+                    } else if (cell === "occupied" || cell === "blocked") {
+                      // Disabled if any available cell is already selected
+                      if (hasAvailableSelected) {
                         isDisabled = true;
                       }
                     }
-                  }
-
-                  if (cell === "available") {
-                    if (hasOccupiedOrBlockedSelected) {
-                      // available cells are enabled to allow switching from occupied/blocked
-                      // isDisabled = true;
-                    } else if (selected.length > 0) {
-                      const [selRow] = selected[0];
-                      const selCols = selected.map(([, col]) => col);
-                      const minCol = Math.min(...selCols);
-                      const maxCol = Math.max(...selCols);
-
-                      if (rIdx !== selRow) isDisabled = true;
-
-                      const isNextToSelection =
-                        cIdx === minCol - 1 || cIdx === maxCol + 1;
-                      if (
-                        !(selected.length === 1 && cIdx === minCol) &&
-                        !isNextToSelection
-                      )
-                        isDisabled = true;
-                    }
-                  } else if (cell === "occupied" || cell === "blocked") {
-                    // Disabled if any available cell is already selected
-                    if (hasAvailableSelected) {
-                      isDisabled = true;
-                    }
-                  }
-                  const hoverClass = isDisabled
-                    ? "hover:bg-red-500"
-                    : "hover:bg-green-300";
-                  return (
-                    <Cell
-                      key={`${rIdx}-${cIdx}`}
-                      row={rIdx}
-                      col={cIdx}
-                      state={cell}
-                      onClick={() => {
-                        if (!isDisabled) updateCell(rIdx, cIdx);
-                      }}
-                      onDropAction={handleDrop}
-                      isSelected={selected.some(
-                        ([r, c]) => r === rIdx && c === cIdx
-                      )}
-                      style={{
-                        cursor: isDisabled ? "not-allowed" : "pointer",
-                        pointerEvents: isDisabled ? "none" : "auto",
-                        // Tailwind's red-500 hex
-                      }}
-                      classNames={hoverClass}
-                    />
-                  );
-                })
-              )}
+                    const hoverClass = isDisabled
+                      ? "hover:bg-red-500"
+                      : "hover:bg-green-300";
+                    return (
+                      <Cell
+                        key={`${rIdx}-${cIdx}`}
+                        row={rIdx}
+                        col={cIdx}
+                        state={cell}
+                        onClick={() => {
+                          if (!isDisabled) updateCell(rIdx, cIdx);
+                        }}
+                        onDropAction={handleDrop}
+                        isSelected={selected.some(
+                          ([r, c]) => r === rIdx && c === cIdx
+                        )}
+                        style={{
+                          cursor: isDisabled ? "not-allowed" : "pointer",
+                          pointerEvents: isDisabled ? "none" : "auto",
+                          // Tailwind's red-500 hex
+                        }}
+                        classNames={hoverClass}
+                      />
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1958,7 +2057,7 @@ const leftSidebarRef = useRef<HTMLDivElement>(null);
               <p>
                 <strong>Court Name:</strong>{" "}
                 {firstSelected
-                  ? courtId[firstSelected[0]]?.name ?? "Unknown"
+                  ? courtId[firstSelected[0]]?.courtId ?? "Unknown"
                   : "N/A"}
               </p>
               <p>
@@ -2208,4 +2307,4 @@ const leftSidebarRef = useRef<HTMLDivElement>(null);
   );
 };
 
-export default CellGrid;
+export default CellGridLatest;

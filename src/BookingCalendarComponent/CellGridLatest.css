@@ -1,0 +1,27 @@
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;  /* Vertical scrollbar width */
+  height: 8px; /* Horizontal scrollbar height */
+}
+
+/* Scrollbar track */
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f7fafc; /* Light gray track */
+  border-radius: 4px;
+}
+
+/* Scrollbar thumb */
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e0; /* Medium gray thumb */
+  border-radius: 4px;
+}
+
+/* Thumb when hovered */
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #a0aec0; /* Darker gray on hover */
+}
+
+/* To support Firefox, add this optional line */
+.custom-scrollbar {
+  scrollbar-color: #cbd5e0 #f7fafc;
+  scrollbar-width: thin;
+}

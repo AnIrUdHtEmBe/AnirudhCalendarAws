@@ -2,6 +2,8 @@ import axios from "axios";
 import { useEffect, useRef, useState } from "react";
 import TopBar from "../BookingCalendarComponent/Topbar";
 import Toast from "../BookingCalendarComponent/Toast";
+import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
+import { useLocation } from "react-router-dom";
 
 type Court = { courtId: string; name: string };
 type Slot = {
@@ -83,20 +85,32 @@ const timeLabels = Array.from({ length: cols }, (_, i) => {
 });
 
 export default function PriceDaily() {
-  const [changedSlots, setChangedSlots] = useState<Record<string, Set<string>>>({});
+  const [changedSlots, setChangedSlots] = useState<Record<string, Set<string>>>(
+    {}
+  );
 
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  
-    const showToast = (msg: string) => {
-      setToastMsg(msg);
-    };
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+  };
 
   const [courtId, setCourtId] = useState<Court[]>([]);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
   );
-  const [selectedDate, setSelectedDate] = useState(new Date());
+    const location = useLocation();
+
+  const getDateFromUrl = (): Date => {
+    const params = new URLSearchParams(location.search);
+    const dateStr = params.get("date");
+    if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+      return new Date(dateStr);
+    }
+    return new Date();
+  };
+
+  const [selectedDate, setSelectedDate] = useState(getDateFromUrl());
   const [selectedCell, setSelectedCell] = useState<{
     day: string;
     court: string;
@@ -110,6 +124,18 @@ export default function PriceDaily() {
   );
 
   const timeHeaderRef = useRef<HTMLDivElement>(null);
+
+
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const dateStr = params.get("date");
+    if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+      setSelectedDate(new Date(dateStr));
+    } else {
+      setSelectedDate(new Date());
+    }
+  }, [location.search]);
 
   const toggleCellSelection = (courtId: string, slotId: string) => {
     const day = formatDateForInput(selectedDate);
@@ -147,7 +173,7 @@ export default function PriceDaily() {
     const fetchCourtIDs = async () => {
       try {
         const response = await axios.get(
-          "https://play-os-backendv2.forgehub.in/arena/AREN_JZSW15/courts"
+          `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
         );
         if (Array.isArray(response.data)) {
           setCourtId(response.data);
@@ -159,7 +185,7 @@ export default function PriceDaily() {
                 const userId = court.name.replace("court_", "");
                 try {
                   const res = await axios.get(
-                    `https://play-os-backendv2.forgehub.in/human/${userId}`
+                    `${API_BASE_URL_Latest}/human/${userId}`
                   );
                   nameMap[court.courtId] = res.data.name;
                 } catch {
@@ -193,7 +219,7 @@ export default function PriceDaily() {
         courtId.map(async (court) => {
           try {
             const res = await axios.get(
-              `https://play-os-backendv2.forgehub.in/court/${court.courtId}/slots?date=${dateStr}`
+              `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
             );
             if (Array.isArray(res.data)) {
               slotsMap[court.courtId] = res.data;
@@ -222,14 +248,13 @@ export default function PriceDaily() {
       const newPrices: Record<string, Record<string, string>> = {};
 
       const allSlots = Object.values(courtSlots).flat();
-      
-      
+
       await Promise.all(
         allSlots.map(async (slot) => {
           console.log("SlotId's", slot.slotId);
           try {
             const res = await axios.get(
-              `https://play-os-backendv2.forgehub.in/timeslot/${slot.slotId}`
+              `${API_BASE_URL_Latest}/timeslot/${slot.slotId}`
             );
             if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
             newPrices[slot.courtId][slot.slotId] = String(res.data.price ?? "");
@@ -251,69 +276,69 @@ export default function PriceDaily() {
   }, [courtSlots]);
 
   // Handle input change for price
-const handleInputChange = (courtId: string, slotId: string, value: string) => {
-  // Validate input...
-  if (!/^\d*\.?\d*$/.test(value)) return;
+  const handleInputChange = (
+    courtId: string,
+    slotId: string,
+    value: string
+  ) => {
+    // Validate input...
+    if (!/^\d*\.?\d*$/.test(value)) return;
 
-  setPrices((prev) => {
-    const updatedPrices = {
-      ...prev,
-      [courtId]: {
-        ...prev[courtId],
-        [slotId]: value,
-      },
-    };
-    return updatedPrices;
-  });
+    setPrices((prev) => {
+      const updatedPrices = {
+        ...prev,
+        [courtId]: {
+          ...prev[courtId],
+          [slotId]: value,
+        },
+      };
+      return updatedPrices;
+    });
 
-  setChangedSlots((prev) => {
-    const newChanged = { ...prev };
+    setChangedSlots((prev) => {
+      const newChanged = { ...prev };
 
-    if (!newChanged[courtId]) {
-      newChanged[courtId] = new Set();
-    }
-    newChanged[courtId].add(slotId);
+      if (!newChanged[courtId]) {
+        newChanged[courtId] = new Set();
+      }
+      newChanged[courtId].add(slotId);
 
-    return newChanged;
-  });
-};
-
+      return newChanged;
+    });
+  };
 
   // Save updated prices for all changed slots
-const handleSave = async () => {
-  try {
-    const allUpdates = [];
+  const handleSave = async () => {
+    try {
+      const allUpdates = [];
 
-    for (const courtIdKey in changedSlots) {
-      for (const slotIdKey of changedSlots[courtIdKey]) {
-        const priceStr = prices[courtIdKey]?.[slotIdKey];
-        if (!priceStr) continue;
+      for (const courtIdKey in changedSlots) {
+        for (const slotIdKey of changedSlots[courtIdKey]) {
+          const priceStr = prices[courtIdKey]?.[slotIdKey];
+          if (!priceStr) continue;
 
-        const priceNum = parseInt(priceStr);
-        if (isNaN(priceNum)) continue;
+          const priceNum = parseInt(priceStr);
+          if (isNaN(priceNum)) continue;
 
-        allUpdates.push(
-          axios.patch(
-            `https://play-os-backendv2.forgehub.in/timeslot/${slotIdKey}`,
-            {
+          allUpdates.push(
+            axios.patch(`${API_BASE_URL_Latest}/timeslot/${slotIdKey}`, {
               price: priceNum,
               status: "available",
               bookingInfo: "active",
-            }
-          )
-        );
+            })
+          );
+        }
       }
+
+      await Promise.all(allUpdates);
+      alert("Prices saved successfully!");
+
+      // Clear changed slots after successful save
+      setChangedSlots({});
+    } catch (e) {
+      console.warn("Failed to save prices", e);
     }
-
-    await Promise.all(allUpdates);
-    alert("Prices saved successfully!");
-
-    // Clear changed slots after successful save
-    setChangedSlots({});
-  } catch (e) {
-    console.warn("Failed to save prices", e);
-  }
-};
+  };
 
   // Synchronize sidebar vertical scroll with grid vertical scroll
   const onGridScroll = () => {
@@ -400,7 +425,7 @@ const handleSave = async () => {
         <div
           ref={sidebarScrollRef}
           className="flex flex-col w-24 shrink-0 bg-white overflow-y-auto overflow-x-hidden rounded-md border border-gray-200"
-          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+          style={{ overflowY: "hidden" , scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           <div className="h-10 shrink-0 bg-gray-100 border-b border-gray-200 rounded-tl-md" />
           {courtId.map((court) => (
