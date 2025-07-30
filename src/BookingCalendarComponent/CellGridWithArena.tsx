@@ -903,7 +903,7 @@ const filteredCourtId = React.useMemo(() => {
     setLoadingScreen(true);
     setTimeout(() => {
       setLoadingScreen(false);
-    }, 4000);
+    }, 2000);
     const dateStr = date.toISOString().split("T")[0];
 
     try {
@@ -1835,7 +1835,7 @@ const filteredCourtId = React.useMemo(() => {
     // Set a timer to hide loading screen after 10 seconds
     const timer = setTimeout(() => {
       setLoadingScreen(false);
-    }, 5000);
+    }, 2000);
 
     // Cleanup timer if component unmounts early
     return () => clearTimeout(timer);
@@ -1909,7 +1909,7 @@ const filteredCourtId = React.useMemo(() => {
             setLoadingScreen(true);
             setTimeout(() => {
               setLoadingScreen(false);
-            }, 4000);
+            }, 2000);
           }}
           className="px-3 py-1 bg-gray-300 rounded"
         >
@@ -1938,7 +1938,7 @@ const filteredCourtId = React.useMemo(() => {
                 setLoadingScreen(true);
                 setTimeout(() => {
                   setLoadingScreen(false);
-                }, 4000);
+                }, 2000);
               }
             }}
             className="px-2 py-1 border border-gray-300 rounded text-xs"
@@ -1953,7 +1953,7 @@ const filteredCourtId = React.useMemo(() => {
             setLoadingScreen(true);
             setTimeout(() => {
               setLoadingScreen(false);
-            }, 4000);
+            }, 2000);
           }}
           className="px-3 py-1 bg-gray-300 rounded"
         >
