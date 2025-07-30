@@ -553,3 +553,127 @@ return (
 };
 
 export default CellGrid;
+
+
+
+
+
+
+  if (cell === "available" && hasOccupiedOrBlockedSelected) {
+    // Clear occupied/blocked selections and select only this cell
+    newSelected = selected.filter(
+      ([r, c]) => !(grid[r][c] === "occupied" || grid[r][c] === "blocked")
+    );
+
+    if (!newSelected.some(([r, c]) => r === row && c === col)) {
+      newSelected.push([row, col]);
+    }
+
+    // Update grid state for this cell - mark selected
+    newG[row][col] = "selected";
+
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <div className="flex flex-col flex-1 overflow-hidden">
+          {/* Time Headers - Synchronized with grid horizontal scroll */}
+          <div
+            className="shrink-0 overflow-x-auto overflow-y-hidden relative"
+            ref={(el) => {
+              if (el && gridScrollRef.current) {
+                el.scrollLeft = gridScrollRef.current.scrollLeft;
+              }
+            }}
+            style={{
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
+              background: "white",
+            }}
+          >
+            {/* Continuous border line from midnight to 12 PM */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: `calc(4rem * 48)`,
+                height: "1px",
+                backgroundColor: "#D1D5DB",
+                pointerEvents: "none",
+                zIndex: 10,
+              }}
+            />
+
+            <div
+              className="grid border border-gray-300 rounded-t-md bg-white"
+              style={{
+                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+              }}
+            >
+              {timeLabels.map((label, i) => (
+                <div
+                  key={`header-${i}`}
+                  className="min-w-0 h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
+                  style={{ userSelect: "none" }}
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid Content - Scrollable */}
+          <div
+            className="flex-1 overflow-auto"
+            ref={gridScrollRef}
+            onScroll={(e) => {
+              const target = e.target as HTMLElement;
+
+              const leftSidebarEl =
+                target.parentElement?.parentElement?.querySelector(
+                  ".flex.flex-col.overflow-y-auto.overflow-x-hidden"
+                ) as HTMLElement;
+              if (leftSidebarEl) {
+                leftSidebarEl.scrollTop = target.scrollTop;
+              }
+
+              // Sync horizontal scroll with time headers
+              const timeHeaderEl = target.parentElement?.querySelector(
+                ".shrink-0"
+              ) as HTMLElement;
+              if (timeHeaderEl) {
+                timeHeaderEl.scrollLeft = target.scrollLeft;
+              }
+
+              // Sync vertical scroll with left sidebar
+              
+            }}
+          >
+            <div
+              className="grid border border-gray-200 rounded-b-md"
+              style={{
+                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+              }}
+            >

@@ -1,17 +1,25 @@
-import React from 'react';
+import React from "react";
 
 const LoadingScreen = () => {
   return (
-    <div style={styles.loadingWrapper}>
-      <div style={styles.overlay} />
+    // <div style={styles.loadingWrapper}>
+    //   <div style={styles.overlay} />
+
+    //   <div style={styles.contentContainer}>
+    //     {/* Simple rotating spinner */}
+    //     <div style={styles.spinner} />
+
+    //     {/* Loading text */}
+    //     <h1 style={styles.loadingText}>Loading...</h1>
+    //   </div>
+    // </div>
+
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-blue-500 text-xs"></div>
+      <br></br>
+      <div className="ml-4 flex flex-row">Loading...
+      Please Wait!</div>
       
-      <div style={styles.contentContainer}>
-        {/* Simple rotating spinner */}
-        <div style={styles.spinner} />
-        
-        {/* Loading text */}
-        <h1 style={styles.loadingText}>Loading...</h1>
-      </div>
     </div>
   );
 };
@@ -28,7 +36,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: "center",
     zIndex: 9999,
   },
-  
+
   overlay: {
     position: "absolute",
     top: 0,

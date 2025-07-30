@@ -41,7 +41,7 @@ const PrivateRoute: React.FC = () => {
   
   if (!isAuthenticated) {
     // User not logged in, redirect to login page
-    return <Navigate to="/" replace />;
+    // return <Navigate to="/" replace />;
   }
 
   // User logged in: render child routes
@@ -51,6 +51,13 @@ import ResponseViewPage from "./Pages/ResponseViewPage";
 import NutritionSessionsPage from "./Pages/NutritionSessionPage";
 import AllNutritionSessionsPage from "./Pages/AllNutritionSessionPage";
 import ViewAllAssessment from "./Pages/ViewAllAssessment";
+import CommunicationPage from "./Pages/CommunicationCenterPage";
+import CellGridLatest from "./BookingCalendarComponent/CellGridLatest";
+import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
+import NutritionTabPage from "./Pages/NutritionTabPage";
+import UserNutitionPage from "./Pages/UserBasedNutritionPage";
+// import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
+// import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
 
 // changes
 function App() {
@@ -114,7 +121,14 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route
                 path="/bookingCalendar"
-                element={<BookingCalendarPage />}
+                element={<CellGridArena />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/nutrition"
+                element={<NutritionTabPage />}
               />
             </Route>
 
@@ -222,6 +236,13 @@ function App() {
 
             <Route element={<PrivateRoute />}>
               <Route
+                path="/userNutrition/:userId"
+                element={<UserNutitionPage />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
                 path="/plans"
                 element={
                   selectComponent === "AllPlans" ? <AllPlans /> : <PlansPage />
@@ -231,6 +252,10 @@ function App() {
 
             <Route element={<PrivateRoute />}>
               <Route path="/profile" element={<UserProfile></UserProfile>} />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route path="/notifications" element={<CommunicationPage />} />
             </Route>
 
             <Route element={<PrivateRoute />}>

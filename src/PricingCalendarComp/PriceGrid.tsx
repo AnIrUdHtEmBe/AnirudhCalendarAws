@@ -281,7 +281,7 @@ export default function WeeklyPricingGrid() {
                   className="min-w-0 h-10 flex flex-col items-center justify-center text-xs font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 rounded-md"
                   style={{ userSelect: "none" }}
                   onClick={() => {
-                    navigate(`/pricingCalendarDaily`);
+                    navigate(`/pricingCalendarDaily?${formatDateForInput(day)}`);
                   }}
                 >
                   <div>{dayNames[index]}</div>
