@@ -204,6 +204,12 @@ const [cellData, setCellData] = useState<{
   bookingId: string;
 } | null>(null);
 
+const [bookingSpans, setBookingSpans] = useState<Record<string, Array<{
+  startCol: number;
+  endCol: number;
+  bookingId: string;
+}>>>({});
+
 
 
   // Add this filtering function
@@ -368,6 +374,8 @@ const getCellData = async () => {
     selected.length > 0 ? selected : [[row, col]]
   );
 
+
+  await fetchCellDetails(row, col);
   // Use gameName from selectedCellDetails, fallback if needed
   const gameName = selectedCellDetails.gameName || "";
 
@@ -724,6 +732,65 @@ const getCellData = async () => {
     return filteredCourtId[index];
   };
 
+  // Add this function before updateGridWithBookings
+const calculateBookingSpans = async (courtsData: Court[], date: Date) => {
+  const dateStr = date.toISOString().split("T")[0];
+  const spans: Record<string, Array<{
+    startCol: number;
+    endCol: number;
+    bookingId: string;
+  }>> = {};
+
+  await Promise.all(
+    courtsData.map(async (court, rowIndex) => {
+      try {
+        const res = await axios.get(
+          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+        );
+        const bookings = res?.data?.bookings || [];
+        
+        const activeBookings = bookings.filter((b: any) => 
+          b.status === "active" || b.status === "rescheduled"
+        );
+
+        const courtSpans: Array<{
+          startCol: number;
+          endCol: number;
+          bookingId: string;
+        }> = [];
+
+        activeBookings.forEach((booking: any) => {
+          const startTime = toIST(booking.startTime);
+          const endTime = toIST(booking.endTime);
+          
+          // Calculate start column
+          const startHour = startTime.getHours();
+          const startMinute = startTime.getMinutes();
+          const startCol = startHour * 2 + (startMinute >= 30 ? 1 : 0);
+          
+          // Calculate end column
+          const endHour = endTime.getHours();
+          const endMinute = endTime.getMinutes();
+          const endCol = endHour * 2 + (endMinute > 30 ? 1 : 0) ; // -1 because endCol is inclusive
+          
+          courtSpans.push({
+            startCol,
+            endCol,
+            bookingId: booking.bookingId
+          });
+        });
+
+        spans[`${rowIndex}`] = courtSpans;
+      } catch (error) {
+        console.error(`Failed to calculate spans for court ${court.courtId}`, error);
+        spans[`${rowIndex}`] = [];
+      }
+    })
+  );
+
+  setBookingSpans(spans);
+};
+
   // Updated grid generation function
   const updateGridWithBookings = (
     courtsData: Court[],
@@ -935,6 +1002,7 @@ const getCellData = async () => {
       const [bookingData, newBlocked] = await Promise.all([
         fetchBukings(dateStr),
         fetchBlockedSlots(dateStr),
+        calculateBookingSpans(filteredCourtId, date),
       ]);
 
       // Destructure the returned object
@@ -1222,7 +1290,7 @@ const fetchCellDetails = async (row: number, col: number) => {
     // Check if target cell is available for dropping
     const targetCellState = grid[tr][tc];
     if (targetCellState === "occupied" || targetCellState === "blocked") {
-      showToast("Cannot drop on occupied/blocked cell");
+      console.log("Cannot drop on occupied/blocked cell");
       return;
     }
 
@@ -1231,7 +1299,6 @@ const fetchCellDetails = async (row: number, col: number) => {
       try {
         // --- FIX: fetch gameId for the source cell first ---
         const gameId = await fetchGameIdForCell(fr, fc);
-        const bokingId = await getBookingIdForCell(fr, fc);
 
         // --- fetch booking duration after you know gameId ---
         const fetchBookingDuration = async (gameId: any): Promise<number> => {
@@ -1818,9 +1885,9 @@ const fetchGameIdForCell = async (row: number, col: number) => {
       );
     });
 
-    // if (!matchingGame) {
-    //   throw new Error("No matching fresh game found for cell");
-    // }
+    if (!matchingGame) {
+      throw new Error("No matching fresh game found for cell");
+    }
 
     console.log("Found fresh matching game with ID:", matchingGame.gameId);
     localStorage.setItem("gameId", matchingGame.gameId);
@@ -2169,91 +2236,114 @@ const getBookingIdForCell = async (row: number, col: number): Promise<string | n
                   minWidth: `calc(4rem * 48)`, // Ensure full grid width
                 }}
               >
-                {grid.map((row, rIdx) =>
-                  row.map((cell, cIdx) => {
-                    let isDisabled = false;
+                {grid.map((row, rIdx) => {
+  const rowSpans = bookingSpans[`${rIdx}`] || [];
+  const renderedCells: JSX.Element[] = [];
+  let skipCols = new Set<number>();
 
-                    const hasAvailableSelected = selected.some(
-                      ([r, c]) =>
-                        grid[r][c] === "available" || grid[r][c] === "selected"
-                    );
-                    const hasOccupiedOrBlockedSelected = selected.some(
-                      ([r, c]) =>
-                        grid[r][c] === "occupied" || grid[r][c] === "blocked"
-                    );
+  row.forEach((cell, cIdx) => {
+    if (skipCols.has(cIdx)) return;
 
-                    if (cell === "selected") {
-                      // Find all selected cells in this row
-                      const selectedInRow = selected
-                        .filter(([r, _]) => r === rIdx)
-                        .map(([_, col]) => col);
+    // Check if this cell is part of a booking span
+    const span = rowSpans.find(s => cIdx >= s.startCol && cIdx <= s.endCol);
+    let spanSize = 1;
+    let isSpanStart = false;
 
-                      if (selectedInRow.length > 0) {
-                        const minSelectedCol = Math.min(...selectedInRow);
-                        const maxSelectedCol = Math.max(...selectedInRow);
+    if (span && cIdx === span.startCol && (cell === "occupied" || cell === "blocked")) {
+      spanSize = span.endCol - span.startCol + 1;
+      isSpanStart = true;
+      // Mark columns to skip
+      for (let i = span.startCol + 1; i <= span.endCol; i++) {
+        skipCols.add(i);
+      }
+    }
 
-                        // Disable this cell if it is not at the edges of selection
-                        if (
-                          cIdx !== minSelectedCol &&
-                          cIdx !== maxSelectedCol
-                        ) {
-                          isDisabled = true;
-                        }
-                      }
-                    }
+    let isDisabled = false;
 
-                    if (cell === "available") {
-                      if (hasOccupiedOrBlockedSelected) {
-                        // available cells are enabled to allow switching from occupied/blocked
-                        // isDisabled = true;
-                      } else if (selected.length > 0) {
-                        const [selRow] = selected[0];
-                        const selCols = selected.map(([, col]) => col);
-                        const minCol = Math.min(...selCols);
-                        const maxCol = Math.max(...selCols);
+    const hasAvailableSelected = selected.some(
+      ([r, c]) =>
+        grid[r][c] === "available" || grid[r][c] === "selected"
+    );
+    const hasOccupiedOrBlockedSelected = selected.some(
+      ([r, c]) =>
+        grid[r][c] === "occupied" || grid[r][c] === "blocked"
+    );
 
-                        if (rIdx !== selRow) isDisabled = true;
+    if (cell === "selected") {
+      // Find all selected cells in this row
+      const selectedInRow = selected
+        .filter(([r, _]) => r === rIdx)
+        .map(([_, col]) => col);
 
-                        const isNextToSelection =
-                          cIdx === minCol - 1 || cIdx === maxCol + 1;
-                        if (
-                          !(selected.length === 1 && cIdx === minCol) &&
-                          !isNextToSelection
-                        )
-                          isDisabled = true;
-                      }
-                    } else if (cell === "occupied" || cell === "blocked") {
-                      // Disabled if any available cell is already selected
-                      if (hasAvailableSelected) {
-                        isDisabled = true;
-                      }
-                    }
-                    const hoverClass = isDisabled
-                      ? "hover:bg-red-500"
-                      : "hover:bg-green-300";
-                    return (
-                      <Cell
-                        key={`${rIdx}-${cIdx}`}
-                        row={rIdx}
-                        col={cIdx}
-                        state={cell}
-                        onClick={() => {
-                          if (!isDisabled) updateCell(rIdx, cIdx);
-                        }}
-                        onDropAction={handleDrop}
-                        isSelected={selected.some(
-                          ([r, c]) => r === rIdx && c === cIdx
-                        )}
-                        style={{
-                          cursor: isDisabled ? "not-allowed" : "pointer",
-                          pointerEvents: isDisabled ? "none" : "auto",
-                          // Tailwind's red-500 hex
-                        }}
-                        classNames={hoverClass}
-                      />
-                    );
-                  })
-                )}
+      if (selectedInRow.length > 0) {
+        const minSelectedCol = Math.min(...selectedInRow);
+        const maxSelectedCol = Math.max(...selectedInRow);
+
+        // Disable this cell if it is not at the edges of selection
+        if (
+          cIdx !== minSelectedCol &&
+          cIdx !== maxSelectedCol
+        ) {
+          isDisabled = true;
+        }
+      }
+    }
+
+    if (cell === "available") {
+      if (hasOccupiedOrBlockedSelected) {
+        // available cells are enabled to allow switching from occupied/blocked
+        // isDisabled = true;
+      } else if (selected.length > 0) {
+        const [selRow] = selected[0];
+        const selCols = selected.map(([, col]) => col);
+        const minCol = Math.min(...selCols);
+        const maxCol = Math.max(...selCols);
+
+        if (rIdx !== selRow) isDisabled = true;
+
+        const isNextToSelection =
+          cIdx === minCol - 1 || cIdx === maxCol + 1;
+        if (
+          !(selected.length === 1 && cIdx === minCol) &&
+          !isNextToSelection
+        )
+          isDisabled = true;
+      }
+    } else if (cell === "occupied" || cell === "blocked") {
+      // Disabled if any available cell is already selected
+      if (hasAvailableSelected) {
+        isDisabled = true;
+      }
+    }
+    const hoverClass = isDisabled
+      ? "hover:bg-red-500"
+      : "hover:bg-green-300";
+    
+    renderedCells.push(
+      <Cell
+        key={`${rIdx}-${cIdx}`}
+        row={rIdx}
+        col={cIdx}
+        state={cell}
+        onClick={() => {
+          if (!isDisabled) updateCell(rIdx, cIdx);
+        }}
+        onDropAction={handleDrop}
+        isSelected={selected.some(
+          ([r, c]) => r === rIdx && c === cIdx
+        )}
+        style={{
+          cursor: isDisabled ? "not-allowed" : "pointer",
+          pointerEvents: isDisabled ? "none" : "auto",
+          gridColumn: spanSize > 1 ? `span ${spanSize}` : undefined,
+        }}
+        classNames={hoverClass}
+      />
+    );
+  });
+
+  return renderedCells;
+})}
               </div>
             </div>
           </div>
