@@ -69,7 +69,7 @@ const Login: React.FC = () => {
   }));
   };
   const isValidGmail = (email: string) => {
-    const gmailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    const gmailRegex = /^[a-zA-Z0-9._%+-]+@(gmail|playarena)\.(com|in)$/;
     return gmailRegex.test(email);
   };
   // function isEmailUsernameAlphanumeric(email: any) {
