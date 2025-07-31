@@ -35,6 +35,7 @@ interface CellProps {
 type Court = { courtId: string; name: string };
 
 type Booking = {
+  type: string;
   bookedBy: string;
   sportId: string;
   startTime: string;
@@ -952,6 +953,16 @@ const getCellData = async () => {
         cancelledBookingsMap,
         date
       );
+
+      // Clear any cached cell details to force refresh
+    setSelectedCellDetails({
+      courtDetails: null,
+      bookings: [],
+      gameName: "",
+      availableSports: [],
+      currentBooking: null,
+    });
+
     } catch (error) {
       console.error("Failed to fetch bookings and blocked slots:", error);
     } finally {
@@ -977,7 +988,7 @@ const getCellData = async () => {
   // New function to fetch cell details when a cell is selected
 // New function to fetch cell details when a cell is selected
 const fetchCellDetails = async (row: number, col: number) => {
-  if (courtId.length === 0) return;
+  if (filteredCourtId.length === 0) return;
 
   setIsLoadingCellDetails(true);
   const court = getFilteredCourtByIndex(row);
@@ -1027,7 +1038,7 @@ const fetchCellDetails = async (row: number, col: number) => {
       );
       selectedBookingArray = bookingsRes?.data?.bookings || [];
 
-      // Find current booking for this cell (if any) - ONLY ACTIVE BOOKINGS
+      // Find current booking for this cell (if any) - ACTIVE AND RESCHEDULED BOOKINGS
       const hour = Math.floor(col / 2);
       const minute = col % 2 === 0 ? 0 : 30;
       const slotTime = new Date(currentDate);
@@ -1039,9 +1050,9 @@ const fetchCellDetails = async (row: number, col: number) => {
         selectedBookingArray.find((booking: Booking) => {
           const startTime = toIST(booking.startTime).getTime();
           const endTime = toIST(booking.endTime).getTime();
-          // ONLY consider active or rescheduled bookings, NOT cancelled ones
-          const isActiveBooking = booking.status === "active" || booking.status === "rescheduled";
-          return slotStartMillis < endTime && slotEndMillis > startTime && isActiveBooking;
+          // Include both active and rescheduled bookings
+          const isValidBooking = booking.status === "active" || booking.status === "rescheduled";
+          return slotStartMillis < endTime && slotEndMillis > startTime && isValidBooking;
         }) || null;
 
       // IMPORTANT: Always reset to all allowed sports first
@@ -1049,63 +1060,66 @@ const fetchCellDetails = async (row: number, col: number) => {
         .map((sport) => sport.name)
         .join(", ");
 
-      // If current ACTIVE booking exists, override gameName with booked sport's name
+      // If current booking exists (active or rescheduled), override gameName with booked sport's name
       if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
         try {
-          // 1. Fetch sport name for the active booking
+          // 1. Fetch sport name for the booking
           const sportRes = await axios.get(
             `${API_BASE_URL_Latest}/sports/id/${selectedCurrentBooking.sportId}`
           );
           selectedGameName = sportRes.data.name;
 
-          // 2. Compute cell timeslot start & end for the selected cell
-          const hour = Math.floor(col / 2);
-          const minute = col % 2 === 0 ? 0 : 30;
-          const slotStart = new Date(currentDate);
-          slotStart.setHours(hour, minute, 0, 0);
-          const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+          // Only fetch game details if type is "game"
+          if (selectedCurrentBooking.type === "game") {
+            // 2. Compute cell timeslot start & end for the selected cell
+            const hour = Math.floor(col / 2);
+            const minute = col % 2 === 0 ? 0 : 30;
+            const slotStart = new Date(currentDate);
+            slotStart.setHours(hour, minute, 0, 0);
+            const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
 
-          // 3. Fetch the game list for this sport, court, and date
-          const gamesRes = await axios.get(
-            `${API_BASE_URL_Latest}/game/games/by-sport`,
-            {
-              params: {
-                sportId: selectedCurrentBooking.sportId,
-                date: dateStr,
-                courtId: court.courtId,
-              },
+            // 3. Fetch the game list for this sport, court, and date
+            const gamesRes = await axios.get(
+              `${API_BASE_URL_Latest}/game/games/by-sport`,
+              {
+                params: {
+                  sportId: selectedCurrentBooking.sportId,
+                  date: dateStr,
+                  courtId: court.courtId,
+                },
+              }
+            );
+            const games = gamesRes.data || [];
+
+            // 4. Find the correct game for this timeslot/cell
+            const matchingGame = games.find((game: any) => {
+              const gameStart = new Date(game.startTime).getTime();
+              const gameEnd = new Date(game.endTime).getTime();
+              return (
+                gameStart === slotStart.getTime() &&
+                gameEnd === slotEnd.getTime()
+              ) || (
+                slotStart.getTime() >= gameStart && slotEnd.getTime() <= gameEnd
+              );
+            });
+
+            if (matchingGame) {
+              console.log(
+                "latest game id and chatId",
+                matchingGame.gameId,
+                matchingGame.chatId
+              );
             }
-          );
-          const games = gamesRes.data || [];
-
-          // 4. Find the correct game for this timeslot/cell
-          const matchingGame = games.find((game: any) => {
-            const gameStart = new Date(game.startTime).getTime();
-            const gameEnd = new Date(game.endTime).getTime();
-            return (
-              gameStart === slotStart.getTime() &&
-              gameEnd === slotEnd.getTime()
-            ) || (
-              slotStart.getTime() >= gameStart && slotEnd.getTime() <= gameEnd
-            );
-          });
-
-          if (matchingGame) {
-            console.log(
-              "latest game id and chatId",
-              matchingGame.gameId,
-              matchingGame.chatId
-            );
           }
         } catch (err) {
-          console.error("Error fetching sport details for active booking:", err);
+          console.error("Error fetching sport details for booking:", err);
           // Keep the default all allowed sports name
           selectedGameName = selectedAvailableSports
             .map((sport) => sport.name)
             .join(", ");
         }
       }
-      // If no active booking, selectedGameName remains as all allowed sports
+      // If no valid booking, selectedGameName remains as all allowed sports
     } catch (bookingsError) {
       console.error("Failed to fetch bookings:", bookingsError);
       selectedBookingArray = [];
@@ -1215,101 +1229,145 @@ const fetchCellDetails = async (row: number, col: number) => {
     fetchGameIdForCell(row, col);
   };
 
-  const handleDrop = async (
-    [fr, fc]: [number, number],
-    [tr, tc]: [number, number]
-  ) => {
-    // Check if target cell is available for dropping
-    const targetCellState = grid[tr][tc];
-    if (targetCellState === "occupied" || targetCellState === "blocked") {
-      showToast("Cannot drop on occupied/blocked cell");
-      return;
-    }
+const handleDrop = async (
+  [fr, fc]: [number, number],
+  [tr, tc]: [number, number]
+) => {
+  // Check if target cell is available for dropping
+  const targetCellState = grid[tr][tc];
+  if (targetCellState === "occupied" || targetCellState === "blocked") {
+    showToast("Cannot drop on occupied/blocked cell");
+    return;
+  }
 
-    const sourceVal = grid[fr][fc];
-    if (sourceVal === "occupied" || sourceVal === "blocked") {
-      try {
-        // --- FIX: fetch gameId for the source cell first ---
+  const sourceVal = grid[fr][fc];
+  if (sourceVal === "occupied" || sourceVal === "blocked") {
+    try {
+      // Get booking type first to determine which API to use
+      const sourceCourt = getFilteredCourtByIndex(fr);
+      const dateStr = currentDate.toISOString().split("T")[0];
+      
+      // Fetch fresh booking details for the source cell
+      const bookingsRes = await axios.get(
+        `${API_BASE_URL_Latest}/court/${sourceCourt.courtId}/bookings?date=${dateStr}`
+      );
+      const bookings = bookingsRes?.data?.bookings || [];
+      
+      // Calculate source cell time
+      const sourceHour = Math.floor(fc / 2);
+      const sourceMinute = fc % 2 === 0 ? 0 : 30;
+      const sourceTime = new Date(currentDate);
+      sourceTime.setHours(sourceHour, sourceMinute, 0, 0);
+      const sourceStartMillis = sourceTime.getTime();
+      const sourceEndMillis = sourceStartMillis + 30 * 60 * 1000;
+
+      // Find the booking for source cell
+      const sourceBooking = bookings.find((booking: any) => {
+        const startTime = toIST(booking.startTime).getTime();
+        const endTime = toIST(booking.endTime).getTime();
+        const isActiveBooking = booking.status === "active" || booking.status === "rescheduled";
+        return sourceStartMillis < endTime && sourceEndMillis > startTime && isActiveBooking;
+      });
+
+      if (!sourceBooking) {
+        showToast("No booking found for source cell");
+        return;
+      }
+
+      const bookingType = sourceBooking.type; // This will be "game" or "booking"
+      const bookingId = sourceBooking.bookingId;
+      
+      // Calculate booking duration from the actual booking times
+      const bookingStart = toIST(sourceBooking.startTime);
+      const bookingEnd = toIST(sourceBooking.endTime);
+      const bookingDurationMinutes = Math.floor((bookingEnd.getTime() - bookingStart.getTime()) / (60 * 1000));
+
+      if (isNaN(bookingDurationMinutes) || bookingDurationMinutes <= 0) {
+        showToast("Error: Could not determine booking duration.");
+        return;
+      }
+
+      // Calculate new start and end times for the target cell
+      const targetHour = Math.floor(tc / 2);
+      const targetMinute = tc % 2 === 0 ? 0 : 30;
+      const newStartTime = new Date(currentDate);
+      newStartTime.setHours(targetHour, targetMinute, 0, 0);
+      const newEndTime = new Date(newStartTime);
+      newEndTime.setMinutes(
+        newStartTime.getMinutes() + bookingDurationMinutes
+      );
+
+      // Get the target court
+      const targetCourt = getFilteredCourtByIndex(tr);
+
+      // Convert times to IST format for the API
+      const newStartTimeIST = toLocalISOString(newStartTime);
+      const newEndTimeIST = toLocalISOString(newEndTime);
+
+      let rescheduleResponse;
+
+      // Use different API based on booking type
+      if (bookingType === "game") {
+        // Fetch gameId for game type bookings
         const gameId = await fetchGameIdForCell(fr, fc);
-        const bokingId = await getBookingIdForCell(fr, fc);
-
-        // --- fetch booking duration after you know gameId ---
-        const fetchBookingDuration = async (gameId: any): Promise<number> => {
-          const res = await axios.get(`${API_BASE_URL_Latest}/game/${gameId}`);
-          const { startTime, endTime } = res.data;
-          const start = new Date(startTime);
-          const end = new Date(endTime);
-          if (isNaN(start.getTime()) || isNaN(end.getTime())) return 0; // Defensive
-          return Math.floor((end.getTime() - start.getTime()) / (60 * 1000)); // minutes
-        };
-        const bookingDurationMinutesRaw = await fetchBookingDuration(gameId);
-        const bookingDurationMinutes = Number(bookingDurationMinutesRaw);
-        if (isNaN(bookingDurationMinutes) || bookingDurationMinutes <= 0) {
-          showToast("Error: Could not determine booking duration.");
-          return;
-        }
-
-        // Calculate new start and end times for the target cell
-        const targetHour = Math.floor(tc / 2);
-        const targetMinute = tc % 2 === 0 ? 0 : 30;
-        const newStartTime = new Date(currentDate);
-        newStartTime.setHours(targetHour, targetMinute, 0, 0);
-        const newEndTime = new Date(newStartTime);
-        newEndTime.setMinutes(
-          newStartTime.getMinutes() + bookingDurationMinutes
-        );
-
-        // Get the target court
-        const targetCourt = courtId[tr];
-
-        // Convert times to IST format for the API
-        const newStartTimeIST = toLocalISOString(newStartTime);
-        const newEndTimeIST = toLocalISOString(newEndTime);
-
+        
         console.log(
           `${API_BASE_URL_Latest}/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
-          "drag drop api log"
+          "game reschedule api log"
         );
-        
-        
 
-        const bookingIdz = await getBookingIdForCell(fr, fc);
-        console.log(`${API_BASE_URL_Latest}/court/booking/${bookingIdz}/reschedule-by-time?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,"new dragDrop");
-
-        // Call the reschedule API
-        const rescheduleResponse = await axios.patch(
-          `${API_BASE_URL_Latest}/court/booking/${bookingIdz}/reschedule-by-time?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+        rescheduleResponse = await axios.patch(
+          `${API_BASE_URL_Latest}/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
           {
             params: {
-              bookingId: bookingIdz,
+              gameId: gameId,
               newStartTime: newStartTimeIST,
               newEndTime: newEndTimeIST,
               courtId: targetCourt.courtId,
             },
           }
         );
+      } else {
+        // For booking type, use booking reschedule API
+        console.log(
+          `${API_BASE_URL_Latest}/court/booking/${bookingId}/reschedule-by-time?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+          "booking reschedule api log"
+        );
 
-        console.log("Reschedule successful:", rescheduleResponse.data);
-
-        // Update the grid after successful reschedule
-        setGrid((prev) => {
-          const newG = prev.map((r) => [...r]);
-          newG[fr][fc] = "available";
-          newG[tr][tc] = sourceVal;
-          return newG;
-        });
-
-        // Refresh bookings to reflect the changes
-        await fetchBookingsAndBlocked(currentDate);
-
-        showToast("Booking successfully rescheduled!");
-        setSelected([]);
-      } catch (error) {
-        console.error("Failed to reschedule booking:", error);
-        showToast("Failed to reschedule booking. Please try again.");
+        rescheduleResponse = await axios.patch(
+          `${API_BASE_URL_Latest}/court/booking/${bookingId}/reschedule-by-time?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
+          {
+            params: {
+              bookingId: bookingId,
+              newStartTime: newStartTimeIST,
+              newEndTime: newEndTimeIST,
+              courtId: targetCourt.courtId,
+            },
+          }
+        );
       }
+
+      console.log("Reschedule successful:", rescheduleResponse.data);
+
+      // Update the grid after successful reschedule
+      setGrid((prev) => {
+        const newG = prev.map((r) => [...r]);
+        newG[fr][fc] = "available";
+        newG[tr][tc] = sourceVal;
+        return newG;
+      });
+
+      // Refresh bookings to reflect the changes
+      await fetchBookingsAndBlocked(currentDate);
+
+      showToast("Booking successfully rescheduled!");
+      setSelected([]);
+    } catch (error) {
+      console.error("Failed to reschedule booking:", error);
+      showToast("Failed to reschedule booking. Please try again.");
     }
-  };
+  }
+};
 
   type ModalGame = {
     gameId: string;
@@ -1791,40 +1849,45 @@ const fetchGameIdForCell = async (row: number, col: number) => {
 
     const sportId = cellBooking.sportId;
 
-    // Fetch games using the fresh sportId
-    let response;
-    try {
-      response = await axios.get(
-        `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=${court.courtId}`
-      );
-    } catch (error) {
-      console.log("Trying with courtId=ALL as fallback");
-      response = await axios.get(
-        `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=ALL`
-      );
+    // For game type bookings, fetch games using the fresh sportId
+    if (cellBooking.type === "game") {
+      let response;
+      try {
+        response = await axios.get(
+          `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=${court.courtId}`
+        );
+      } catch (error) {
+        console.log("Trying with courtId=ALL as fallback");
+        response = await axios.get(
+          `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=ALL`
+        );
+      }
+
+      console.log("Fresh game fetch response:", response.data);
+      const games = response.data;
+
+      const matchingGame = games.find((game: any) => {
+        const gameStart = toIST(game.startTime).getTime();
+        const gameEnd = toIST(game.endTime).getTime();
+        
+        return (
+          game.courtId === court.courtId && 
+          slotStartMillis < gameEnd ||
+          slotEndMillis > gameStart
+        );
+      });
+
+      if (!matchingGame) {
+        throw new Error("No matching fresh game found for cell");
+      }
+
+      console.log("Found fresh matching game with ID:", matchingGame.gameId);
+      localStorage.setItem("gameId", matchingGame.gameId);
+      return matchingGame.gameId;
+    } else {
+      // For booking type, we don't need gameId, just return the bookingId
+      return cellBooking.bookingId;
     }
-
-    console.log("Fresh game fetch response:", response.data);
-    const games = response.data;
-
-    const matchingGame = games.find((game: any) => {
-      const gameStart = toIST(game.startTime).getTime();
-      const gameEnd = toIST(game.endTime).getTime();
-      
-      return (
-        game.courtId === court.courtId && 
-        slotStartMillis < gameEnd ||
-        slotEndMillis > gameStart
-      );
-    });
-
-    // if (!matchingGame) {
-    //   throw new Error("No matching fresh game found for cell");
-    // }
-
-    console.log("Found fresh matching game with ID:", matchingGame.gameId);
-    localStorage.setItem("gameId", matchingGame.gameId);
-    return matchingGame.gameId;
   } catch (error) {
     console.error("Failed to fetch fresh gameId:", error);
     throw error;
@@ -2288,7 +2351,7 @@ const getBookingIdForCell = async (row: number, col: number): Promise<string | n
 
               <p>
                 <strong>Host:</strong>{" "}
-                {localStorage.getItem("userName")?.replace(/^"|"$/g, "")}
+                {sessionStorage.getItem("hostName")}
               </p>
 
               {/* Bottom row: Sport Select dropdown - aligned left */}
