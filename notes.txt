@@ -677,3 +677,188 @@ export default CellGrid;
                 gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
               }}
             >
+
+
+
+
+
+
+
+
+            fetchCelldetails.././././.
+
+            // Replace the existing fetchCellDetails function with this fixed version
+const fetchCellDetails = async (row: number, col: number) => {
+  if (courtId.length === 0) return;
+
+  setIsLoadingCellDetails(true);
+  const court = getFilteredCourtByIndex(row);
+  const dateStr = currentDate.toISOString().split("T")[0];
+
+  // Initialize all details to null/empty before fetching
+  let selectedCourtDetails: CourtDetails | null = null;
+  let selectedBookingArray: Booking[] = [];
+  let selectedGameName: string = "";
+  let selectedAvailableSports: Sport[] = [];
+  let selectedCurrentBooking: Booking | null = null;
+
+  try {
+    // 1. Fetch court details (including allowedSports)
+    const courtRes = await axios.get(
+      `${API_BASE_URL_Latest}/court/${court.courtId}`
+    );
+    selectedCourtDetails = courtRes.data;
+
+    // 2. Fetch all allowed sports details for this court
+    if (
+      selectedCourtDetails?.allowedSports &&
+      selectedCourtDetails.allowedSports.length > 0
+    ) {
+      const sportsPromises = selectedCourtDetails.allowedSports.map(
+        async (sportId: string) => {
+          try {
+            const sportRes = await axios.get(
+              `${API_BASE_URL_Latest}/sports/id/${sportId}`
+            );
+            return sportRes.data;
+          } catch (error) {
+            console.error(`Failed to fetch sport ${sportId}:`, error);
+            return null;
+          }
+        }
+      );
+      selectedAvailableSports = (await Promise.all(sportsPromises)).filter(
+        (s) => s !== null
+      ) as Sport[];
+    }
+
+    // Set gameName as comma-separated allowed sports names by default
+    selectedGameName = selectedAvailableSports
+      .map((sport) => sport.name)
+      .join(", ");
+
+    // 3. Fetch bookings for the court on the selected date (including cancelled ones)
+    try {
+      const bookingsRes = await axios.get(
+        `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+      );
+      selectedBookingArray = bookingsRes?.data?.bookings || [];
+
+      // Find current booking for this cell (including cancelled/rescheduled)
+      const hour = Math.floor(col / 2);
+      const minute = col % 2 === 0 ? 0 : 30;
+      const slotTime = new Date(currentDate);
+      slotTime.setHours(hour, minute, 0, 0);
+      const slotStartMillis = slotTime.getTime();
+      const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+
+      // Find booking for this cell (active, cancelled, or rescheduled)
+      selectedCurrentBooking =
+        selectedBookingArray.find((booking: Booking) => {
+          const startTime = toIST(booking.startTime).getTime();
+          const endTime = toIST(booking.endTime).getTime();
+          return slotStartMillis < endTime && slotEndMillis > startTime;
+        }) || null;
+
+      // If current booking exists, try to get sport name
+      if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
+        try {
+          // 1. Fetch sport name
+          const sportRes = await axios.get(
+            `${API_BASE_URL_Latest}/sports/id/${selectedCurrentBooking.sportId}`
+          );
+          
+          // For active bookings, show only the booked sport
+          // For cancelled/rescheduled, show all allowed sports but highlight the booked one
+          if (selectedCurrentBooking.status === "active" || selectedCurrentBooking.status === "rescheduled") {
+            selectedGameName = sportRes.data.name;
+          } else {
+            // For cancelled bookings, show all allowed sports
+            selectedGameName = selectedAvailableSports
+              .map((sport) => sport.name)
+              .join(", ");
+          }
+
+          // 2. Compute cell timeslot start & end for the selected cell
+          const hour = Math.floor(col / 2);
+          const minute = col % 2 === 0 ? 0 : 30;
+          const slotStart = new Date(currentDate);
+          slotStart.setHours(hour, minute, 0, 0);
+          const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+          // 3. Fetch the game list for this sport, court, and date
+          const gamesRes = await axios.get(
+            `${API_BASE_URL_Latest}/game/games/by-sport`,
+            {
+              params: {
+                sportId: selectedCurrentBooking.sportId,
+                date: dateStr,
+                courtId: court.courtId,
+              },
+            }
+          );
+          const games = gamesRes.data || [];
+
+          // 4. Find the correct game for this timeslot/cell
+          const matchingGame = games.find((game: any) => {
+            const gameStart = new Date(game.startTime).getTime();
+            const gameEnd = new Date(game.endTime).getTime();
+            return (
+              gameStart === slotStart.getTime() &&
+              gameEnd === slotEnd.getTime()
+            ) || (
+              slotStart.getTime() >= gameStart && slotEnd.getTime() <= gameEnd
+            );
+          });
+
+          if (matchingGame) {
+            console.log(
+              "latest game id and chatId",
+              matchingGame.gameId,
+              matchingGame.chatId
+            );
+          }
+        } catch (err) {
+          console.log("Error fetching sport details:", err);
+          // Keep showing all allowed sports on error
+          selectedGameName = selectedAvailableSports
+            .map((sport) => sport.name)
+            .join(", ");
+        }
+      } else {
+        // No current booking - ensure we show all allowed sports
+        selectedGameName = selectedAvailableSports
+          .map((sport) => sport.name)
+          .join(", ");
+      }
+    } catch (bookingsError) {
+      console.error("Failed to fetch bookings:", bookingsError);
+      selectedBookingArray = [];
+      selectedCurrentBooking = null;
+      // Keep selectedGameName as allowed sports names (do NOT clear)
+      selectedGameName = selectedAvailableSports
+        .map((sport) => sport.name)
+        .join(", ");
+    }
+  } catch (mainError) {
+    console.error(
+      "Failed to fetch court details or primary info:",
+      mainError
+    );
+    // If court details fail, clear everything
+    selectedCourtDetails = null;
+    selectedBookingArray = [];
+    selectedGameName = "";
+    selectedAvailableSports = [];
+    selectedCurrentBooking = null;
+  } finally {
+    setSelectedCellDetails({
+      courtDetails: selectedCourtDetails,
+      bookings: selectedBookingArray,
+      gameName: selectedGameName,
+      availableSports: selectedAvailableSports,
+      currentBooking: selectedCurrentBooking,
+    });
+    setIsLoadingCellDetails(false);
+  }
+};

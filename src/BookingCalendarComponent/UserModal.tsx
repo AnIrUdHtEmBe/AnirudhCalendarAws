@@ -225,9 +225,9 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
         return matchingGame.chatId;
       } else {
         console.warn("No matching game found or chatId not available");
-        enqueueSnackbar("Chat not available for this game", {
-          variant: "warning",
-        });
+        // enqueueSnackbar("Chat not available for this game", {
+        //   variant: "warning",
+        // });
       }
     } catch (err) {
       console.error("Failed to fetch game chat details", err);

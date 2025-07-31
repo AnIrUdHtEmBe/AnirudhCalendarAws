@@ -21,7 +21,7 @@ function TabSwitch() {
   
   const handleTabClick = (tab: typeof tabs[0]) => {
     if (tab.label === "Nutrition") {
-      navigate(tab.path);
+      navigate(`${tab.path}?tab=${tab.label}`);
     } else {
       // For booking calendar tabs, add tab as URL parameter
       navigate(`${tab.path}?tab=${tab.label}`);

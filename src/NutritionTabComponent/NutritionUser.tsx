@@ -24,6 +24,18 @@ interface NutritionSession {
   trainerId: string | null;
   gameId: string | null;
   oneOnoneId: string | null;
+  SessionTemplateName?: {
+    title: string;
+  };
+}
+
+interface NutritionSessionTemplate {
+  sessionId: string;
+  title: string;
+  description: string;
+  category: "NUTRITION" | string;
+  activityIds: string[];
+  status: "ACTIVE" | "INACTIVE" | string;
 }
 
 interface UserNutritionData {
@@ -52,6 +64,8 @@ interface Food {
   unit: string;
   status: "done" | "notdone" | "partially" | "removed" | "scheduled";
   removalNote?: string;
+  sessionTemplateId: string;
+  sessionTemplateName: string;
 }
 
 const UserNutrition = () => {
@@ -62,6 +76,9 @@ const UserNutrition = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [userName, setUserName] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [sessionDetails, setSessionDetails] = useState<
+    NutritionSessionTemplate[]
+  >([]);
 
   useEffect(() => {
     // Get date from query params or use current date
@@ -107,15 +124,27 @@ const UserNutrition = () => {
       );
 
       if (userNutrition) {
-        // Extract all activities from all sessions
-        const allActivities: Activity[] = [];
+        // Extract all activities from all sessions with session template info
+        const allActivitiesWithSession: (Activity & {
+          sessionTemplateId: string;
+          sessionTemplateName: string;
+        })[] = [];
+
         userNutrition.nutritionSessions.forEach((session) => {
-          allActivities.push(...session.activities);
+          const sessionTitle =
+            session.SessionTemplateName?.title || "Unknown Session";
+          session.activities.forEach((activity) => {
+            allActivitiesWithSession.push({
+              ...activity,
+              sessionTemplateId: session.sessionTemplateId,
+              sessionTemplateName: sessionTitle,
+            });
+          });
         });
 
         // Fetch activity templates for each activity
         const foodsWithDetails = await Promise.all(
-          allActivities.map(async (activity) => {
+          allActivitiesWithSession.map(async (activity) => {
             try {
               const activityResponse = await fetch(
                 `https://forge-play-backend.forgehub.in/activity-templates/${activity.activityId}`
@@ -138,6 +167,17 @@ const UserNutrition = () => {
                 status = "removed";
               }
 
+              console.log(
+                "activities",
+                activity.activityId,
+                "instance",
+                activity.activityInstanceId,
+                "temp name",
+                activityTemplate.name,
+                "status",
+                status
+              );
+
               return {
                 activityId: activity.activityId,
                 activityInstanceId: activity.activityInstanceId,
@@ -147,6 +187,8 @@ const UserNutrition = () => {
                 unit: activityTemplate.unit,
                 status,
                 removalNote: activity.removalNote,
+                sessionTemplateId: activity.sessionTemplateId,
+                sessionTemplateName: activity.sessionTemplateName,
               };
             } catch (error) {
               console.error(
@@ -162,6 +204,8 @@ const UserNutrition = () => {
                 unit: "units",
                 status: "notdone" as const,
                 removalNote: activity.removalNote,
+                sessionTemplateId: activity.sessionTemplateId,
+                sessionTemplateName: activity.sessionTemplateName,
               };
             }
           })
@@ -196,18 +240,18 @@ const UserNutrition = () => {
     }
   };
 
-  const handleStatusChange = (
-    activityInstanceId: string,
-    newStatus: "done" | "notdone" | "partially" | "removed"
-  ) => {
-    setFoods(
-      foods.map((food) =>
-        food.activityInstanceId === activityInstanceId
-          ? { ...food, status: newStatus }
-          : food
-      )
-    );
-  };
+  // const handleStatusChange = (
+  //   activityInstanceId: string,
+  //   newStatus: "done" | "notdone" | "partially" | "removed"
+  // ) => {
+  //   setFoods(
+  //     foods.map((food) =>
+  //       food.activityInstanceId === activityInstanceId
+  //         ? { ...food, status: newStatus }
+  //         : food
+  //     )
+  //   );
+  // };
 
   const formatDateForInput = (date: Date) => {
     return date.toISOString().split("T")[0];
@@ -326,28 +370,28 @@ const UserNutrition = () => {
     {
       title: "All Foods",
       type: "all",
-      foods: getFilteredFoods("scheduled"),
+      foods: getFilteredFoods("all"),
       icon: <Utensils className="w-5 h-5" />,
     },
 
-    {
-      title: "Not Done",
-      type: "notdone",
-      foods: getFilteredFoods("notdone"),
-      icon: <AlertCircle className="w-5 h-5" />,
-    },
-    {
-      title: "Partially Done",
-      type: "partially",
-      foods: getFilteredFoods("partially"),
-      icon: <Clock className="w-5 h-5" />,
-    },
-    {
-      title: "Done",
-      type: "done",
-      foods: getFilteredFoods("done"),
-      icon: <Check className="w-5 h-5" />,
-    },
+    // {
+    //   title: "Not Done",
+    //   type: "notdone",
+    //   foods: getFilteredFoods("notdone"),
+    //   icon: <AlertCircle className="w-5 h-5" />,
+    // },
+    // {
+    //   title: "Partially Done",
+    //   type: "partially",
+    //   foods: getFilteredFoods("partially"),
+    //   icon: <Clock className="w-5 h-5" />,
+    // },
+    // {
+    //   title: "Done",
+    //   type: "done",
+    //   foods: getFilteredFoods("done"),
+    //   icon: <Check className="w-5 h-5" />,
+    // },
   ];
 
   return (
@@ -425,11 +469,11 @@ const UserNutrition = () => {
           </div>
 
           {/* Main Grid - Flexible */}
-          <div className="grid grid-cols-4 gap-6 flex-1 min-h-0 mb-6">
+          <div className="flex-1 min-h-0 mb-6">
             {columns.map((column) => (
               <div
                 key={column.type}
-                className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col"
+                className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col h-full"
               >
                 {/* Column Header */}
                 <div
@@ -447,15 +491,51 @@ const UserNutrition = () => {
                 </div>
 
                 {/* Column Content - Scrollable */}
-                <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+                {/* Column Content - Scrollable */}
+                <div className="p-4 space-y-6 flex-1 overflow-y-auto custom-scrollbar">
                   {column.foods.length > 0 ? (
-                    column.foods.map((food) => (
-                      <FoodItem
-                        key={food.activityInstanceId}
-                        food={food}
-                        showStatusSelect={column.type === "all"}
-                      />
-                    ))
+                    (() => {
+                      // Group foods by session template
+                      const groupedBySession = column.foods.reduce(
+                        (acc, food) => {
+                          const sessionKey = food.sessionTemplateId;
+                          if (!acc[sessionKey]) {
+                            acc[sessionKey] = {
+                              sessionName: food.sessionTemplateName,
+                              foods: [],
+                            };
+                          }
+                          acc[sessionKey].foods.push(food);
+                          return acc;
+                        },
+                        {} as Record<
+                          string,
+                          { sessionName: string; foods: Food[] }
+                        >
+                      );
+
+                      return Object.entries(groupedBySession).map(
+                        ([sessionId, sessionGroup]) => (
+                          <div
+                            key={sessionId}
+                            className="border-l-4 border-blue-400 pl-4"
+                          >
+                            <h3 className="text-lg font-semibold text-gray-700 mb-3">
+                              {sessionGroup.sessionName}
+                            </h3>
+                            <div className="space-y-3">
+                              {sessionGroup.foods.map((food) => (
+                                <FoodItem
+                                  key={food.activityInstanceId}
+                                  food={food}
+                                  showStatusSelect={column.type === "all"}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )
+                      );
+                    })()
                   ) : (
                     <div className="text-center py-8">
                       <div className="text-gray-400 mb-2">

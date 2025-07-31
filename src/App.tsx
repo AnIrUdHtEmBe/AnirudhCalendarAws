@@ -38,10 +38,19 @@ import GameChatPage from "./Pages/GameChatPage";
 
 const PrivateRoute: React.FC = () => {
   const isAuthenticated = Boolean(sessionStorage.getItem("token")); // your auth check
+  const token = sessionStorage.getItem("token");
+
+if (token) {
+  const payload = JSON.parse(atob(token.split('.')[1]));
+  const username = payload.name; // depends on your token structure
+  sessionStorage.setItem("hostName", username)
+  console.log(username, "Hostname!");
+}
+
   
   if (!isAuthenticated) {
     // User not logged in, redirect to login page
-    // return <Navigate to="/" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // User logged in: render child routes
