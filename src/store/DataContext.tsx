@@ -209,6 +209,10 @@ type MCQOption = {
 };
 
 type DataContextType = {
+
+  // authentication
+   isAuthenticated:boolean
+   setIsAuthenticated:Dispatch<SetStateAction<boolean>>
   // customers 
 
   customers_Api_call: Customers_Api_call[];
@@ -278,6 +282,10 @@ type DataProviderProps = {
 // ----------------- PROVIDER -----------------
 
 export const DataProvider = ({ children }: DataProviderProps) => {
+  // authentication
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+  !!sessionStorage.getItem("token")
+);
   // customers
   const [customers_Api_call , setCustomers_Api_call] = useState<Customers_Api_call[]>([]);
 
@@ -311,7 +319,9 @@ export const DataProvider = ({ children }: DataProviderProps) => {
   return (
     <DataContext.Provider
       value={{
-        // customers ---
+        // authenticaion
+        isAuthenticated,
+        setIsAuthenticated,
         // customers,
         // setCustomers,
         customers_Api_call,

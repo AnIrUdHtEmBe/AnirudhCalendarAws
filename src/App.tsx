@@ -62,15 +62,20 @@ import UserNutitionPage from "./Pages/UserBasedNutritionPage";
 // changes
 function App() {
   //@ts-ignore
-  const { selectComponent } = useContext(DataContext);
+  const { selectComponent,isAuthenticated } = useContext(DataContext);
+  
 
   // console.log(selectComponent);
   return (
     <SnackbarProvider>
       <Router>
+        {!isAuthenticated?(
+            <Routes>
+          <Route path='/' element={<LoginPage />} />
+        </Routes>
+        ):(
         <Layout>
           <Routes>
-            <Route path="/" element={<LoginPage />} />
             {/* <Route
               path="/"
               element={
@@ -90,7 +95,6 @@ function App() {
                 )
               }
             /> */}
-            
             <Route element={<PrivateRoute />}>
             <Route
               path="/sessions"
@@ -262,7 +266,7 @@ function App() {
             <Route path="/response" element={<ResponseViewPage />} />
             </Route>
           </Routes>
-        </Layout>
+        </Layout>)}
       </Router>
     </SnackbarProvider>
   );
