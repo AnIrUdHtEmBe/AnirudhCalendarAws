@@ -862,3 +862,174 @@ const fetchCellDetails = async (row: number, col: number) => {
     setIsLoadingCellDetails(false);
   }
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { useState, useEffect, useRef } from 'react';
+import { Typography, Button } from '@mui/material';
+import dayjs, { Dayjs } from 'dayjs';
+import './Calendar.css';
+import './CalendarMuiStyles.css';
+
+interface CustomCalendarProps {
+	defaultDate?: Dayjs;
+	onDateChange?: (date: Dayjs) => void;
+}
+
+const CustomCalendar = ({ defaultDate, onDateChange }: CustomCalendarProps) => {
+	const today = dayjs();
+	const initialDate = defaultDate || today;
+	// const initialDate=dayjs().year(2025).month(6).date(1);
+	const [selectedDate, setSelectedDate] = useState(initialDate);
+	const [displayedDates, setDisplayedDates] = useState<Dayjs[]>([]);
+	const [currentDisplayedMonth, setCurrentDisplayedMonth] = useState(
+		initialDate.startOf('month')
+	);
+	const scroll = useRef(false);
+	const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+	const buttonWidth = 42;
+
+	useEffect(() => {
+		const dates = generateDatesForMonth(currentDisplayedMonth);
+		setDisplayedDates(dates);
+	}, [currentDisplayedMonth]);
+
+	useEffect(() => {
+		if (scroll.current) return;
+		if (scrollContainerRef.current && displayedDates.length > 0) {
+			const todayIndex = displayedDates.findIndex((date) =>
+				date.isSame(today, 'day')
+			);
+
+			if (todayIndex !== -1) {
+				scroll.current = true;
+				const scrollPosition =
+					todayIndex * buttonWidth - scrollContainerRef.current.clientWidth / 2;
+				scrollContainerRef.current.scrollTo({
+					left: scrollPosition > 0 ? scrollPosition : 0,
+					behavior: 'smooth',
+				});
+			}
+		}
+	}, [displayedDates]);
+
+	const generateDatesForMonth = (month: Dayjs) => {
+		const startOfMonth = month.startOf('month');
+		const endOfMonth = month.endOf('month');
+		const dates = [];
+		let date = startOfMonth;
+
+		while (date.isBefore(endOfMonth) || date.isSame(endOfMonth, 'day')) {
+			dates.push(date);
+			date = date.add(1, 'day');
+		}
+
+		return dates;
+	};
+	
+	const handleScroll = () => {
+		if (!scrollContainerRef.current) return;
+		const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+
+		if (scrollLeft === 0) {
+			const previousMonth = displayedDates[0]
+				.subtract(1, 'month')
+				.startOf('month');
+			const previousMonthDates = generateDatesForMonth(previousMonth);
+			setDisplayedDates([...previousMonthDates, ...displayedDates]);
+		} else if (scrollLeft + clientWidth >= scrollWidth - 1) {
+			const nextMonth = displayedDates[displayedDates.length - 1]
+				.add(1, 'month')
+				.startOf('month');
+			const nextMonthDates = generateDatesForMonth(nextMonth);
+			setDisplayedDates([...displayedDates, ...nextMonthDates]);
+		}
+
+		updateCurrentMonth();
+	};
+
+	
+	const updateCurrentMonth = () => {
+		if (!scrollContainerRef.current) return;
+		const scrollLeft = scrollContainerRef.current.scrollLeft;
+		const visibleMiddleIndex = Math.floor(
+			(scrollLeft + scrollContainerRef.current.clientWidth / 2) / buttonWidth
+		);
+		const middleDate = displayedDates[visibleMiddleIndex];
+
+		if (middleDate) {
+			setCurrentDisplayedMonth(middleDate.startOf('month'));
+		}
+	};
+
+	const handleDateSelect = (date: Dayjs) => {
+		setSelectedDate(date);
+		console.log(date,"slected date")
+		if (onDateChange) onDateChange(date);
+	};
+	
+	return (
+		<div className="calendar-container">
+			<div className="current-month">
+				<Typography
+					variant="body2"
+					fontSize="14px"
+					fontWeight={400}
+				>
+					{currentDisplayedMonth.format("MMM 'YY")}
+				</Typography>
+			</div>
+
+			<div
+				ref={scrollContainerRef}
+				onScroll={handleScroll}
+				className="date-scroll-container"
+			>
+				{displayedDates.map((date) => (
+					<Button
+						key={date.format('DD-MM-YYYY')}
+						onClick={() => handleDateSelect(date)}
+						className={`date-button ${
+							selectedDate.isSame(date, 'day') ? 'selected' : ''
+						}`}
+					>
+						<Typography
+							variant="caption"
+							fontSize="10px"
+							fontWeight={400}
+							color="black"
+						>
+							{date.format('ddd')}
+						</Typography>
+						<Typography
+							variant="body2"
+							fontSize="14px"
+							fontWeight={400}
+							color="black"
+						>
+							{date.format('D')}
+						</Typography>
+						{selectedDate.isSame(date, 'day') && (
+							<div className="selected-indicator" />
+						)}
+					</Button>
+				))}
+			</div>
+		</div>
+	);
+};
+
+export default CustomCalendar;

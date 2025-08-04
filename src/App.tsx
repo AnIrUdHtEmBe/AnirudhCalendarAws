@@ -65,6 +65,7 @@ import CellGridLatest from "./BookingCalendarComponent/CellGridLatest";
 import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
 import NutritionTabPage from "./Pages/NutritionTabPage";
 import UserNutitionPage from "./Pages/UserBasedNutritionPage";
+import UserPlanDetailsPage from "./Pages/UserPlanDetailsPage";
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
 
@@ -131,6 +132,13 @@ function App() {
               <Route
                 path="/bookingCalendar"
                 element={<CellGridArena />}
+              />
+            </Route>
+
+            <Route element={<PrivateRoute />}>
+              <Route
+                path="/UserPlanDetails"
+                element={<UserPlanDetailsPage />}
               />
             </Route>
 

@@ -43,6 +43,10 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const [modalUsers, setModalUsers] = useState<UserAttendance[]>([]);
   const [openGameChat, setOpenGameChat] = useState(false);
   const [slotString, setSlotString] = useState<string>("");
+  const [datePlanStart, setDatePlanStart] = useState<string | undefined>(
+    undefined
+  );
+  const [datePlanEnd, setDatePlanEnd] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     //@ts-ignore
@@ -252,79 +256,85 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     }
   }
 
-//   // Fetch slot string when component mounts or when bookingId changes
-// useEffect(() => {
-//   async function fetchSlots() {
-//     if (!cellData.bookingId) return;
+  //   // Fetch slot string when component mounts or when bookingId changes
+  // useEffect(() => {
+  //   async function fetchSlots() {
+  //     if (!cellData.bookingId) return;
 
-//     try {
-//       const apiRes = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
-//       const startTimeUTC = apiRes.data.startTime;
-//       const endTimeUTC = apiRes.data.endTime;
+  //     try {
+  //       const apiRes = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
+  //       const startTimeUTC = apiRes.data.startTime;
+  //       const endTimeUTC = apiRes.data.endTime;
 
-//       const startDate = new Date(startTimeUTC);
-//       const endDate = new Date(endTimeUTC);
+  //       const startDate = new Date(startTimeUTC);
+  //       const endDate = new Date(endTimeUTC);
 
-//       const options: Intl.DateTimeFormatOptions = {
-//         hour: "2-digit",
-//         minute: "2-digit",
-//         hour12: true,
-//         timeZone: "Asia/Kolkata"
-//       };
+  //       const options: Intl.DateTimeFormatOptions = {
+  //         hour: "2-digit",
+  //         minute: "2-digit",
+  //         hour12: true,
+  //         timeZone: "Asia/Kolkata"
+  //       };
 
-//       const startTimeIST = startDate.toLocaleTimeString("en-IN", options);
-//       const endTimeIST = endDate.toLocaleTimeString("en-IN", options);
+  //       const startTimeIST = startDate.toLocaleTimeString("en-IN", options);
+  //       const endTimeIST = endDate.toLocaleTimeString("en-IN", options);
 
-//       setSlotString(`${startTimeIST}  - ${endTimeIST} `);
-//     } catch (error) {
-//       console.error("Failed to fetch slot times", error);
-//       setSlotString("Unavailable");
-//     }
-//   }
+  //       setSlotString(`${startTimeIST}  - ${endTimeIST} `);
+  //     } catch (error) {
+  //       console.error("Failed to fetch slot times", error);
+  //       setSlotString("Unavailable");
+  //     }
+  //   }
 
-//   fetchSlots();
-// }, [cellData.bookingId]);
+  //   fetchSlots();
+  // }, [cellData.bookingId]);
 
+  const fetchTimeSlot = async () => {
+    const res = await axios.get(
+      `${API_BASE_URL_Latest}/booking/${cellData.bookingId}`
+    );
+    const bookStartTimeUtc = res.data.startTime; // e.g. "2025-07-22T22:00:00"
+    const bookEndTimeUtc = res.data.endTime; // e.g. "2025-07-23T00:00:00"
 
-const fetchTimeSlot = async () => {
-  const res = await axios.get(`${API_BASE_URL_Latest}/booking/${cellData.bookingId}`);
-  const bookStartTimeUtc = res.data.startTime; // e.g. "2025-07-22T22:00:00"
-  const bookEndTimeUtc = res.data.endTime;     // e.g. "2025-07-23T00:00:00"
+    // FIX: Ensure the date strings are parsed as UTC by appending 'Z' if it's not already there.
+    // This is crucial for new Date() to interpret them correctly regardless of local timezone.
+    const parsedStartTimeStr = bookStartTimeUtc.endsWith("Z")
+      ? bookStartTimeUtc
+      : bookStartTimeUtc + "Z";
+    const parsedEndTimeStr = bookEndTimeUtc.endsWith("Z")
+      ? bookEndTimeUtc
+      : bookEndTimeUtc + "Z";
 
-  // FIX: Ensure the date strings are parsed as UTC by appending 'Z' if it's not already there.
-  // This is crucial for new Date() to interpret them correctly regardless of local timezone.
-  const parsedStartTimeStr = bookStartTimeUtc.endsWith('Z') ? bookStartTimeUtc : bookStartTimeUtc + 'Z';
-  const parsedEndTimeStr = bookEndTimeUtc.endsWith('Z') ? bookEndTimeUtc : bookEndTimeUtc + 'Z';
+    const startDate = new Date(parsedStartTimeStr);
+    const endDate = new Date(parsedEndTimeStr);
+    console.log(startDate, endDate, "from usermodal");
+    setDatePlanStart(startDate.toISOString().slice(0, 10));
+    setDatePlanEnd(endDate.toISOString().slice(0, 10));
 
-  const startDate = new Date(parsedStartTimeStr);
-  const endDate = new Date(parsedEndTimeStr);
+    const options: Intl.DateTimeFormatOptions = {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata", // Specify IST
+    };
 
-  const options: Intl.DateTimeFormatOptions = {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-    timeZone: 'Asia/Kolkata' // Specify IST
+    const startTimeIst = startDate.toLocaleTimeString("en-IN", options);
+    const endTimeIst = endDate.toLocaleTimeString("en-IN", options);
+
+    return `${startTimeIst} - ${endTimeIst}`;
   };
 
-  const startTimeIst = startDate.toLocaleTimeString('en-IN', options);
-  const endTimeIst = endDate.toLocaleTimeString('en-IN', options);
-
-  return `${startTimeIst} - ${endTimeIst}`;
-};
-
-
-useEffect(() => {
-    if (cellData && cellData.bookingId) { // Only fetch if bookingId exists
-      setSlotString('Loading...'); // Set loading state
-      fetchTimeSlot().then(data => {
+  useEffect(() => {
+    if (cellData && cellData.bookingId) {
+      // Only fetch if bookingId exists
+      setSlotString("Loading..."); // Set loading state
+      fetchTimeSlot().then((data) => {
         setSlotString(data);
       });
     } else {
-      setSlotString('N/A'); // No booking ID
+      setSlotString("N/A"); // No booking ID
     }
   }, [cellData]);
-
-
 
   if (!isOpen) return null;
 
@@ -336,12 +346,6 @@ useEffect(() => {
   const chatClient = new ChatClient(realtimeClient, {
     logLevel: LogLevel.Info,
   });
-
-
-
-
-
-
 
   return (
     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -412,7 +416,21 @@ useEffect(() => {
               </thead>
               <tbody>
                 {modalUsers.map((user, index) => (
-                  <tr key={user.userId} className="hover:bg-gray-50">
+                  <tr
+                    key={user.userId}
+                    onClick={() => {
+                      // Get date part from bookingStartTime
+
+                      navigate(
+                        `/UserPlanDetails?userId=${
+                          user.userId
+                        }&startDate=${encodeURIComponent(
+                          datePlanStart ?? ""
+                        )}&endDate=${encodeURIComponent(datePlanEnd ?? "")}`
+                      );
+                    }}
+                    className="hover:bg-gray-50"
+                  >
                     <td className="border border-gray-300 px-4 py-2 text-center">
                       {index + 1}
                     </td>
