@@ -1,6 +1,13 @@
 import React, { useState } from 'react';
 import Sidebar from './Sidebar';
-
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  Outlet,
+} from "react-router-dom";
+import LoginPage from '../Pages/LoginPage';
 interface LayoutProps {
   children: React.ReactNode;
 }

@@ -1,9 +1,12 @@
-import React from "react";
+import React,{useContext} from "react";
 import { useNavigate } from "react-router-dom";
 import { enqueueSnackbar } from "notistack";
-
+import { DataContext } from "../store/DataContext";
 const LogoutModal: React.FC = () => {
   const navigate = useNavigate();
+  const context=useContext(DataContext)
+  if(!context){return null;}
+   const { selectComponent,setIsAuthenticated } = context;
 
   const handleConfirmLogout = () => {
     // Remove token from sessionStorage
@@ -14,6 +17,8 @@ const LogoutModal: React.FC = () => {
     
     // Navigate to login page
     navigate("/");
+    setIsAuthenticated(false)
+    console.log(selectComponent)
   };
 
   const handleCancelLogout = () => {
