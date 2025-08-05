@@ -65,10 +65,11 @@ import CellGridLatest from "./BookingCalendarComponent/CellGridLatest";
 import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
 import NutritionTabPage from "./Pages/NutritionTabPage";
 import UserNutitionPage from "./Pages/UserBasedNutritionPage";
-import UserPlanDetailsPage from "./Pages/UserPlanDetailsPage";
+import CellGridLatestPerformance from "./BookingCalendarComponent/CellPerformance";
+
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
-
+  
 // changes
 function App() {
   //@ts-ignore
@@ -139,12 +140,12 @@ function App() {
               />
             </Route>
 
-            <Route element={<PrivateRoute />}>
+            {/* <Route element={<PrivateRoute />}>
               <Route
                 path="/UserPlanDetails"
                 element={<UserPlanDetailsPage />}
               />
-            </Route>
+            </Route> */}
 
             <Route element={<PrivateRoute />}>
               <Route

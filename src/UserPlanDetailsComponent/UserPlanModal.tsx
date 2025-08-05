@@ -26,6 +26,15 @@ interface PlanInstance {
   sessionInstances: SessionInstance[];
 }
 
+interface UserPlanModalProps {
+  open: boolean;
+  handleClose: () => void;
+  userId: string;
+  userName: string;
+  startDate: string;
+  endDate: string;
+}
+
 type ApiResponse = PlanInstance[];
 
 /**
@@ -65,17 +74,20 @@ const fetchSessions = async (params: {
 /**
  * Props passed to ActivityModal
  */
-interface ActivityModalProps {
-  open: boolean;
-  handleClose: () => void;
-}
 
-const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
+const UserPlanModal: React.FC<UserPlanModalProps> = ({
+  open,
+  handleClose,
+  userId,
+  userName,
+  startDate,
+  endDate,
+}) => {
   const [searchParams] = useSearchParams();
 
-  const userId = searchParams.get("userId") ?? "";
-  const startDate = searchParams.get("startDate") ?? "";
-  const endDate = searchParams.get("endDate") ?? "";
+  // const userId = searchParams.get("userId") ?? "";
+  // const startDate = searchParams.get("startDate") ?? "";
+  // const endDate = searchParams.get("endDate") ?? "";
 
   const [sessions, setSessions] = useState<SessionInstance[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -110,7 +122,7 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
   return (
     <Modal open={open} onClose={handleClose}>
       <div
-        className="activity-modal-container"
+        className="activity-modal-container font-semibold"
         style={{
           backgroundColor: "white",
           maxWidth: "80vw",
@@ -123,7 +135,9 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
           position: "relative",
         }}
       >
-        <h2>Session Activities</h2>
+        <h2 className="w-fit font-bold bg-blue-200 mb-2 p-1 rounded-sm">
+          {userName}'s - Session Activities
+        </h2>
         {loading && <p>Loading...</p>}
         {error && <p style={{ color: "red" }}>{error}</p>}
         {!loading && !error && sessions.length === 0 && (
@@ -137,7 +151,7 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
               className="session-section"
               style={{ marginBottom: "1.5rem" }}
             >
-              <h3>
+              <h3 className="w-fit bg-green-300 p-1 rounded-sm">
                 {session.sessionTemplateTitle} ({session.sessionTemplateId})
               </h3>
               <table
@@ -145,12 +159,14 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
                   width: "100%",
                   borderCollapse: "collapse",
                   marginTop: "0.5rem",
+                  tableLayout: "fixed", // Fix column widths
                 }}
               >
                 <thead>
                   <tr>
                     <th
                       style={{
+                        width: "20%",
                         border: "1px solid #ccc",
                         padding: "0.5rem",
                         textAlign: "left",
@@ -160,6 +176,7 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
                     </th>
                     <th
                       style={{
+                        width: "15%",
                         border: "1px solid #ccc",
                         padding: "0.5rem",
                         textAlign: "left",
@@ -169,6 +186,7 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
                     </th>
                     <th
                       style={{
+                        width: "15%",
                         border: "1px solid #ccc",
                         padding: "0.5rem",
                         textAlign: "left",
@@ -178,6 +196,7 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
                     </th>
                     <th
                       style={{
+                        width: "30%",
                         border: "1px solid #ccc",
                         padding: "0.5rem",
                         textAlign: "left",
@@ -187,6 +206,7 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
                     </th>
                     <th
                       style={{
+                        width: "20%",
                         border: "1px solid #ccc",
                         padding: "0.5rem",
                         textAlign: "left",
@@ -232,6 +252,9 @@ const UserPlanModal: React.FC<ActivityModalProps> = ({ open, handleClose }) => {
           ))}
         <button
           onClick={handleClose}
+          className="
+    border-2 border-blue-400 rounded-lg shadow-md px-3 py-1 font-semibold text-blue-700 bg-blue-200 cursor-pointer transition duration-150 w-fit hover:bg-blue-100 hover:shadow-xl hover:scale-105 hover:border-blue-600 hover:ring-2 hover:ring-blue-300 active:scale-95 select-none
+  "
           style={{ marginTop: "1rem", padding: "0.5rem 1rem" }}
         >
           Close

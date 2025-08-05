@@ -58,7 +58,7 @@ export default function TopBar() {
         {/* Center: Admin Dashboard - responsive and centered */}
         <div className="flex-1 flex justify-center px-4">
           <div className="text-center text-base md:text-lg font-semibold truncate">
-            Admin Dashboard!
+            Admin Dashboard
           </div>
         </div>
 

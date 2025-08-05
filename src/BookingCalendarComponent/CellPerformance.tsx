@@ -74,6 +74,26 @@ type Sport = {
   sportId: string;
 };
 
+// Cache objects - moved outside component to persist across re-renders
+// Replace the cache configuration (around line 78) with optimized durations:
+
+const apiCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes for stable data
+const SHORT_CACHE_DURATION = 2 * 60 * 1000; // 2 minutes for dynamic data (bookings, slots)
+
+const getCachedData = (key: string, shortCache = false) => {
+  const cached = apiCache.get(key);
+  const duration = shortCache ? SHORT_CACHE_DURATION : CACHE_DURATION;
+  if (cached && Date.now() - cached.timestamp < duration) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedData = (key: string, data: any, shortCache = false) => {
+  apiCache.set(key, { data, timestamp: Date.now() });
+};
+
 const toIST = (utc: string) => {
   const date = new Date(utc);
   return new Date(date.getTime() + 5.5 * 60 * 60 * 1000);
@@ -92,7 +112,7 @@ function toLocalISOString(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
-const Cell = ({
+const Cell = React.memo(({
   row,
   col,
   state,
@@ -103,7 +123,7 @@ const Cell = ({
   onDropAction,
   isSelected,
 }: CellProps) => {
-  const colorMap: Record<CellState, string> = {
+  const colorMap: Record<CellState, string> = useMemo(() => ({
     available:
       "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
     occupied: "bg-green-500",
@@ -115,7 +135,38 @@ const Cell = ({
       "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
     cancelled:
       "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
-  };
+  }), []);
+
+  const handleClick = useCallback(() => {
+    if (row !== undefined && col !== undefined && onClick) {
+      onClick(row, col);
+    }
+  }, [row, col, onClick]);
+
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    if (row !== undefined && col !== undefined) {
+      e.dataTransfer.setData("text/plain", `${row},${col}`);
+    }
+  }, [row, col]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    const [fromRow, fromCol] = e.dataTransfer
+      .getData("text/plain")
+      .split(",")
+      .map(Number);
+    if (
+      row !== undefined &&
+      col !== undefined &&
+      onDropAction &&
+      (state === "available" || "unblock" || "unbook")
+    ) {
+      onDropAction([fromRow, fromCol], [row, col]);
+    }
+  }, [row, col, onDropAction, state]);
 
   if (label) {
     return (
@@ -146,38 +197,16 @@ const Cell = ({
           "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
       )}
       style={style}
-      onClick={() => {
-        if (row !== undefined && col !== undefined && onClick) {
-          onClick(row, col);
-        }
-      }}
-      // style={style}
+      onClick={handleClick}
       draggable={state === "occupied" || state === "blocked"}
-      onDragStart={(e) => {
-        if (row !== undefined && col !== undefined) {
-          e.dataTransfer.setData("text/plain", `${row},${col}`);
-        }
-      }}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        const [fromRow, fromCol] = e.dataTransfer
-          .getData("text/plain")
-          .split(",")
-          .map(Number);
-        if (
-          row !== undefined &&
-          col !== undefined &&
-          onDropAction &&
-          (state === "available" || "unblock" || "unbook")
-        ) {
-          onDropAction([fromRow, fromCol], [row, col]);
-        }
-      }}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     />
   );
-};
+});
 
-const CellGridLatest = () => {
+const CellGridPerformv2 = () => {
   const [courtId, setCourtId] = useState<Court[]>([]);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
@@ -189,6 +218,10 @@ const CellGridLatest = () => {
   const [courtAllowedSportsMap, setCourtAllowedSportsMap] = useState<
     Record<string, Sport[]>
   >({});
+  const [selectedCell, setSelectedCell] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
 
   const [maxPlayers, setMaxPlayers] = useState<number>(1); // default 1
   const [difficultyLevel, setDifficultyLevel] = useState<string>("Beginner"); // default Beginner
@@ -205,94 +238,99 @@ const CellGridLatest = () => {
     bookingId: string;
   } | null>(null);
 
-  // Add this filtering function
-  // const getCourtType = (courtName: string): string => {
-  //   if (courtName.startsWith("Wellness")) return "Wellness";
-  //   if ((courtName.startsWith("Fitness") || courtName.startsWith("Forge Gym") || courtName.startsWith("Gym")))  return "Fitness";
-  //   return "Sports";
-  // };
+  // Updated getCourtType function that fetches data with caching
+  const getCourtType = useCallback(async (courtId: string): Promise<string> => {
+    const cacheKey = `court-type-${courtId}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) return cached;
 
-  // // Add this filtered courts computation
-  // const filteredCourtId = React.useMemo(() => {
-  //   if (activeTab === "All") return courtId;
-
-  //   return courtId.filter((court) => {
-  //     const resolvedName = resolvedNames[court.courtId] || court.name;
-  //     const courtType = getCourtType(resolvedName);
-  //     return courtType === activeTab;
-  //   });
-  // }, [courtId, resolvedNames, activeTab]);
-
-  // Updated getCourtType function that fetches data
-  // Updated getCourtType function that fetches data
-  const getCourtType = async (courtId: string): Promise<string> => {
     try {
       const courtRes = await axios.get(
         `https://play-os-backend.forgehub.in/court/${courtId}`
       );
       const sportIdss = courtRes.data.allowedSports?.[0];
-      // console.log("sportId from court filter", sportIdss);
 
-      if (!sportIdss) return "Sports"; // Default fallback
+      if (!sportIdss) {
+        setCachedData(cacheKey, "Sports");
+        return "Sports";
+      }
 
       const sportRes = await axios.get(
         `https://play-os-backend.forgehub.in/sports/id/${sportIdss}`
       );
       const category = sportRes.data.category || "";
-      // console.log("category filter", category);
 
+      let result = "Sports";
       if (category === "WELLNESS") {
-        return "Wellness";
+        result = "Wellness";
+      } else if (category === "FITNESS") {
+        result = "Fitness";
       }
-      if (category === "FITNESS") {
-        return "Fitness";
-      }
-      return "Sports";
+
+      setCachedData(cacheKey, result);
+      return result;
     } catch (err) {
-      // console.error(`Error processing court ${courtId}`, err);
-      return "Sports"; // Default fallback on error
+      setCachedData(cacheKey, "Sports");
+      return "Sports";
     }
-  };
+  }, []);
 
   // Add state to store court types
-  const [courtTypes, setCourtTypes] = React.useState<Record<string, string>>(
-    {}
-  );
+  const [courtTypes, setCourtTypes] = React.useState<Record<string, string>>({});
   const [isLoadingCourtTypes, setIsLoadingCourtTypes] = React.useState(false);
 
-  // Fetch court types when courtId changes
-  useEffect(() => {
-    const fetchCourtTypes = async () => {
-      if (courtId.length === 0) return;
+  // Optimized court types fetching with caching
+  const fetchCourtTypes = useCallback(async (courts: Court[]) => {
+    if (courts.length === 0) return;
 
-      setIsLoadingCourtTypes(true);
-      const types: Record<string, string> = {};
+    setIsLoadingCourtTypes(true);
+    const types: Record<string, string> = {};
 
+    // Check cache first
+    const cachedTypes: Record<string, string> = {};
+    const courtsToFetch: Court[] = [];
+
+    courts.forEach(court => {
+      const cached = getCachedData(`court-type-${court.courtId}`);
+      if (cached) {
+        cachedTypes[court.courtId] = cached;
+      } else {
+        courtsToFetch.push(court);
+      }
+    });
+
+    // Set cached types immediately
+    Object.assign(types, cachedTypes);
+
+    // Fetch remaining types in parallel
+    if (courtsToFetch.length > 0) {
       await Promise.all(
-        courtId.map(async (court) => {
+        courtsToFetch.map(async (court) => {
           const courtType = await getCourtType(court.courtId);
           types[court.courtId] = courtType;
         })
       );
+    }
 
-      setCourtTypes(types);
-      setIsLoadingCourtTypes(false);
-    };
+    setCourtTypes(types);
+    setIsLoadingCourtTypes(false);
+  }, [getCourtType]);
 
-    fetchCourtTypes();
-  }, [courtId]);
+  // Fetch court types when courtId changes
+  useEffect(() => {
+    fetchCourtTypes(courtId);
+  }, [courtId, fetchCourtTypes]);
 
   // Updated filtered courts computation - FIXED
-  const filteredCourtId = useMemo(() => {
-    if (activeTab === "All") return courtId;
-
-    if (isLoadingCourtTypes) return []; // Return empty array while loading
-
-    return courtId.filter((court) => {
-      const courtType = courtTypes[court.courtId] || "Sports"; // Default fallback
-      return courtType === activeTab;
-    });
-  }, [courtId, courtTypes, activeTab, isLoadingCourtTypes]);
+const filteredCourtId = useMemo(() => {
+  if (activeTab === "All") return courtId;
+  if (isLoadingCourtTypes) return courtId; // Return all courts while loading to prevent UI flicker
+  
+  return courtId.filter((court) => {
+    const courtType = courtTypes[court.courtId] || "Sports";
+    return courtType === activeTab;
+  });
+}, [courtId, courtTypes, activeTab, isLoadingCourtTypes]);
 
   // 24 hours with 30-minute slots = 48 columns
   const cols = 48;
@@ -313,6 +351,12 @@ const CellGridLatest = () => {
   const [visibleStartSlot, setVisibleStartSlot] = useState(12); // default to 12 (6 AM)
   const [visibleSlotCount, setVisibleSlotCount] = useState(36); // default to 36 slots
   const [visibleEndSlot, setVisibleEndSlot] = useState(48); // default to 48 (end of day)
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+  }, []);
+
 
   // New state for selected cell details
   const [selectedCellDetails, setSelectedCellDetails] = useState<{
@@ -334,7 +378,7 @@ const CellGridLatest = () => {
   const [loadingScreen, setLoadingScreen] = useState(true);
 
   // Check if all selected cells are in the same row and columns are consecutive
-  const isValidSelection = (
+  const isValidSelection = useCallback((
     selectedCells: Array<[number, number]>
   ): boolean => {
     if (selectedCells.length === 0) return false;
@@ -353,9 +397,22 @@ const CellGridLatest = () => {
     }
 
     return true;
-  };
+  }, []);
 
-  const getCellData = async () => {
+  const memoizedResolvedNames = useMemo(() => resolvedNames, [resolvedNames]);
+
+// Memoize grid dimensions
+const gridDimensions = useMemo(() => ({
+  cols,
+  rows: filteredCourtId.length
+}), [cols, filteredCourtId.length]);
+
+// Memoize selected cell validation
+const isValidSelectionMemo = useMemo(() => {
+  return isValidSelection(selected);
+}, [selected, isValidSelection]);
+
+  const getCellData = useCallback(async () => {
     if (!selectedCell) return null;
 
     const { row, col } = selectedCell;
@@ -390,18 +447,11 @@ const CellGridLatest = () => {
     // Update the state with the fetched data
     setCellData(data);
 
-    // return {
-    //   courtName,
-    //   timeSlot,
-    //   gameName,
-    //   bookingId,
-    // };
-
     return data;
-  };
+  }, [selectedCell, selected, selectedCellDetails.gameName, resolvedNames]);
 
   // Format time range only if selection is valid
-  const formatSelectedTimeRange = (
+  const formatSelectedTimeRange = useCallback((
     selectedCells: Array<[number, number]>
   ): string => {
     if (!isValidSelection(selectedCells)) {
@@ -438,32 +488,23 @@ const CellGridLatest = () => {
       .padStart(2, "0")} ${endAmPm}`;
 
     return `${startTimeStr} - ${endTimeStr} `;
-  };
+  }, [isValidSelection]);
 
-  // Generate time labels for 24 hours (12 AM to 12 AM)
+  // Generate time labels for 24 hours (12 AM to 12 AM) - Memoized
   const timeLabels = useMemo(() => { 
-  return Array.from({ length: cols }, (_, i) => {
-    const hour = Math.floor(i / 2);
-    const minute = i % 2 === 0 ? "00" : "30";
-    const nextHour = Math.floor((i + 1) / 2);
-    const nextMinute = (i + 1) % 2 === 0 ? "00" : "30";
+    return Array.from({ length: cols }, (_, i) => {
+      const hour = Math.floor(i / 2);
+      const minute = i % 2 === 0 ? "00" : "30";
 
-    const formatHour = (h: number) => {
-      if (h === 0) return "12 AM";
-      if (h < 12) return `${h} AM`;
-      if (h === 12) return "12 PM";
-      return `${h - 12} PM`;
-    };
+      const formatHourShort = (h: number) => {
+        if (h === 0) return "12";
+        if (h <= 12) return h.toString();
+        return (h - 12).toString();
+      };
 
-    const formatHourShort = (h: number) => {
-      if (h === 0) return "12";
-      if (h <= 12) return h.toString();
-      return (h - 12).toString();
-    };
-
-    return `${formatHourShort(hour)}:${minute}  `;
-  });
-}, [cols]);
+      return `${formatHourShort(hour)}:${minute}  `;
+    });
+  }, [cols]);
 
   const [courtSlots, setCourtSlots] = useState<Record<string, any[]>>({});
   const [courtBookIds, setCourtBookids] = useState<Record<string, any[]>>({});
@@ -477,7 +518,7 @@ const CellGridLatest = () => {
       : dateOrString;
   }
 
-  const calculateColumns = (
+  const calculateColumns = useCallback((
     openTime: string | Date,
     closeTime: string | Date
   ) => {
@@ -495,14 +536,23 @@ const CellGridLatest = () => {
 
     // Round to integer if needed
     return Math.round(slots);
-  };
+  }, []);
 
-  const fetchArenaData = async () => {
+  const fetchArenaData = useCallback(async () => {
+    const cacheKey = "arena-AREN_JZSW15";
+    const cached = getCachedData(cacheKey);
+    
     try {
-      const response = await fetch(
-        "https://play-os-backend.forgehub.in/arena/AREN_JZSW15"
-      );
-      const arenaData = await response.json();
+      let arenaData;
+      if (cached) {
+        arenaData = cached;
+      } else {
+        const response = await fetch(
+          "https://play-os-backend.forgehub.in/arena/AREN_JZSW15"
+        );
+        arenaData = await response.json();
+        setCachedData(cacheKey, arenaData);
+      }
 
       // Convert from UTC to IST
       const openingTimeIST = toIST(arenaData.openingTime);
@@ -531,26 +581,48 @@ const CellGridLatest = () => {
       // console.error("Error fetching arena data:", error);
       // Keep default values on error
     }
-  };
+  }, []);
 
-  const fetchArenaDetails = async () => {
-    const apiRes = await axios.get(`${API_BASE_URL_Latest}/arena/AREN_JZSW15`);
-    const arenaStartTime = apiRes.data.openingTime;
-    const arenaEndTime = apiRes.data.closingTime;
-
-    const arenaOpen = toIST(arenaStartTime);
-    const arenaClose = toIST(arenaEndTime);
-
-    // console.log("arena opne close", arenaOpen, arenaClose);
-    const numColumns = calculateColumns(arenaOpen, arenaClose);
-    // console.log("Number of 30 min slots (columns):", numColumns);
-  };
-
-  const fetchCourtIDs = async () => {
+  const fetchArenaDetails = useCallback(async () => {
+    const cacheKey = "arena-details-AREN_JZSW15";
+    const cached = getCachedData(cacheKey);
+    
     try {
-      const response = await axios.get(
-        `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
-      );
+      let apiRes;
+      if (cached) {
+        apiRes = { data: cached };
+      } else {
+        apiRes = await axios.get(`${API_BASE_URL_Latest}/arena/AREN_JZSW15`);
+        setCachedData(cacheKey, apiRes.data);
+      }
+
+      const arenaStartTime = apiRes.data.openingTime;
+      const arenaEndTime = apiRes.data.closingTime;
+
+      const arenaOpen = toIST(arenaStartTime);
+      const arenaClose = toIST(arenaEndTime);
+
+      const numColumns = calculateColumns(arenaOpen, arenaClose);
+    } catch (error) {
+      // console.error("Error fetching arena details:", error);
+    }
+  }, [calculateColumns]);
+
+  const fetchCourtIDs = useCallback(async () => {
+    const cacheKey = "court-ids-AREN_JZSW15";
+    const cached = getCachedData(cacheKey);
+    
+    try {
+      let response;
+      if (cached) {
+        response = { data: cached };
+      } else {
+        response = await axios.get(
+          `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
+        );
+        setCachedData(cacheKey, response.data);
+      }
+
       if (Array.isArray(response.data)) {
         setCourtId(response.data);
         const nameMap: Record<string, string> = {};
@@ -559,11 +631,19 @@ const CellGridLatest = () => {
           response.data.map(async (court: Court) => {
             if (court.name.startsWith("court_")) {
               const userId = court.name.replace("court_", "");
+              const userCacheKey = `human-${userId}`;
+              const cachedUser = getCachedData(userCacheKey);
+              
               try {
-                const res = await axios.get(
-                  `${API_BASE_URL_Latest}/human/${userId}`
-                );
-                nameMap[court.courtId] = res.data.name;
+                if (cachedUser) {
+                  nameMap[court.courtId] = cachedUser.name;
+                } else {
+                  const res = await axios.get(
+                    `${API_BASE_URL_Latest}/human/${userId}`
+                  );
+                  setCachedData(userCacheKey, res.data);
+                  nameMap[court.courtId] = res.data.name;
+                }
               } catch {
                 nameMap[court.courtId] = court.name;
               }
@@ -578,37 +658,51 @@ const CellGridLatest = () => {
     } catch (error) {
       // console.error("Failed to fetch court IDs", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchArenaDetails();
-  }, []);
+  }, [fetchArenaDetails]);
 
-  const fetchAllCourtDetails =  useCallback(async(filteredCourtId: Court[]) => {
+  const fetchAllCourtDetails = useCallback(async(filteredCourtId: Court[]) => {
     const detailsMap: Record<string, CourtDetails> = {};
     const allowedSportsMap: Record<string, Sport[]> = {};
 
     await Promise.all(
       filteredCourtId.map(async (court) => {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/court/${court.courtId}`
-          );
-          const courtDetails = res.data;
-          // console.log("court details ", courtDetails);
+          const courtCacheKey = `court-details-${court.courtId}`;
+          const cachedCourt = getCachedData(courtCacheKey);
+          
+          let courtDetails;
+          if (cachedCourt) {
+            courtDetails = cachedCourt;
+          } else {
+            const res = await axios.get(
+              `${API_BASE_URL_Latest}/court/${court.courtId}`
+            );
+            courtDetails = res.data;
+            setCachedData(courtCacheKey, courtDetails);
+          }
 
           detailsMap[court.courtId] = courtDetails;
 
-          // Fetch allowed sports for this court
+          // Fetch allowed sports for this court with caching
           const sports = await Promise.all(
             courtDetails.allowedSports.map(async (sportId: any) => {
               try {
-                const sportRes = await axios.get(
-                  `${API_BASE_URL_Latest}/sports/id/${sportId}`
-                );
-                // console.log("sport res data", sportRes);
-
-                return sportRes.data;
+                const sportCacheKey = `sport-${sportId}`;
+                const cachedSport = getCachedData(sportCacheKey);
+                
+                if (cachedSport) {
+                  return cachedSport;
+                } else {
+                  const sportRes = await axios.get(
+                    `${API_BASE_URL_Latest}/sports/id/${sportId}`
+                  );
+                  setCachedData(sportCacheKey, sportRes.data);
+                  return sportRes.data;
+                }
               } catch {
                 return null;
               }
@@ -626,11 +720,10 @@ const CellGridLatest = () => {
         }
       })
     );
-    // console.log("allowedSportsMap", allowedSportsMap);
 
     setCourtDetailsMap(detailsMap);
     setCourtAllowedSportsMap(allowedSportsMap);
-  }, [courtDetailsMap, courtAllowedSportsMap])
+  }, []);
 
   const fetchSlotsForCourts = useCallback(async () => {
     const dateStr = currentDate.toISOString().split("T")[0];
@@ -640,13 +733,23 @@ const CellGridLatest = () => {
     await Promise.all(
       filteredCourtId.map(async (court) => {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
-          );
-          const rawSlots = Array.isArray(res.data) ? res.data : [];
+          const slotsCacheKey = `slots-${court.courtId}-${dateStr}`;
+          const cachedSlots = getCachedData(slotsCacheKey);
+          
+          let rawSlots;
+          if (cachedSlots) {
+            rawSlots = cachedSlots;
+          } else {
+            const res = await axios.get(
+              `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
+            );
+            rawSlots = Array.isArray(res.data) ? res.data : [];
+            // Cache for shorter duration since slots change frequently
+            apiCache.set(slotsCacheKey, { data: rawSlots, timestamp: Date.now() });
+          }
 
           // Convert all slot times from UTC to IST here
-          const istSlots = rawSlots.map((slot) => ({
+          const istSlots = rawSlots.map((slot: any) => ({
             ...slot,
             startTime: toIST(slot.startTime),
             endTime: toIST(slot.endTime),
@@ -655,7 +758,7 @@ const CellGridLatest = () => {
 
           slotsMap[court.courtId] = istSlots;
 
-          bookIdMap[court.courtId] = rawSlots.map((slot) => ({
+          bookIdMap[court.courtId] = rawSlots.map((slot: any) => ({
             ...slot,
             bookingId: slot.bookingInfo,
           }));
@@ -665,27 +768,35 @@ const CellGridLatest = () => {
         }
       })
     );
-    // console.log("slots map get api", slotsMap);
-    // console.log("bookzIDnew", bookIdMap);
 
     setCourtSlots(slotsMap);
     setCourtBookids(bookIdMap);
-  }, [currentDate, filteredCourtId, courtSlots]);
+  }, [currentDate, filteredCourtId]);
 
-  const fetchPrices = async () => {
+  const fetchPrices = useCallback(async () => {
     const newPrices: Record<string, Record<string, number>> = {};
 
     const allSlots = Object.values(courtSlots).flat();
-    // console.log("all slots before fetching price", allSlots);
 
     await Promise.all(
       allSlots.map(async (slot) => {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/timeslot/${slot.slotId}`
-          );
+          const priceCacheKey = `price-${slot.slotId}`;
+          const cachedPrice = getCachedData(priceCacheKey);
+          
+          let price;
+          if (cachedPrice !== null) {
+            price = cachedPrice;
+          } else {
+            const res = await axios.get(
+              `${API_BASE_URL_Latest}/timeslot/${slot.slotId}`
+            );
+            price = res.data.price ?? 0;
+            setCachedData(priceCacheKey, price);
+          }
+          
           if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
-          newPrices[slot.courtId][slot.slotId] = res.data.price ?? 0;
+          newPrices[slot.courtId][slot.slotId] = price;
         } catch (e) {
           // console.error(`Failed to fetch price for slot ${slot.slotId}`, e);
           if (!newPrices[slot.courtId]) newPrices[slot.courtId] = {};
@@ -693,37 +804,28 @@ const CellGridLatest = () => {
         }
       })
     );
-    // console.log("new prices response", newPrices);
 
     setSlotPrices(newPrices);
-  };
+  }, [courtSlots]);
 
   useEffect(() => {
     fetchCourtIDs();
-  }, []);
+  }, [fetchCourtIDs]);
 
   useEffect(() => {
     if (filteredCourtId.length > 0) {
       fetchAllCourtDetails(filteredCourtId);
     }
-  }, [filteredCourtId, activeTab]);
+  }, [filteredCourtId, activeTab, fetchAllCourtDetails]);
 
   useEffect(() => {
     if (filteredCourtId.length === 0) return;
     fetchSlotsForCourts();
-  }, [filteredCourtId.length, currentDate, activeTab]);
+  }, [fetchSlotsForCourts]);
 
-  // console.log(courtSlots, "Court Slots state");
-
-  // useEffect(() => {
-  //   if (Object.keys(courtSlots).length > 0) {
-  //     fetchPrices();
-  //   }
-  // }, [courtSlots]);
-
-  const getFilteredCourtByIndex = (index: number) => {
+  const getFilteredCourtByIndex = useCallback((index: number) => {
     return filteredCourtId[index];
-  };
+  }, [filteredCourtId]);
 
   // Updated grid generation function
   const updateGridWithBookings = useCallback((
@@ -821,9 +923,9 @@ const CellGridLatest = () => {
     }
 
     setGrid(newGrid);
-  }, [cols]);
+  }, [cols, timeLabels.length]);
 
-  const fetchBukings = async (dateStr: string) => {
+  const fetchBukings = useCallback(async (dateStr: string) => {
     const bookingsMap: Record<string, { start: Date; end: Date }[]> = {};
     const cancelledBookingsMap: Record<string, { start: Date; end: Date }[]> =
       {};
@@ -831,14 +933,23 @@ const CellGridLatest = () => {
     await Promise.all(
       filteredCourtId.map(async (court) => {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
-          );
-          // console.log("court bookings and date", res.data);
-          // console.log("cancelled through booking", res.data.bookings.status);
+          const bookingsCacheKey = `bookings-${court.courtId}-${dateStr}`;
+          const cachedBookings = getCachedData(bookingsCacheKey);
+          
+          let bookingsData;
+          if (cachedBookings) {
+            bookingsData = cachedBookings;
+          } else {
+            const res = await axios.get(
+              `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+            );
+            bookingsData = res.data;
+            // Cache for shorter duration since bookings change frequently
+            apiCache.set(bookingsCacheKey, { data: bookingsData, timestamp: Date.now() });
+          }
 
-          const bookings = Array.isArray(res.data.bookings)
-            ? res.data.bookings
+          const bookings = Array.isArray(bookingsData.bookings)
+            ? bookingsData.bookings
             : [];
 
           bookingsMap[court.courtId] = bookings
@@ -866,50 +977,44 @@ const CellGridLatest = () => {
         }
       })
     );
-    // console.log("BookingMaps 0", bookingsMap);
-    // console.log("CancelledMao", cancelledBookingsMap);
 
     return { bookingsMap, cancelledBookingsMap };
-  };
+  }, [filteredCourtId]);
 
-  const fetchBlockedSlots = async (dateStr: string) => {
+  const fetchBlockedSlots = useCallback(async (dateStr: string) => {
     const blockedMap: Record<string, { start: Date; end: Date }[]> = {};
     await Promise.all(
       filteredCourtId.map(async (court) => {
         try {
-          // Fetch slots for the court on this date
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
-          );
-          // console.log("block response new", res.data);
-
-          const slots = Array.isArray(res.data) ? res.data : [];
-
-          // console.log("Slots for court", court.courtId, slots);
-          slots.forEach((slot, idx) => {
-            // console.log(`Slot ${idx}`, {
-            //   bookingInfo: slot.bookingInfo,
-            //   status: slot.status,
-            //   startTime: slot.startTime,
-            //   endTime: slot.endTime,
-            // });
-          });
+          const blockedCacheKey = `blocked-slots-${court.courtId}-${dateStr}`;
+          const cachedBlocked = getCachedData(blockedCacheKey);
+          
+          let slots;
+          if (cachedBlocked) {
+            slots = cachedBlocked;
+          } else {
+            // Fetch slots for the court on this date
+            const res = await axios.get(
+              `${API_BASE_URL_Latest}/court/${court.courtId}/slots?date=${dateStr}`
+            );
+            slots = Array.isArray(res.data) ? res.data : [];
+            // Cache for shorter duration
+            apiCache.set(blockedCacheKey, { data: slots, timestamp: Date.now() });
+          }
 
           // Filter slots that are blocked (outOfOrder)
           const blockedSlotsForCourt = slots
             .filter(
-              (slot) =>
+              (slot: any) =>
                 slot.bookingInfo === "outOfOrder" ||
                 slot.status === "outOfOrder"
             )
-            .map((slot) => ({
+            .map((slot: any) => ({
               start: toIST(slot.startTime),
               end: toIST(slot.endTime),
             }));
-          // console.log("blockedSlotsforCourt", blockedSlotsForCourt);
 
           blockedMap[court.courtId] = blockedSlotsForCourt;
-          // console.log("blockedMap Array set", blockedMap);
         } catch (error) {
           // console.error(
           //   `Failed to fetch blocked slots for court ${court.courtId}`,
@@ -920,9 +1025,9 @@ const CellGridLatest = () => {
       })
     );
     return blockedMap;
-  };
+  }, [filteredCourtId]);
 
-  const fetchBookingsAndBlocked = async (date: Date) => {
+  const fetchBookingsAndBlocked = useCallback(async (date: Date) => {
     if (filteredCourtId.length === 0) return;
 
     setIsLoadingBookings(true);
@@ -940,10 +1045,6 @@ const CellGridLatest = () => {
 
       // Destructure the returned object
       const { bookingsMap, cancelledBookingsMap } = bookingData;
-
-      // console.log(newBlocked, "newBlocked");
-      // console.log("All Bookings:", bookingsMap);
-      // console.log("Cancelled Bookings:", cancelledBookingsMap);
 
       setBookings(bookingsMap);
       updateGridWithBookings(
@@ -967,14 +1068,14 @@ const CellGridLatest = () => {
     } finally {
       setIsLoadingBookings(false);
     }
-  };
+  }, [filteredCourtId, fetchBukings, fetchBlockedSlots, updateGridWithBookings]);
 
   // Fetch bookings when courts or date changes
   useEffect(() => {
     if (filteredCourtId.length > 0) {
       fetchBookingsAndBlocked(currentDate);
     }
-  }, [filteredCourtId.length, currentDate, activeTab]);
+  }, [filteredCourtId.length, currentDate, activeTab, fetchBookingsAndBlocked]);
 
   useEffect(() => {
     setGrid(
@@ -982,196 +1083,123 @@ const CellGridLatest = () => {
         Array(cols).fill("available")
       )
     );
-  }, [courtId.length]);
+  }, [filteredCourtId.length, cols]);
 
   // New function to fetch cell details when a cell is selected
-  // New function to fetch cell details when a cell is selected
-  const fetchCellDetails = async (row: number, col: number) => {
-    if (filteredCourtId.length === 0) return;
+// Replace the fetchCellDetails function with this batched version:
 
-    const cacheKey = `${row}-${col}-${currentDate.toISOString().split("T")[0]}`;
-  
+const fetchCellDetails = useCallback(async (row: number, col: number) => {
+  if (filteredCourtId.length === 0) return;
+
   // Check if we already have fresh data for this cell
   if (selectedCellDetails.courtDetails && selectedCell?.row === row && selectedCell?.col === col) {
     return;
   }
 
-    setIsLoadingCellDetails(true);
-    const court = getFilteredCourtByIndex(row);
-    const dateStr = currentDate.toISOString().split("T")[0];
+  setIsLoadingCellDetails(true);
+  const court = getFilteredCourtByIndex(row);
+  const dateStr = currentDate.toISOString().split("T")[0];
 
-    // Initialize all details to null/empty before fetching
-    let selectedCourtDetails: CourtDetails | null = null;
-    let selectedBookingArray: Booking[] = [];
-    let selectedGameName: string = "";
-    let selectedAvailableSports: Sport[] = [];
-    let selectedCurrentBooking: Booking | null = null;
+  try {
+    // Batch all the data fetching
+    const [courtDetails, bookingsData] = await Promise.all([
+      // Court details with caching
+      (async () => {
+        const courtCacheKey = `court-details-${court.courtId}`;
+        const cached = getCachedData(courtCacheKey);
+        if (cached) return cached;
+        
+        const courtRes = await axios.get(`${API_BASE_URL_Latest}/court/${court.courtId}`);
+        setCachedData(courtCacheKey, courtRes.data);
+        return courtRes.data;
+      })(),
+      
+      // Fresh bookings with short cache
+      (async () => {
+        const bookingsCacheKey = `fresh-bookings-${court.courtId}-${dateStr}`;
+        const cached = getCachedData(bookingsCacheKey, true); // Use short cache
+        if (cached) return cached;
+        
+        const bookingsRes = await axios.get(`${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`);
+        setCachedData(bookingsCacheKey, bookingsRes.data, true);
+        return bookingsRes.data;
+      })()
+    ]);
 
-    try {
-      // 1. Fetch court details (including allowedSports)
-      const courtRes = await axios.get(
-        `${API_BASE_URL_Latest}/court/${court.courtId}`
-      );
-      selectedCourtDetails = courtRes.data;
+    // Fetch sports data in parallel
+    const sportsPromises = courtDetails?.allowedSports?.map(async (sportId: string) => {
+      const sportCacheKey = `sport-${sportId}`;
+      const cached = getCachedData(sportCacheKey);
+      if (cached) return cached;
+      
+      const sportRes = await axios.get(`${API_BASE_URL_Latest}/sports/id/${sportId}`);
+      setCachedData(sportCacheKey, sportRes.data);
+      return sportRes.data;
+    }) || [];
 
-      // 2. Fetch all allowed sports details for this court
-      if (
-        selectedCourtDetails?.allowedSports &&
-        selectedCourtDetails.allowedSports.length > 0
-      ) {
-        const sportsPromises = selectedCourtDetails.allowedSports.map(
-          async (sportId: string) => {
-            try {
-              const sportRes = await axios.get(
-                `${API_BASE_URL_Latest}/sports/id/${sportId}`
-              );
-              return sportRes.data;
-            } catch (error) {
-              // console.error(`Failed to fetch sport ${sportId}:`, error);
-              return null;
-            }
-          }
-        );
-        selectedAvailableSports = (await Promise.all(sportsPromises)).filter(
-          (s) => s !== null
-        ) as Sport[];
-      }
+    const availableSports = (await Promise.all(sportsPromises)).filter(s => s !== null);
+    const bookingArray = bookingsData?.bookings || [];
 
-      // 3. ALWAYS fetch fresh bookings for the court on the selected date
-      try {
-        const bookingsRes = await axios.get(
-          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
-        );
-        selectedBookingArray = bookingsRes?.data?.bookings || [];
+    // Calculate current booking
+    const hour = Math.floor(col / 2);
+    const minute = col % 2 === 0 ? 0 : 30;
+    const slotTime = new Date(currentDate);
+    slotTime.setHours(hour, minute, 0, 0);
+    const slotStartMillis = slotTime.getTime();
+    const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
 
-        // Find current booking for this cell (if any) - ACTIVE AND RESCHEDULED BOOKINGS
-        const hour = Math.floor(col / 2);
-        const minute = col % 2 === 0 ? 0 : 30;
-        const slotTime = new Date(currentDate);
-        slotTime.setHours(hour, minute, 0, 0);
-        const slotStartMillis = slotTime.getTime();
-        const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+    const currentBooking = bookingArray.find((booking: Booking) => {
+      const startTime = toIST(booking.startTime).getTime();
+      const endTime = toIST(booking.endTime).getTime();
+      const isValidBooking = booking.status === "active" || booking.status === "rescheduled";
+      return slotStartMillis < endTime && slotEndMillis > startTime && isValidBooking;
+    }) || null;
 
-        selectedCurrentBooking =
-          selectedBookingArray.find((booking: Booking) => {
-            const startTime = toIST(booking.startTime).getTime();
-            const endTime = toIST(booking.endTime).getTime();
-            // Include both active and rescheduled bookings
-            const isValidBooking =
-              booking.status === "active" || booking.status === "rescheduled";
-            return (
-              slotStartMillis < endTime &&
-              slotEndMillis > startTime &&
-              isValidBooking
-            );
-          }) || null;
-
-        // IMPORTANT: Always reset to all allowed sports first
-        selectedGameName = selectedAvailableSports
-          .map((sport) => sport.name)
-          .join(", ");
-
-        // If current booking exists (active or rescheduled), override gameName with booked sport's name
-        if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
-          try {
-            // 1. Fetch sport name for the booking
-            const sportRes = await axios.get(
-              `${API_BASE_URL_Latest}/sports/id/${selectedCurrentBooking.sportId}`
-            );
-            selectedGameName = sportRes.data.name;
-
-            // Only fetch game details if type is "game"
-            if (selectedCurrentBooking.type === "game") {
-              // 2. Compute cell timeslot start & end for the selected cell
-              const hour = Math.floor(col / 2);
-              const minute = col % 2 === 0 ? 0 : 30;
-              const slotStart = new Date(currentDate);
-              slotStart.setHours(hour, minute, 0, 0);
-              const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
-
-              // 3. Fetch the game list for this sport, court, and date
-              const gamesRes = await axios.get(
-                `${API_BASE_URL_Latest}/game/games/by-sport`,
-                {
-                  params: {
-                    sportId: selectedCurrentBooking.sportId,
-                    date: dateStr,
-                    courtId: court.courtId,
-                  },
-                }
-              );
-              const games = gamesRes.data || [];
-
-              // 4. Find the correct game for this timeslot/cell
-              const matchingGame = games.find((game: any) => {
-                const gameStart = new Date(game.startTime).getTime();
-                const gameEnd = new Date(game.endTime).getTime();
-                return (
-                  (gameStart === slotStart.getTime() &&
-                    gameEnd === slotEnd.getTime()) ||
-                  (slotStart.getTime() >= gameStart &&
-                    slotEnd.getTime() <= gameEnd)
-                );
-              });
-
-              if (matchingGame) {
-                // console.log(
-                //   "latest game id and chatId",
-                //   matchingGame.gameId,
-                //   matchingGame.chatId
-                // );
-              }
-            }
-          } catch (err) {
-            // console.error("Error fetching sport details for booking:", err);
-            // Keep the default all allowed sports name
-            selectedGameName = selectedAvailableSports
-              .map((sport) => sport.name)
-              .join(", ");
-          }
+    // Determine game name
+    let gameName = availableSports.map(sport => sport.name).join(", ");
+    
+    if (currentBooking?.sportId) {
+      const sportCacheKey = `sport-${currentBooking.sportId}`;
+      const cached = getCachedData(sportCacheKey);
+      if (cached) {
+        gameName = cached.name;
+      } else {
+        try {
+          const sportRes = await axios.get(`${API_BASE_URL_Latest}/sports/id/${currentBooking.sportId}`);
+          setCachedData(sportCacheKey, sportRes.data);
+          gameName = sportRes.data.name;
+        } catch (err) {
+          // Keep default gameName
         }
-        // If no valid booking, selectedGameName remains as all allowed sports
-      } catch (bookingsError) {
-        // console.error("Failed to fetch bookings:", bookingsError);
-        selectedBookingArray = [];
-        selectedCurrentBooking = null;
-        // Keep selectedGameName as allowed sports names
-        selectedGameName = selectedAvailableSports
-          .map((sport) => sport.name)
-          .join(", ");
       }
-    } catch (mainError) {
-      // console.error(
-      //   "Failed to fetch court details or primary info:",
-      //   mainError
-      // );
-      // If court details fail, clear everything
-      selectedCourtDetails = null;
-      selectedBookingArray = [];
-      selectedGameName = "";
-      selectedAvailableSports = [];
-      selectedCurrentBooking = null;
-    } finally {
-      setSelectedCellDetails({
-        courtDetails: selectedCourtDetails,
-        bookings: selectedBookingArray,
-        gameName: selectedGameName,
-        availableSports: selectedAvailableSports,
-        currentBooking: selectedCurrentBooking,
-      });
-      setIsLoadingCellDetails(false);
     }
-  };
+
+    // Batch state update
+    setSelectedCellDetails({
+      courtDetails,
+      bookings: bookingArray,
+      gameName,
+      availableSports,
+      currentBooking,
+    });
+
+  } catch (error) {
+    // Reset to empty state on error
+    setSelectedCellDetails({
+      courtDetails: null,
+      bookings: [],
+      gameName: "",
+      availableSports: [],
+      currentBooking: null,
+    });
+  } finally {
+    setIsLoadingCellDetails(false);
+  }
+}, [filteredCourtId.length, currentDate, getFilteredCourtByIndex, selectedCellDetails.courtDetails, selectedCell]);
 
   // Update updateCell to allow multiple selection toggling
-  const updateCell = (row: number, col: number) => {
-    //   setSelectedCell({ row, col });
-    //    setSelectedCell(prev =>
-    //   prev && prev.row === row && prev.col === col ? null : { row, col }
-    // );
+  const updateCell = useCallback((row: number, col: number) => {
     const cell = grid[row][col];
-    let newSelected: [number, number][] = [];
-    let newGrid = grid.map((r) => [...r]);
 
     setSelectedSportId("");
     setGrid((prev) => {
@@ -1203,12 +1231,8 @@ const CellGridLatest = () => {
         setSelected((prevSelected) => {
           const exists = prevSelected.some(([r, c]) => r === row && c === col);
           if (exists) {
-            // Deselect cell
-            // setSelectedCell(null);
             return prevSelected.filter(([r, c]) => !(r === row && c === col));
           } else {
-            // Select cell (add)
-            // setSelectedCell({ row, col });
             return [...prevSelected, [row, col]];
           }
         });
@@ -1238,9 +1262,9 @@ const CellGridLatest = () => {
     // Fetch cell details for the clicked cell (last clicked)
     fetchCellDetails(row, col);
     fetchGameIdForCell(row, col);
-  };
+  }, [grid, selected, fetchCellDetails]);
 
-  const handleDrop = async (
+  const handleDrop = useCallback(async (
     [fr, fc]: [number, number],
     [tr, tc]: [number, number]
   ) => {
@@ -1329,11 +1353,6 @@ const CellGridLatest = () => {
           // Fetch gameId for game type bookings
           const gameId = await fetchGameIdForCell(fr, fc);
 
-          // console.log(
-          //   `${API_BASE_URL_Latest}/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
-          //   "game reschedule api log"
-          // );
-
           rescheduleResponse = await axios.patch(
             `${API_BASE_URL_Latest}/game/reschedule/${gameId}?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
             {
@@ -1347,11 +1366,6 @@ const CellGridLatest = () => {
           );
         } else {
           // For booking type, use booking reschedule API
-          // console.log(
-          //   `${API_BASE_URL_Latest}/court/booking/${bookingId}/reschedule-by-time?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
-          //   "booking reschedule api log"
-          // );
-
           rescheduleResponse = await axios.patch(
             `${API_BASE_URL_Latest}/court/booking/${bookingId}/reschedule-by-time?newStartTime=${newStartTimeIST}&newEndTime=${newEndTimeIST}&courtId=${targetCourt.courtId}`,
             {
@@ -1364,8 +1378,6 @@ const CellGridLatest = () => {
             }
           );
         }
-
-        // console.log("Reschedule successful:", rescheduleResponse.data);
 
         // Update the grid after successful reschedule
         setGrid((prev) => {
@@ -1385,7 +1397,7 @@ const CellGridLatest = () => {
         showToast("Failed to reschedule booking. Please try again.");
       }
     }
-  };
+  }, [grid, getFilteredCourtByIndex, currentDate, fetchBookingsAndBlocked, showToast]);
 
   type ModalGame = {
     gameId: string;
@@ -1393,7 +1405,7 @@ const CellGridLatest = () => {
 
   const [modalData, setModalData] = useState<ModalGame>();
 
-  function getUserNameFromToken(): string {
+  const getUserNameFromToken = useCallback((): string => {
     try {
       const token = sessionStorage.getItem("token");
       if (!token) return "Guest";
@@ -1404,10 +1416,10 @@ const CellGridLatest = () => {
     } catch {
       return "Guest";
     }
-  }
+  }, []);
 
   // Modify applyAction to handle multiple selected cells for booking
-  const applyAction = async (action: CellState) => {
+  const applyAction = useCallback(async (action: CellState) => {
     if (selected.length === 0) return;
 
     if (
@@ -1416,11 +1428,6 @@ const CellGridLatest = () => {
       action === "unblock" ||
       action === "unbook"
     ) {
-      // if (!selectedSportId) {
-      //   alert("Please select a sport first");
-      //   return;
-      // }
-
       if (action === "blocked") {
         // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
         const rowsSet = new Set(selected.map(([r]) => r));
@@ -1445,7 +1452,6 @@ const CellGridLatest = () => {
         // Find the slotId for this court and selected time range from courtSlots state
         const courtSlotsForCourt =
           courtSlots[getFilteredCourtByIndex(row).courtId] || [];
-        let matchedSlot: any = null;
 
         // Calculate start and end time of selected cells
         const firstCol = colsSelected[0];
@@ -1471,7 +1477,6 @@ const CellGridLatest = () => {
           showToast("No matching slot found for selected cells.");
           return;
         }
-        // console.log("overlapping slots", overlappingSlots);
 
         // PATCH request to update timeslot as blocked
         try {
@@ -1524,7 +1529,6 @@ const CellGridLatest = () => {
         // Find the slotId for this court and selected time range from courtSlots state
         const courtSlotsForCourt =
           courtSlots[getFilteredCourtByIndex(row).courtId] || [];
-        let matchedSlot: any = null;
 
         // Calculate start and end time of selected cells
         const firstCol = colsSelected[0];
@@ -1602,7 +1606,6 @@ const CellGridLatest = () => {
         // Find the slotId for this court and selected time range from courtSlots state
         const courtSlotsForCourt =
           courtSlots[getFilteredCourtByIndex(row).courtId] || [];
-        let matchedSlot: any = null;
 
         // Calculate start and end time of selected cells
         const firstCol = colsSelected[0];
@@ -1640,7 +1643,6 @@ const CellGridLatest = () => {
             return bookObj && bookObj.bookingId ? bookObj.bookingId : null;
           })
           .filter(Boolean); // Remove nulls
-        // console.log("Unbook bookingId", bookingIdsToCancel);
 
         if (bookingIdsToCancel.length === 0) {
           showToast("No bookingId found for the selected slots.");
@@ -1654,7 +1656,6 @@ const CellGridLatest = () => {
               const gameIdCancel = await axios.get(
                 `${API_BASE_URL_Latest}/game/get_games_by_bookingId/${bookingId}`
               );
-              // console.log("fetchig gameid for cancellation", gameIdCancel);
 
               const cancelGameId = gameIdCancel.data[0].gameId;
               await axios.patch(
@@ -1736,17 +1737,12 @@ const CellGridLatest = () => {
           rackPrice: 0,
           quotePrice: 0,
         };
-        // console.log("Start Time:", startTime.toISOString());
-        // console.log("End Time:", endTime.toISOString());
-
-        // console.log("Booking Data payload", bookingData);
 
         try {
           const response = await axios.post(
             `${API_BASE_URL_Latest}/game/create`,
             bookingData
           );
-          // console.log("Booking created:", response.data);
           setModalData(response.data.gameId);
 
           showToast("Slots successfully booked.");
@@ -1761,14 +1757,11 @@ const CellGridLatest = () => {
           // console.error("Failed to create booking:", error);
           showToast("Failed to create booking. Please try again.");
         }
-      } else {
       }
-      // ... existing code for booking creation ...
-    } else {
     }
-  };
+  }, [selected, selectedSportId, showToast, courtSlots, getFilteredCourtByIndex, currentDate, fetchBookingsAndBlocked, selectedCellDetails.availableSports, getUserNameFromToken, difficultyLevel, maxPlayers, courtBookIds]);
 
-  const getSlotForCell = (row: number, col: number) => {
+  const getSlotForCell = useCallback((row: number, col: number) => {
     const slotsForCourt =
       courtSlots[getFilteredCourtByIndex(row)?.courtId] || [];
     const hour = Math.floor(col / 2);
@@ -1780,7 +1773,7 @@ const CellGridLatest = () => {
       const slotStart = new Date(slot.startTime);
       return slotStart.getTime() === cellStartTime.getTime();
     });
-  };
+  }, [courtSlots, getFilteredCourtByIndex, currentDate]);
 
   // Modify cancelBooking to cancel bookings for all selected cells with bookings
   const leftSidebarRef = useRef<HTMLDivElement>(null);
@@ -1798,44 +1791,37 @@ const CellGridLatest = () => {
     el.addEventListener("scroll", onSidebarScroll);
 
     return () => el.removeEventListener("scroll", onSidebarScroll);
-  }, [leftSidebarRef.current]);
+  }, []);
 
   // Helper for UI: get first selected cell or null
   const firstSelected = selected.length > 0 ? selected[0] : null;
-  // console.log(firstSelected, "firstSelected");
 
   const [isModalOpen, setisModalOpen] = useState<boolean>(false);
 
-  function openModal() {
+  const openModal = useCallback(() => {
     setisModalOpen(true);
-  }
+  }, []);
 
-  function closeModal() {
+  const closeModal = useCallback(() => {
     setisModalOpen(false);
-  }
-  const [selectedCell, setSelectedCell] = useState<{
-    row: number;
-    col: number;
-  } | null>(null);
+  }, []);
 
-  function formatDateForInput(date: Date) {
+  
+
+  const formatDateForInput = useCallback((date: Date) => {
     return date.toISOString().split("T")[0];
-  }
+  }, []);
 
-  const selectedSlot = selectedCell
-    ? getSlotForCell(selectedCell.row, selectedCell.col)
-    : null;
-  const slotPrice = selectedSlot
-    ? slotPrices[selectedSlot.courtId]?.[selectedSlot.slotId]
-    : null;
+  const selectedSlot = useMemo(() => {
+    return selectedCell ? getSlotForCell(selectedCell.row, selectedCell.col) : null;
+  }, [selectedCell, getSlotForCell]);
 
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const slotPrice = useMemo(() => {
+    return selectedSlot ? slotPrices[selectedSlot.courtId]?.[selectedSlot.slotId] : null;
+  }, [selectedSlot, slotPrices]);
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-  };
-
-  const fetchGameIdForCell = async (row: number, col: number) => {
+  
+  const fetchGameIdForCell = useCallback(async (row: number, col: number) => {
     try {
       const court = getFilteredCourtByIndex(row);
       const dateStr = currentDate.toISOString().split("T")[0];
@@ -1885,9 +1871,7 @@ const CellGridLatest = () => {
             `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=ALL`
           );
         }
-        // console.log("new host name", response.data[0].hostName);
 
-        // console.log("Fresh game fetch response:", response.data);
         const games = response.data;
         sessionStorage.setItem("newHostClick", response.data[0].hostName);
 
@@ -1905,7 +1889,6 @@ const CellGridLatest = () => {
           throw new Error("No matching fresh game found for cell");
         }
 
-        // console.log("Found fresh matching game with ID:", matchingGame.gameId);
         localStorage.setItem("gameId", matchingGame.gameId);
         return matchingGame.gameId;
       } else {
@@ -1916,9 +1899,9 @@ const CellGridLatest = () => {
       // console.error("Failed to fetch fresh gameId:", error);
       throw error;
     }
-  };
+  }, [getFilteredCourtByIndex, currentDate]);
 
-  const getBookingIdForCell = async (
+  const getBookingIdForCell = useCallback(async (
     row: number,
     col: number
   ): Promise<string | null> => {
@@ -1939,7 +1922,6 @@ const CellGridLatest = () => {
         `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
       );
       const bookings = bookingsRes?.data?.bookings || [];
-      // console.log("Fresh bookings for bookingId lookup:", bookings);
 
       // Find booking that overlaps with this cell (active or rescheduled status only)
       const matchingBooking = bookings.find((booking: Booking) => {
@@ -1955,25 +1937,21 @@ const CellGridLatest = () => {
       });
 
       if (matchingBooking && matchingBooking.bookingId) {
-        // console.log(
-        //   "Found fresh matching booking with ID:",
-        //   matchingBooking.bookingId
-        // );
         return matchingBooking.bookingId;
       }
 
-      // console.log("No fresh bookingId found for cell:", row, col);
       return null;
     } catch (error) {
       // console.error("Error getting fresh bookingId for cell:", error);
       return null;
     }
-  };
+  }, [getFilteredCourtByIndex, currentDate]);
 
-  const currentGameName =
-    selectedCellDetails.availableSports.find(
+  const currentGameName = useMemo(() => {
+    return selectedCellDetails.availableSports.find(
       (s) => s.sportId === selectedCellDetails.currentBooking?.sportId
     )?.name || "Unknown";
+  }, [selectedCellDetails.availableSports, selectedCellDetails.currentBooking?.sportId]);
 
   useEffect(() => {
     if (currentGameName) {
@@ -2039,7 +2017,7 @@ const CellGridLatest = () => {
       // Refetch bookings and blocked slots for filtered courts
       fetchBookingsAndBlocked(currentDate);
     }
-  }, [activeTab, filteredCourtId.length]); // Trigger when activeTab or filtered court count changes
+  }, [activeTab, filteredCourtId.length, cols, fetchBookingsAndBlocked, currentDate]); // Trigger when activeTab or filtered court count changes
 
   const [courName, setCourName] = useState("Loading...");
 
@@ -2048,10 +2026,18 @@ const CellGridLatest = () => {
     if (firstSelected && courtId) {
       const fetchCourtName = async () => {
         try {
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/court/${courtId}`
-          );
-          setCourName(res.data.name);
+          const courtCacheKey = `court-name-${courtId}`;
+          const cached = getCachedData(courtCacheKey);
+          
+          if (cached) {
+            setCourName(cached);
+          } else {
+            const res = await axios.get(
+              `${API_BASE_URL_Latest}/court/${courtId}`
+            );
+            setCachedData(courtCacheKey, res.data.name);
+            setCourName(res.data.name);
+          }
         } catch (err) {
           setCourName("Unknown");
         }
@@ -2060,11 +2046,87 @@ const CellGridLatest = () => {
     }
   }, [firstSelected, selectedCellDetails.courtDetails?.courtId]);
 
-  // if (loadingScreen) {
-  //   return <LoadingScreen />;
-  // }
+  // Memoized grid rendering
+  // Replace the incomplete gridCells useMemo (around line 1445) with this complete implementation:
 
-  return (
+const gridCells = useMemo(() => {
+  return grid.map((row, rIdx) =>
+    row.map((cell, cIdx) => {
+      let isDisabled = false;
+
+      const hasAvailableSelected = selected.some(
+        ([r, c]) =>
+          grid[r][c] === "available" || grid[r][c] === "selected"
+      );
+      const hasOccupiedOrBlockedSelected = selected.some(
+        ([r, c]) =>
+          grid[r][c] === "occupied" || grid[r][c] === "blocked"
+      );
+
+      if (cell === "selected") {
+        const selectedInRow = selected
+          .filter(([r, _]) => r === rIdx)
+          .map(([_, col]) => col);
+
+        if (selectedInRow.length > 0) {
+          const minSelectedCol = Math.min(...selectedInRow);
+          const maxSelectedCol = Math.max(...selectedInRow);
+
+          if (cIdx !== minSelectedCol && cIdx !== maxSelectedCol) {
+            isDisabled = true;
+          }
+        }
+      }
+
+      if (cell === "available") {
+        if (hasOccupiedOrBlockedSelected) {
+          // available cells are enabled to allow switching from occupied/blocked
+        } else if (selected.length > 0) {
+          const [selRow] = selected[0];
+          const selCols = selected.map(([, col]) => col);
+          const minCol = Math.min(...selCols);
+          const maxCol = Math.max(...selCols);
+
+          if (rIdx !== selRow) isDisabled = true;
+
+          const isNextToSelection =
+            cIdx === minCol - 1 || cIdx === maxCol + 1;
+          if (
+            !(selected.length === 1 && cIdx === minCol) &&
+            !isNextToSelection
+          )
+            isDisabled = true;
+        }
+      } else if (cell === "occupied" || cell === "blocked") {
+        if (hasAvailableSelected) {
+          isDisabled = true;
+        }
+      }
+
+      const isSelected = selected.some(([r, c]) => r === rIdx && c === cIdx);
+
+      return (
+        <Cell
+          key={`cell-${rIdx}-${cIdx}`}
+          row={rIdx}
+          col={cIdx}
+          state={cell}
+          onClick={updateCell}
+          onDropAction={handleDrop}
+          isSelected={isSelected}
+          classNames={isDisabled ? "opacity-50 cursor-not-allowed" : ""}
+        />
+      );
+    })
+  );
+}, [grid, selected, updateCell, handleDrop]); // Complete dependency array
+      
+        
+// The JSX return statement is broken around line 1500. Replace everything from "return (" to the end of component with:
+
+return (
+  <>
+    {/* {loadingScreen && <LoadingScreen />} */}
     <div className="flex flex-col h-screen">
       {/* Top Nav - Fixed */}
       <TopBar />
@@ -2093,7 +2155,6 @@ const CellGridLatest = () => {
           })}
           {isLoadingBookings && (
             <span className="ml-2 text-blue-500">Loading...</span>
-            
           )}
         </span>
         <div className="flex items-center gap-4">
@@ -2133,227 +2194,77 @@ const CellGridLatest = () => {
 
       {/* Main Content Area - Flexible */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Synchronized with grid vertical scroll */}
-        <div className="flex flex-col w-24 shrink-0 bg-white">
-          <div className="h-10 shrink-0" />
+        {/* Left Sidebar - Court Names */}
+        <div className="flex flex-col w-48 shrink-0 bg-white border-r border-gray-200">
+          <div className="h-10 shrink-0 border-b border-gray-200" />
           <div
             ref={leftSidebarRef}
-            className="flex flex-col overflow-y-auto overflow-x-hidden"
+            className="flex flex-col overflow-y-auto"
             style={{
-              overflowY: "hidden",
               scrollbarWidth: "none",
               msOverflowStyle: "none",
-              paddingBottom: "20px",
             }}
           >
-            {filteredCourtId.map((court) => (
+            {filteredCourtId.map((court, idx) => (
               <div
                 key={court.courtId}
-                className="h-10 flex items-center  justify-center border border-gray-200 text-xs text-center shrink-0"
+                className="h-10 flex items-center px-3 border-b border-gray-200 bg-white text-xs font-semibold truncate"
+                style={{ userSelect: "none" }}
               >
-                {resolvedNames[court.courtId] ?? court.name}
+                {memoizedResolvedNames[court.courtId] || court.name}
               </div>
             ))}
           </div>
         </div>
 
-        {/* Grid Section - Scrollable with Visual Restriction */}
+        {/* Grid Area */}
         <div className="flex flex-col flex-1 overflow-hidden">
-          {/* Time Headers - Visually Clipped Container */}
+          {/* Time Headers - Fixed */}
           <div
-            className="shrink-0 relative"
+            className="overflow-x-auto overflow-y-hidden h-10 shrink-0"
             style={{
-              overflow: "hidden",
-              width: "100%",
-
-              height: "40px", // h-10 equivalent
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
             }}
           >
-            {/* Actual Time Headers - Full Width but Shifted */}
             <div
-              className="overflow-x-auto overflow-y-hidden absolute"
-              ref={(el) => {
-                if (el && gridScrollRef.current) {
-                  el.scrollLeft = gridScrollRef.current.scrollLeft;
-                }
-              }}
+              className="grid border-b border-gray-200"
               style={{
-                scrollbarWidth: "none",
-                msOverflowStyle: "none",
-                background: "white",
-                // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
-                width: `calc(100% + ${4 * visibleStartSlot}rem)`,
-                // width: "100%",
-                height: "100%",
-                left: `calc(4rem * -${visibleStartSlot})`, // Shift left to hide first 12 columns (midnight to 6AM)
+                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                minWidth: `calc(4rem * ${cols})`,
               }}
             >
-              {/* Continuous border line from midnight to 12 PM */}
-              <div
-                style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  width: `calc(4rem * 48)`,
-                  height: "1px",
-                  backgroundColor: "#D1D5DB",
-                  pointerEvents: "none",
-                  zIndex: 10,
-                }}
-              />
-
-              <div
-                className="grid border border-gray-300 rounded-t-md bg-white"
-                style={{
-                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
-                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
-                }}
-              >
-                {timeLabels.map((label, i) => (
-                  <div
-                    key={`header-${i}`}
-                    className="min-w-0 h-10 mr-7 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap"
-                    style={{ userSelect: "none" }}
-                  >
-                    {label}
-                  </div>
-                ))}
-              </div>
+              {timeLabels.map((label, i) => (
+                <div
+                  key={`header-${i}`}
+                  className="min-w-[4rem] h-10 flex items-center justify-center text-xs font-semibold text-timeSlot whitespace-nowrap border-r border-gray-200"
+                  style={{ userSelect: "none" }}
+                >
+                  {label}
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Grid Content - Visually Clipped Container */}
+          {/* Grid Content */}
           <div
-            className="flex-1 relative"
-            style={{
-              overflow: "hidden",
+            className="flex-1 overflow-auto"
+            ref={gridScrollRef}
+            onScroll={(e) => {
+              const target = e.target as HTMLElement;
+              if (leftSidebarRef.current) {
+                leftSidebarRef.current.scrollTop = target.scrollTop;
+              }
             }}
           >
-            {/* Actual Grid Content - Full Width but Shifted */}
             <div
-              className="overflow-auto absolute custom-scrollbar"
-              ref={gridScrollRef}
-              onScroll={(e) => {
-                const target = e.target as HTMLElement;
-
-                const leftSidebarEl =
-                  target.parentElement?.parentElement?.parentElement?.querySelector(
-                    ".flex.flex-col.overflow-y-auto.overflow-x-hidden"
-                  ) as HTMLElement;
-                if (leftSidebarEl) {
-                  leftSidebarEl.scrollTop = target.scrollTop;
-                }
-
-                // Sync horizontal scroll with time headers
-                const timeHeaderEl =
-                  target.parentElement?.parentElement?.querySelector(
-                    ".overflow-x-auto.overflow-y-hidden.absolute"
-                  ) as HTMLElement;
-                if (timeHeaderEl) {
-                  timeHeaderEl.scrollLeft = target.scrollLeft;
-                }
-              }}
+              className="grid"
               style={{
-                // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
-                width: `calc(100% + ${4 * visibleStartSlot}rem)`,
-                height: "100%",
-                left: `calc(4rem * -${visibleStartSlot})`,
-                // Same shift as headers to maintain alignment
+                gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
+                minWidth: `calc(4rem * ${cols})`,
               }}
             >
-              <div
-                className="grid border border-gray-200 rounded-b-md"
-                style={{
-                  gridTemplateColumns: `repeat(${cols}, minmax(4rem, 1fr))`,
-                  minWidth: `calc(4rem * 48)`, // Ensure full grid width
-                }}
-              >
-                {grid.map((row, rIdx) =>
-                  row.map((cell, cIdx) => {
-                    let isDisabled = false;
-
-                    const hasAvailableSelected = selected.some(
-                      ([r, c]) =>
-                        grid[r][c] === "available" || grid[r][c] === "selected"
-                    );
-                    const hasOccupiedOrBlockedSelected = selected.some(
-                      ([r, c]) =>
-                        grid[r][c] === "occupied" || grid[r][c] === "blocked"
-                    );
-
-                    if (cell === "selected") {
-                      // Find all selected cells in this row
-                      const selectedInRow = selected
-                        .filter(([r, _]) => r === rIdx)
-                        .map(([_, col]) => col);
-
-                      if (selectedInRow.length > 0) {
-                        const minSelectedCol = Math.min(...selectedInRow);
-                        const maxSelectedCol = Math.max(...selectedInRow);
-
-                        // Disable this cell if it is not at the edges of selection
-                        if (
-                          cIdx !== minSelectedCol &&
-                          cIdx !== maxSelectedCol
-                        ) {
-                          isDisabled = true;
-                        }
-                      }
-                    }
-
-                    if (cell === "available") {
-                      if (hasOccupiedOrBlockedSelected) {
-                        // available cells are enabled to allow switching from occupied/blocked
-                        // isDisabled = true;
-                      } else if (selected.length > 0) {
-                        const [selRow] = selected[0];
-                        const selCols = selected.map(([, col]) => col);
-                        const minCol = Math.min(...selCols);
-                        const maxCol = Math.max(...selCols);
-
-                        if (rIdx !== selRow) isDisabled = true;
-
-                        const isNextToSelection =
-                          cIdx === minCol - 1 || cIdx === maxCol + 1;
-                        if (
-                          !(selected.length === 1 && cIdx === minCol) &&
-                          !isNextToSelection
-                        )
-                          isDisabled = true;
-                      }
-                    } else if (cell === "occupied" || cell === "blocked") {
-                      // Disabled if any available cell is already selected
-                      if (hasAvailableSelected) {
-                        isDisabled = true;
-                      }
-                    }
-                    const hoverClass = isDisabled
-                      ? "hover:bg-red-500"
-                      : "hover:bg-green-300";
-                    return (
-                      <Cell
-                        key={`${rIdx}-${cIdx}`}
-                        row={rIdx}
-                        col={cIdx}
-                        state={cell}
-                        onClick={() => {
-                          if (!isDisabled) updateCell(rIdx, cIdx);
-                        }}
-                        onDropAction={handleDrop}
-                        isSelected={selected.some(
-                          ([r, c]) => r === rIdx && c === cIdx
-                        )}
-                        style={{
-                          cursor: isDisabled ? "not-allowed" : "pointer",
-                          pointerEvents: isDisabled ? "none" : "auto",
-                          // Tailwind's red-500 hex
-                        }}
-                        classNames={hoverClass}
-                      />
-                    );
-                  })
-                )}
-              </div>
+              {gridCells.flat()}
             </div>
           </div>
         </div>
@@ -2365,84 +2276,72 @@ const CellGridLatest = () => {
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Left Side: Court Id and Host */}
           {firstSelected && (
-          <div className="flex flex-col min-w-[200px] flex-1">
-            <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
-              {/* <p>
-                <strong>Court Name:</strong>{" "}
-                {getCellData()?.courtName ??
-                  (firstSelected
-                    ? courtId[firstSelected[0]]?.name ?? "Unknown"
-                    : "N/A")}
-              </p> */}
+            <div className="flex flex-col min-w-[200px] flex-1">
+              <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
+                <p>
+                  <strong>Court Name:</strong>{" "}
+                  {firstSelected
+                    ? (memoizedResolvedNames[
+                        filteredCourtId[firstSelected[0]]?.courtId
+                      ] ||
+                        filteredCourtId[firstSelected[0]]?.name) ??
+                      "Unknown"
+                    : "N/A"}
+                </p>
 
-              <p>
-                <strong>Court Name:</strong>{" "}
-                {firstSelected
-                  ? (resolvedNames[
-                      filteredCourtId[firstSelected[0]]?.courtId
-                    ] ||
-                      filteredCourtId[firstSelected[0]]?.name) ??
-                    "Unknown"
-                  : "N/A"}
-              </p>
+                <p>
+                  <strong>Host:</strong>{" "}
+                  {firstSelected &&
+                    ["occupied", "blocked"].includes(
+                      grid[firstSelected[0]][firstSelected[1]]
+                    ) &&
+                    sessionStorage.getItem("newHostClick")}
+                  {firstSelected &&
+                    [
+                      "available",
+                      "selected",
+                      "unbook",
+                      "unblock",
+                      "cancelled",
+                    ].includes(
+                      grid[firstSelected[0]][firstSelected[1]]
+                    ) &&
+                    sessionStorage.getItem("hostName")}
+                </p>
 
-              <p>
-                <strong>Host:</strong>{" "}
-                {firstSelected &&
-                  ["occupied", "blocled"].includes(
-                    grid[firstSelected[0]][firstSelected[1]]
-                  ) &&
-                  sessionStorage.getItem("newHostClick")}
+                {/* Sport Select dropdown */}
                 {firstSelected &&
                   [
-                  "available",
-                  "selected",
-
-                  "unbook",
-                  "unblock",
-                  "cancelled",
-                ].includes(
-                    grid[firstSelected[0]][firstSelected[1]]
-                  ) &&
-                  sessionStorage.getItem("hostName")}
-              </p>
-
-              {/* Bottom row: Sport Select dropdown - aligned left */}
-              {firstSelected &&
-                [
-                  "available",
-                  "selected",
-
-                  "unbook",
-                  "unblock",
-                  "cancelled",
-                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
-                  <div className="flex items-center gap-2 justify-start w-full">
-                    <label className="font-semibold">Sport:</label>
-                    <select
-                      value={selectedSportId}
-                      onChange={(e) => setSelectedSportId(e.target.value)}
-                      className="px-2 py-1 border border-gray-300 rounded text-sm"
-                    >
-                      <option value="">Select a sport</option>
-                      {selectedCellDetails.availableSports.map((sport) => (
-                        <option key={sport.sportId} value={sport.sportId}>
-                          {sport.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+                    "available",
+                    "selected",
+                    "unbook",
+                    "unblock",
+                    "cancelled",
+                  ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
+                    <div className="flex items-center gap-2 justify-start w-full">
+                      <label className="font-semibold">Sport:</label>
+                      <select
+                        value={selectedSportId}
+                        onChange={(e) => setSelectedSportId(e.target.value)}
+                        className="px-2 py-1 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Select a sport</option>
+                        {selectedCellDetails.availableSports.map((sport) => (
+                          <option key={sport.sportId} value={sport.sportId}>
+                            {sport.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+              </div>
             </div>
-          </div>
           )}
 
-          {/* Center: Difficulty, Max Players, Slots, Price, and Sport dropdown */}
+          {/* Center: Difficulty, Max Players, Slots, Price */}
           <div className="flex flex-col min-w-[350px] flex-1">
-            {/* Top row: Difficulty, Max Players, Slots, Price - centered */}
             <div className="flex flex-wrap items-center gap-4 justify-center w-full mb-2">
               {/* Difficulty */}
-
               <div>
                 {firstSelected &&
                   ["selected", "unbook", "unblock", "cancelled"].includes(
@@ -2472,107 +2371,6 @@ const CellGridLatest = () => {
                     <>
                       <label className="font-semibold">Max Players:</label>
                       <button
-                        className="px-2 py-1 bg-gray-300 rounded"
-                        onClick={() =>
-                          setMaxPlayers((prev) => Math.max(1, prev - 1))
-                        }
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center">{maxPlayers}</span>
-                      <button
-                        className="px-2 py-1 bg-gray-300 rounded"
-                        onClick={() =>
-                          setMaxPlayers((prev) => Math.min(30, prev + 1))
-                        }
-                      >
-                        +
-                      </button>
-                    </>
-                  )}
-              </div>
-
-              {/* Slots */}
-              {selected.length === 0 ? (
-                <div className="text-gray-500">
-                  <strong>Slots: </strong>Not Selected
-                </div>
-              ) : (
-                <div>
-                  <strong>Slots:</strong> {formatSelectedTimeRange(selected)}
-                </div>
-              )}
-
-              {/* Game */}
-              <div className="ml-4 md:ml-8 lg:ml-16 xl:ml-18 2xl:ml-21">
-                {firstSelected &&
-                  [
-                    "selected",
-                    "occupied",
-                    "blocked",
-                    "unbook",
-                    "unblock",
-                    "cancelled",
-                  ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
-                    <>
-                      <strong>Allowed Sports:</strong>{" "}
-                      {selected.length > 0 ? (
-                        selectedCellDetails.currentBooking &&
-                        selectedCellDetails.currentBooking.sportId ? (
-                          // Show only the booked game's name
-                          <span>
-                            {"'" +
-                              (selectedCellDetails.availableSports.find(
-                                (s) =>
-                                  s.sportId ===
-                                  selectedCellDetails.currentBooking!.sportId
-                              )?.name || "Unknown") +
-                              "' "}
-                          </span>
-                        ) : (
-                          // Show all available sports
-                          selectedCellDetails.availableSports.map((sport) => (
-                            <span key={sport.sportId}>
-                              {"'" + sport.name + "' "}
-                            </span>
-                          ))
-                        )
-                      ) : (
-                        ""
-                      )}
-                    </>
-                  )}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Side: Buttons and Status */}
-          <div className="flex flex-col items-end gap-2 min-w-[200px] flex-1">
-            {/* <div>
-              <strong>Price:</strong>{" "}
-              {slotPrices !== null && slotPrices !== undefined
-                ? slotPrices
-                : "N/A"}
-            </div> */}
-
-            {firstSelected && (
-              <span className="text-sm text-timeSlot mb-2">
-                <strong>Status:</strong>{" "}
-                {grid[firstSelected[0]][firstSelected[1]]}
-              </span>
-            )}
-
-            <div className="flex flex-wrap gap-2 justify-end w-full">
-              {firstSelected &&
-                [
-                  "available",
-                  "selected",
-                  "unbook",
-                  "unblock",
-                  "cancelled",
-                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
-                  <>
-                    <button
                       className="bg-green-500 text-white px-3 py-1 rounded"
                       onClick={() => applyAction("occupied")}
                     >
@@ -2613,7 +2411,6 @@ const CellGridLatest = () => {
                   ) && (
                     <button
                       onClick={async () => {
-                        // Refresh cell details before opening modal to get latest data
                         await fetchCellDetails(
                           firstSelected[0],
                           firstSelected[1]
@@ -2631,7 +2428,8 @@ const CellGridLatest = () => {
             </div>
           </div>
         </div>
-
+      </div>
+      
         {/* Current Date - Full Width */}
         <div className="text-xs text-gray-500 text-center mt-1 w-full"></div>
       </div>
@@ -2651,7 +2449,8 @@ const CellGridLatest = () => {
         <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
       )}
     </div>
+    </>
   );
 };
 
-export default CellGridLatest;
+export default CellGridPerformv2;

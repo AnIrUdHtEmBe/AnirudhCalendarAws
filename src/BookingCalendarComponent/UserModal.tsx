@@ -18,6 +18,7 @@ import GameChat from "./GameChat";
 import { AblyProvider } from "ably/react";
 import * as Ably from "ably";
 import { API_BASE_URL_Latest } from "./AxiosApi";
+import UserPlanModal from "../UserPlanDetailsComponent/UserPlanModal";
 
 interface CellModalProps {
   isOpen: boolean;
@@ -47,6 +48,11 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     undefined
   );
   const [datePlanEnd, setDatePlanEnd] = useState<string | undefined>(undefined);
+  const [isUserPlanModalOpen, setIsUserPlanModalOpen] = useState(false);
+  const [userPlanUserId, setUserPlanUserId] = useState<string>("");
+  const [userPlanName, setUserPlanName] = useState<string>("");
+  const [userPlanStartDate, setUserPlanStartDate] = useState<string>("");
+  const [userPlanEndDate, setUserPlanEndDate] = useState<string>("");
 
   useEffect(() => {
     //@ts-ignore
@@ -418,23 +424,29 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
                 {modalUsers.map((user, index) => (
                   <tr
                     key={user.userId}
-                    onClick={() => {
-                      // Get date part from bookingStartTime
-
-                      navigate(
-                        `/UserPlanDetails?userId=${
-                          user.userId
-                        }&startDate=${encodeURIComponent(
-                          datePlanStart ?? ""
-                        )}&endDate=${encodeURIComponent(datePlanEnd ?? "")}`
-                      );
-                    }}
-                    className="hover:bg-gray-50"
+                    
+                    className="hover:bg-blue-100 cursor-pointer hover:underline transition duration-150 active:scale-95"
                   >
                     <td className="border border-gray-300 px-4 py-2 text-center">
                       {index + 1}
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 font-medium">
+                    <td onClick={() => {
+                      // Get date part from bookingStartTime
+
+                      // navigate(
+                      //   `/UserPlanDetails?userId=${
+                      //     user.userId
+                      //   }&startDate=${encodeURIComponent(
+                      //     datePlanStart ?? ""
+                      //   )}&endDate=${encodeURIComponent(datePlanEnd ?? "")}`
+                      // );
+
+                      setUserPlanUserId(user.userId);
+                      setUserPlanName(user.name);
+                      setUserPlanStartDate(datePlanStart ?? "");
+                      setUserPlanEndDate(datePlanEnd ?? "");
+                      setIsUserPlanModalOpen(true);
+                    }} className="border border-gray-300 px-4 py-2 font-medium">
                       {user.name}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center">
@@ -489,6 +501,15 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
             Submit
           </button>
         </div>
+        <UserPlanModal
+          open={isUserPlanModalOpen}
+          handleClose={() => setIsUserPlanModalOpen(false)}
+          userId={userPlanUserId}
+          userName={userPlanName}
+          startDate={userPlanStartDate}
+          endDate={userPlanEndDate}
+        />
+
         <div>
           {openGameChat && (
             <div
