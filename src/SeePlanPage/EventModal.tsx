@@ -181,10 +181,10 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
 
   }
   return (
-    <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50">
-      {showConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
+<div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs">
+  {showConfirm && (
+<div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs">          
+  <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Are you sure you want to remove this session?
             </h2>
@@ -285,179 +285,129 @@ export default function EventModal({ isOpen, onClose, eventData, sessionId, plan
       )}
 
 
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-2xl p-6 relative">
-        <button
-          onClick={onClose}
-          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl"
-        >
-          &times;
-        </button>
-        <p className="text-3xl font-bold mb-2 ">
-          {eventData.title === "DUMMY" ? "ACTIVITIES" : eventData.title}
+{/*changes made to adjust css = responsive window*/}
+<div className="bg-white rounded-2xl shadow-lg w-full max-w-2xl max-h-[calc(100vh-4rem)] p-6 relative my-4 sm:my-6 flex flex-col">
+  <button
+    onClick={onClose}
+    className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl cursor-pointer"
+  >
+    &times;
+  </button>
+  <p className="text-3xl font-bold mb-2">
+    {eventData.title === "DUMMY" ? "ACTIVITIES" : eventData.title}
+  </p>
 
-        </p>
-
-        <div className="text-sm text-gray-700 space-y-2 ">
-          {/* <p><strong>Plan ID:</strong> {eventData.extendedProps.planInstanceId}</p> */}
-          <p className="text-xl"><strong>Plan Name: </strong>
-            {eventData.title === "DUMMY"
-              ? details?.activityDetails && (
-                <>
-                  ({Object.keys(details.activityDetails).length} activities)
-                </>
-              )
-              : eventData.extendedProps.planTitle}
-          </p>
-          {details?.activityDetails && (
-            <div>
-              <p className="text-xl"><strong>Activities:</strong></p>
-              <ol className="list-decimal pl-5 text-xl">
-                <ol style={{listStyleType:"none"}}>
-                                    <div className="flex flex-wrap  bg-gray-200 font-semibold border border-gray-300 rounded">
-                                        <div className="w-1/4 p-2">Item</div>
-                                        <div className="w-1/4 p-2">Description</div>
-                                        <div className="w-1/4 p-2">Target</div>
-                                        <div className="w-1/4 p-2">Remove</div>
-                                    </div>
-                                </ol>
-                {Object.entries(details.activityDetails).map(
-                  ([activityId, activity]) => (
-                    <li key={activityId}>
-                      <div  /*className="activity-each-row-event-modal" className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-4"*/ className="flex flex-wrap items-center">
-
-                        <div className="w-1/4 p-2"><strong>{activity.name}</strong>  </div>
-                        <div className="w-1/4 p-2" >{activity.description}</div>
-                        {/* <div className="w-1/4 p-2" >{activity.activityInstanceId}</div> */}
-                        <div className="w-1/4 p-2">
-                          {activity?.target}{activity?.unit == "weight"
-                            ? "Kg"
-                            : activity?.unit == "distance"
-                              ? "Km"
-                              : activity?.unit == "time"
-                                ? "Min"
-                                : activity?.unit == "repetitions"
-                                  ? "Reps"
-                                  : ""
-                          }
-
-                        </div>
-                        <div>
-                          {/* <button
-                            className="ml-2 px-3 py-1 text-sm font-medium text-white bg-red rounded hover:bg-red-600 transition"
-                            onClick={() => {
-                              // console.log(activity,activityId,"this is instance")
-                              setactivityId(activityId)
-                              setshowConfirmAct(true)
-                            }}
-                          >
-                            ➖
-                          </button> */}
-                          <MinusCircle
-                            className="ml-2 w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition"
-                            onClick={() => {
-                              setactivityId(activityId);
-                              setshowConfirmAct(true);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </li>
-                  )
-                )}
-              </ol>
+  <div className="text-sm text-gray-700 space-y-2 flex-grow">
+    {/* <p><strong>Plan ID:</strong> {eventData.extendedProps.planInstanceId}</p> */}
+    <p className="text-xl">
+      <strong>Plan Name: </strong>
+      {eventData.title === "DUMMY"
+        ? details?.activityDetails && (
+            <>
+              ({Object.keys(details.activityDetails).length} activities)
+            </>
+          )
+        : eventData.extendedProps.planTitle}
+    </p>
+    {details?.activityDetails && (
+      <div>
+        <p className="text-xl"><strong>Activities:</strong></p>
+        <ol className="list-decimal pl-5 text-xl">
+          <ol style={{ listStyleType: "none" }}>
+            <div className="flex flex-wrap bg-gray-200 font-semibold border border-gray-300 rounded">
+              <div className="w-1/4 p-2">Item</div>
+              <div className="w-1/4 p-2">Description</div>
+              <div className="w-1/4 p-2">Target</div>
+              <div className="w-1/4 p-2">Remove</div>
             </div>
-          )}
-        </div>
-        <div className="mt-4 flex justify-end gap-3">
-          <div className="mt-4 flex justify-end">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-            >
-              Close
-            </button>
-          </div>
-          <div className="mt-4 flex justify-end">
-            <button id="remove_eventmodal"
-              onClick={() => setShowConfirm(true)}
-              className=" px-2 py-1 bg-red-600 text-white rounded-md  right-27 text-gray-400 hover:text-gray-600 text-xl"
-            >Remove</button>
-          </div>
-        </div>
-        <div className="EventModal_activity">
-          <div>
-            <tbody>
-              {emptyArr.map((activity, index) => (
-                <tr
-                  key={index}
-                  className="text-sm text-gray-800 hover:bg-gray-50"
-                >
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    <Autocomplete
-                      options={activities_api_call}
-                      getOptionLabel={(option) => option.name || ""}
-                      value={
-                        activities_api_call.find(
-                          (a) => a.activityId === selectedActivities[index]
-                        ) || null
-                      }
-                      onChange={(_, newValue) => {
-                        // newValue is the selected activity object or null
-                        handleActivitySelectChange(
-                          index,
-                          newValue ? newValue.activityId : ""
-                        );
-                        setActivityForTable(newValue);
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Select Activity"
-                          variant="outlined"
-                          size="small"
-                          sx={{ width: 250 }}
-                        />
-                      )}
-                      sx={{ width: 100, backgroundColor: "white" }}
-                      isOptionEqualToValue={(option, value) =>
-                        option.activityId === value.activityId
-                      }
-                      freeSolo
-                    />
-                  </td>
-
-                  {/* <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    {activity.description}
-                  </td>
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    {activity.target}
-                  </td>
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    {activity.unit == "weight"
+          </ol>
+          {/* Scrollable Content */}
+          <div className="max-h-[calc(100vh-24rem)] overflow-y-auto">
+            {Object.entries(details.activityDetails).map(([activityId, activity]) => (
+              <li key={activityId}>
+                <div className="flex flex-wrap items-center">
+                  <div className="w-1/4 p-2">
+                    <strong>{activity.name}</strong>
+                  </div>
+                  <div className="w-1/4 p-2">{activity.description}</div>
+                  <div className="w-1/4 p-2">
+                    {activity?.target}
+                    {activity?.unit == "weight"
                       ? "Kg"
-                      : activity.unit == "distance"
+                      : activity?.unit == "distance"
                       ? "Km"
-                      : activity.unit == "time"
+                      : activity?.unit == "time"
                       ? "Min"
-                      : activity.unit == "repetitions"
+                      : activity?.unit == "repetitions"
                       ? "Reps"
                       : ""}
-                  </td> */}
-
-                </tr>
-              ))}
-            </tbody>
+                  </div>
+                  <div className="w-1/4 p-2 flex justify-center items-center">
+                    <MinusCircle
+                      className="w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition mr-10"
+                      onClick={() => {
+                        setactivityId(activityId);
+                        setshowConfirmAct(true);
+                      }}
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
           </div>
-          <td >
-            <button
-              onClick={(e) => handleActivityAdd(e)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-              Add Activity
-            </button>
-          </td>
-        </div>
+        </ol>
       </div>
+    )}
+  </div>
+  <div className="mt-4 flex justify-end gap-3">
+    <button
+      onClick={onClose}
+      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+    >
+      Close
+    </button>
+    <button
+      id="remove_eventmodal"
+      onClick={() => setShowConfirm(true)}
+      className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
+    >
+      Remove
+    </button>
+  </div>
+  <div className="mt-4 flex items-center gap-4">
+    <div>
+      <Autocomplete
+        options={activities_api_call}
+        getOptionLabel={(option) => option.name || ""}
+        value={
+          activities_api_call.find((a) => a.activityId === selectedActivities[0]) || null
+        }
+        onChange={(_, newValue) => {
+          handleActivitySelectChange(0, newValue ? newValue.activityId : "");
+          setActivityForTable(newValue);
+        }}
+        renderInput={(params) => (
+          <TextField
+            {...params}
+            label="Select Activity"
+            variant="outlined"
+            size="small"
+            sx={{ width: 250 }}
+          />
+        )}
+        sx={{ width: 250, backgroundColor: "white" }}
+        isOptionEqualToValue={(option, value) => option.activityId === value.activityId}
+        freeSolo
+      />
+    </div>
+    <button
+      onClick={(e) => handleActivityAdd(e)}
+      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 ml-60"
+    >
+      Add Activity
+    </button>
+  </div>
+</div>
     </div>
   );
 }

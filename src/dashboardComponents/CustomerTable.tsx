@@ -555,7 +555,7 @@ const CustomerTable = () => {
             />
           </div>
         </div>
-        <div className="customer-dashboard-footer-container">
+        {/* <div className="customer-dashboard-footer-container">
           <div className="--customer-dashboard-bottom-box">
             <span className="--head">{neverAssessedCount}</span>
             <span className="--tail">Assessment Due</span>
@@ -568,7 +568,7 @@ const CustomerTable = () => {
             <span className="--head">{rows.length}</span>
             <span className="--tail">Total Members</span>
           </div>
-        </div>
+        </div> */}
       </div>
 
       <div>

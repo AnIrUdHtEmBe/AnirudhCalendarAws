@@ -7,7 +7,6 @@ const Dashboard: React.FC = () => {
   return (
     <div className="dashboard">
       <Header />
-
       {/* Table Section */}
       <div className="table-section">
         <CustomerTable />
