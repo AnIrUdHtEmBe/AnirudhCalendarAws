@@ -15,6 +15,7 @@ import "./Responses.css";
 import { useApiCalls } from "../store/axios";
 import ResponseViewPageHeader from "./ResponseViewPageHeader";
 
+
 function ResponseViewPage() {
     const ScoreZoneData = [
         { name: "Kick Start", from: 0, to: 30 },
@@ -163,6 +164,7 @@ function ResponseViewPage() {
             {/* Fixed Header */}
             {/* <div className="sticky-header"> */}
             <ResponseViewPageHeader />
+          
             {/* </div> */}
 
             <div className="main-containers">

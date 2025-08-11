@@ -30,6 +30,7 @@ import { useApiCalls } from "../store/axios";
 import PlanCreatorGrid from "./PlanCreatorGrid";
 import { useNavigate } from "react-router-dom";
 
+
 function SessionPage() {
   const navigate = useNavigate();
   const [blocks, setBlocks] = useState(28);
@@ -276,7 +277,7 @@ function SessionPage() {
   return (
     <div className="responses-root">
       <Header />
-
+     
       <div className="main-container ">
         {/* Left Panel: Plans Table */}
         <div className="left-panel">

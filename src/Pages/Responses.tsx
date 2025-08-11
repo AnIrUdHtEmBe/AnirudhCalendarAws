@@ -14,6 +14,7 @@ import { Comment, ReplayOutlined } from "@mui/icons-material";
 import { StickyNote } from "lucide-react";
 import { useApiCalls } from "../store/axios";
 
+
 function Responses() {
   const ScoreZoneData = [
     { name: "Kick Start", from: 0, to: 30 },
@@ -158,18 +159,23 @@ function Responses() {
     <div className="responses-root">
       {/* Fixed Header */}
       {/* <div className="sticky-header"> */}
+
       <Header />
+      
       {/* </div> */}
 
       <div className="main-containers">
+        
         <div className="main-card">
           {/* Top Info */}
           <div className="top">
             <div>
+              
               <div className="paper-title">
                 {paperDetails.name || paperDetails.template.name}
               </div>
               <div className="paper-subtitle">
+                
                 For adults, optimizing strength, metabolism, and diet.
               </div>
             </div>

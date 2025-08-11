@@ -4,6 +4,7 @@ import { DataContext } from "../store/DataContext";
 import "./Header.css"; // Import the CSS file
 import { Person, Person2 } from "@mui/icons-material";
 
+
 interface HeaderProps {}
 
 const Header: React.FC<HeaderProps> = () => {
@@ -62,6 +63,8 @@ const Header: React.FC<HeaderProps> = () => {
             Plan Creator
           </button>
         ) : (
+          <>
+          
           <button
             className={`tab-button ${
               selectComponent === "planCreation" ? "active" : ""
@@ -69,6 +72,7 @@ const Header: React.FC<HeaderProps> = () => {
           >
             View Plans
           </button>
+          </>
         )}
 
         <button
@@ -79,6 +83,7 @@ const Header: React.FC<HeaderProps> = () => {
         >
           All Plans
         </button>
+        
       </div>
     </header>
   );

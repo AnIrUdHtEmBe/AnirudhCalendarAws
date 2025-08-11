@@ -8,6 +8,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import LoginPage from '../Pages/LoginPage';
+
 interface LayoutProps {
   children: React.ReactNode;
 }
@@ -34,6 +35,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div style={layoutStyle}>
       <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
       <main style={mainStyle}>
+        
         {children}
       </main>
     </div>

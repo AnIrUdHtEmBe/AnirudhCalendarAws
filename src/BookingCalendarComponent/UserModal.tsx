@@ -19,6 +19,7 @@ import { AblyProvider } from "ably/react";
 import * as Ably from "ably";
 import { API_BASE_URL_Latest } from "./AxiosApi";
 import UserPlanModal from "../UserPlanDetailsComponent/UserPlanModal";
+import { TbMessage } from "react-icons/tb";
 
 interface CellModalProps {
   isOpen: boolean;
@@ -53,6 +54,10 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const [userPlanName, setUserPlanName] = useState<string>("");
   const [userPlanStartDate, setUserPlanStartDate] = useState<string>("");
   const [userPlanEndDate, setUserPlanEndDate] = useState<string>("");
+  const [openDirectGameChat, setOpenDirectGameChat] = useState(false);
+  const [directGameChatRoomName, setDirectGameChatRoomName] = useState(""); // for ably room
+  const [directGameChatDisplayName, setDirectGameChatDisplayName] =
+    useState(""); // for display in GameChat header
 
   useEffect(() => {
     //@ts-ignore
@@ -353,6 +358,77 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     logLevel: LogLevel.Info,
   });
 
+const handleOpenRoomChat = async (userId: string) => {
+  if (!userId || !cellData.bookingId) return;
+
+  try {
+    // Show the chat immediately with loading state
+    setDirectGameChatRoomName(`loading-${userId}-${Date.now()}`);
+    setDirectGameChatDisplayName("Loading...");
+    setOpenDirectGameChat(true);
+
+    // Run all API calls in parallel
+    const [userRoomsRes, bookingRes] = await Promise.all([
+      axios.get(`https://play-os-backend.forgehub.in/human/human/${userId}`),
+      axios.get(`https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`)
+    ]);
+
+    // Process user rooms
+    const userRooms = Array.isArray(userRoomsRes.data)
+      ? userRoomsRes.data
+      : userRoomsRes.data.rooms;
+
+    const courtId = bookingRes.data.courtId;
+
+    // Get court info
+    const courtRes = await axios.get(
+      `https://play-os-backend.forgehub.in/court/${courtId}`
+    );
+    
+    const allowedSports = courtRes.data.allowedSports;
+    const firstSportId = Array.isArray(allowedSports) && allowedSports[0];
+
+    // Get sport info (with fallback)
+    let roomType = "SPORTS"; // default
+    if (firstSportId) {
+      try {
+        const sportRes = await axios.get(
+          `https://play-os-backend.forgehub.in/sports/id/${firstSportId}`
+        );
+        roomType = sportRes.data.category || "SPORTS";
+      } catch (error) {
+        console.warn("Failed to fetch sport info, using default roomType");
+      }
+    }
+
+    // Find matching room
+    let matchedRoom = userRooms?.find(
+      (room: any) =>
+        room.roomType &&
+        room.roomType.trim().toUpperCase() === roomType.trim().toUpperCase()
+    );
+
+    if (!matchedRoom) {
+      matchedRoom = userRooms && userRooms[0];
+      if (!matchedRoom) {
+        setDirectGameChatDisplayName("No rooms available");
+        return;
+      }
+    }
+
+    const roomNameDisplay = matchedRoom.roomName;
+    const finalRoomName = `${roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${userId}`;
+
+    // Update with actual data
+    setDirectGameChatRoomName(finalRoomName);
+    setDirectGameChatDisplayName(roomNameDisplay);
+
+  } catch (error) {
+    console.error("Error opening room chat:", error);
+    setDirectGameChatDisplayName("Error loading chat");
+  }
+};
+
   return (
     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] overflow-hidden">
@@ -370,7 +446,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
               setOpenGameChat(true);
             }}
           >
-            Send message ...
+            Group Chat
           </div>
 
           <button
@@ -416,7 +492,7 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
                     Absent
                   </th>
                   <th className="border border-gray-300 px-4 py-2 text-center">
-                    Pending
+                    Personal Chat
                   </th>
                 </tr>
               </thead>
@@ -424,29 +500,31 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
                 {modalUsers.map((user, index) => (
                   <tr
                     key={user.userId}
-                    
                     className="hover:bg-blue-100 cursor-pointer hover:underline transition duration-150 active:scale-95"
                   >
                     <td className="border border-gray-300 px-4 py-2 text-center">
                       {index + 1}
                     </td>
-                    <td onClick={() => {
-                      // Get date part from bookingStartTime
+                    <td
+                      onClick={() => {
+                        // Get date part from bookingStartTime
 
-                      // navigate(
-                      //   `/UserPlanDetails?userId=${
-                      //     user.userId
-                      //   }&startDate=${encodeURIComponent(
-                      //     datePlanStart ?? ""
-                      //   )}&endDate=${encodeURIComponent(datePlanEnd ?? "")}`
-                      // );
+                        // navigate(
+                        //   `/UserPlanDetails?userId=${
+                        //     user.userId
+                        //   }&startDate=${encodeURIComponent(
+                        //     datePlanStart ?? ""
+                        //   )}&endDate=${encodeURIComponent(datePlanEnd ?? "")}`
+                        // );
 
-                      setUserPlanUserId(user.userId);
-                      setUserPlanName(user.name);
-                      setUserPlanStartDate(datePlanStart ?? "");
-                      setUserPlanEndDate(datePlanEnd ?? "");
-                      setIsUserPlanModalOpen(true);
-                    }} className="border border-gray-300 px-4 py-2 font-medium">
+                        setUserPlanUserId(user.userId);
+                        setUserPlanName(user.name);
+                        setUserPlanStartDate(datePlanStart ?? "");
+                        setUserPlanEndDate(datePlanEnd ?? "");
+                        setIsUserPlanModalOpen(true);
+                      }}
+                      className="border border-gray-300 px-4 py-2 font-medium"
+                    >
                       {user.name}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center">
@@ -469,14 +547,11 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
                         className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                       />
                     </td>
-                    <td className="border border-gray-300 px-4 py-2 text-center">
-                      <input
-                        type="checkbox"
-                        checked={user.status === "pending"}
-                        onChange={() =>
-                          handleModalCheckboxChange(user.userId, "pending")
-                        }
-                        className="w-4 h-4 text-yellow-600 rounded focus:ring-yellow-500"
+                    <td className="flex justify-center border border-gray-300 px-4 py-2 text-center">
+                      <TbMessage
+                        size={30}
+                        style={{ color: "black", cursor: "pointer" }}
+                        onClick={() => handleOpenRoomChat(user.userId)}
                       />
                     </td>
                   </tr>
@@ -522,6 +597,25 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
                     <GameChat
                       roomName={`${localStorage.getItem("currentGameName")}`}
                       onClose={() => setOpenGameChat(false)}
+                    />
+                  </ChatRoomProvider>
+                </ChatClientProvider>
+              </AblyProvider>
+            </div>
+          )}
+
+          {openDirectGameChat && (
+            <div
+              className="fixed inset-0 z-[100] bg-white flex flex-col"
+              style={{ minHeight: "100vh" }}
+            >
+              {/* Use your existing Ably provider setup here if needed */}
+              <AblyProvider client={realtimeClient}>
+                <ChatClientProvider client={chatClient}>
+                  <ChatRoomProvider name={directGameChatRoomName}>
+                    <GameChat
+                      roomName={directGameChatDisplayName}
+                      onClose={() => setOpenDirectGameChat(false)}
                     />
                   </ChatRoomProvider>
                 </ChatClientProvider>

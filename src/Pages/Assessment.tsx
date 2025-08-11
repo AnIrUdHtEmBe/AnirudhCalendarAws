@@ -6,6 +6,7 @@ import "./Assessment.css";
 import { CircularProgress, Switch } from "@mui/material";
 import { useApiCalls } from "../store/axios";
 
+
 const Assessment: React.FC = () => {
   const context = useContext(DataContext);
   if (!context) return <div>Loading...</div>;
@@ -80,7 +81,9 @@ const Assessment: React.FC = () => {
   console.log("assessments_Api_call", assessments_Api_call);
   return (
     <div>
+      
       <Header />
+
       <div className="assessment-container">
         <div className="assessment-content">
           <div className="assessment-header">

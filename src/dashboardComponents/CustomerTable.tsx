@@ -32,6 +32,7 @@ import {
 } from '@mui/material';
 import { enqueueSnackbar } from "notistack";
 
+
 const actions = ["Go to profile", "See plan", "Take Assessment"];
 
 interface ActionsContainerProps {
@@ -469,6 +470,8 @@ const CustomerTable = () => {
   ).length;
 
   return (
+    <>
+    
     <div className="customer-dashboard-outlay-container">
       <div className="--side-bar"></div>
       <div className="customer-dashboard-container" ref={ref}>
@@ -810,6 +813,7 @@ const CustomerTable = () => {
 
       
     </div>
+    </>
   );
 };
 

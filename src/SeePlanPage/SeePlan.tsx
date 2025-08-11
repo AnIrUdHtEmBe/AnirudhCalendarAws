@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import EventCalendar from "./EventCalendar"; // Adjust the path if needed
 import Header from "./Header";
 import { setSelectComponent, DataContext } from '../store/DataContext'
+
 function SeePlan() {
   const context = useContext(DataContext);
   if (!context) {
@@ -74,6 +75,8 @@ function SeePlan() {
       ); // or return null;
 
   return (
+    <>
+    
     <div className="bg-white min-h-screen">
       {/* <button
         onClick={() => navigate('/profile')}
@@ -102,11 +105,14 @@ function SeePlan() {
                 })
               }
               }>{LatestPAdetails?.latestAssessmentName || "no assessment available"}{""}-{""}{LatestPAdetails?.latestAssessmentScore||0}</span></p>
+              <div className="mt-4">
+              
+              </div>
             </div>
 
           </div>
         </div>
-
+              
         <div>
           <DateRangePicker
             userId={userId}
@@ -128,6 +134,7 @@ function SeePlan() {
 
       {/* <button className="border-2 p-3 bg-green-300 ">Update Changes</button> */}
     </div>
+    </>
   );
 }
 

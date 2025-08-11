@@ -34,6 +34,7 @@ import { LowPriority } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import AssessmentPage from "../Pages/ViewAllAssessment";
 
+
 const questionTypes = [
   { label: "Text Input", value: "text", icon: <ShortTextIcon /> },
   {
@@ -290,6 +291,7 @@ const QuestionBank = () => {
           </button>
         </div>
       </div>
+    
       {/* main body */}
       { selectComponent==="/question-bank" &&(
         <div className="question-bank-body-container">

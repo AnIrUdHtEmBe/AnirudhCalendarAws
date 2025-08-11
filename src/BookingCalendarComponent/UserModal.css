@@ -1,0 +1,8 @@
+/* hide sidebar inside floating chat UI */
+.custom-chatbox .sidebar {
+  display: none !important;
+}
+
+.custom-chatbox .flex-1 {
+  width: 100% !important;
+}
