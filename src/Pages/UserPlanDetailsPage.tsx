@@ -1,20 +1,20 @@
-import { useState } from "react";
-import UserPlanModal from "../UserPlanDetailsComponent/UserPlanModal"
-import { useLocation, useNavigate } from "react-router-dom";
+// import { useState } from "react";
+// import UserPlanModal from "../UserPlanDetailsComponent/UserPlanModal"
+// import { useLocation, useNavigate } from "react-router-dom";
 
-const UserPlanDetailsPage = () => {
-    const [open, setOpen] = useState(true);
+// const UserPlanDetailsPage = () => {
+//     const [open, setOpen] = useState(true);
 
-    const navigate = useNavigate();
-  const location = useLocation();
+//     const navigate = useNavigate();
+//   const location = useLocation();
 
-  const handleClose =() => {
-    setOpen(false);
-  }
+//   const handleClose =() => {
+//     setOpen(false);
+//   }
   
-    return(
-        <UserPlanModal open={open} handleClose={handleClose} />
-    )
-}
+//     return(
+//         <UserPlanModal open={open} handleClose={handleClose} />
+//     )
+// }
 
-export default UserPlanDetailsPage;
+// export default UserPlanDetailsPage;

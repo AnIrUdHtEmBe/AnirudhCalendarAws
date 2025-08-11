@@ -12,6 +12,7 @@ import axios from "axios";
 import { ChevronLeft } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL_Latest } from "./AxiosApi";
+import Sidebar from "../components/Sidebar";
 
 // Define the message type if not exported from @ably/chat:
 type Message = {
@@ -35,6 +36,7 @@ export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const navigate = useNavigate();
+  const [sideBarToggle, setSideBarToggle] = useState(false);
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -116,6 +118,9 @@ export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
+      <div className="relative flex h-screen bg-gray-50">
+      <Sidebar collapsed={sideBarToggle} toggleSidebar={() => setSideBarToggle(!sideBarToggle)}  />
+      <div className = "flex-1 flex flex-col ">
       <div className="bg-white shadow-sm border-none px-4 py-3 flex items-center gap-3">
         <button onClick={onClose}>
           <ChevronLeft />
@@ -244,6 +249,8 @@ export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
             <span className="text-lg">🎤</span>
           </button>
         </div>
+      </div>
+      </div>
       </div>
     </div>
   );

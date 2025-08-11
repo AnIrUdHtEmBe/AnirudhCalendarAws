@@ -331,7 +331,7 @@ export default function PriceDaily() {
       }
 
       await Promise.all(allUpdates);
-      alert("Prices saved successfully!");
+      showToast("Prices saved successfully!");
 
       // Clear changed slots after successful save
       setChangedSlots({});
