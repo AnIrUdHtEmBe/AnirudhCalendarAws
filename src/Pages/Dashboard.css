@@ -1,28 +1,52 @@
 .dashboard {
-  min-height: 100vh;
+  height: 100vh; /* full viewport height */
+  max-height: 100vh;
   background-color: #f9fafb; /* Tailwind's gray-50 */
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .table-section {
   background-color: white;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  overflow: hidden;
   border-radius: 0.5rem;
-  height: calc(100vh - 124px);
-
+  flex-grow: 1;           /* fill available vertical space */
+  overflow: auto;          /* allow internal scrolling if content overflows */
+  padding: 1rem;
+  box-sizing: border-box;
+  min-width: 0;            /* fixes flex item shrink issue on small widths */
 }
 
+/* Responsive table container */
+.table-section table {
+  width: 100%;             /* table takes full width of container */
+  border-collapse: collapse;
+  table-layout: auto;      /* allow column widths to adjust */
+  word-break: break-word;  /* prevents overflow on narrow screens */
+}
+
+/* Optional: Make table cells responsive */
+.table-section th,
+.table-section td {
+  padding: 0.5rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb; /* Tailwind gray-200 */
+  white-space: normal;   /* allow wrapping inside cells */
+}
+
+/* Responsive stats section */
 .stats-section {
   background-color: white;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   display: flex;
   align-items: center;
-  gap: 90px;
-  height: 151px;
-  padding: 0 2rem;
+  gap: 1rem;             /* replace fixed 90px gap with flexible gap */
+  height: auto;
+  padding: 1rem 2rem;
+  flex-wrap: wrap;       /* wrap cards on smaller widths */
+  box-sizing: border-box;
 }
 
 .stat-card {
@@ -31,21 +55,51 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
+  flex: 1 1 140px;       /* responsive flexible cards */
+  min-width: 120px;
 }
 
 .first-card {
-  margin-left: 200px;
+  margin-left: 0;         /* remove fixed margin to avoid cutoff */
 }
 
 .stat-value {
-  font-size: 2.25rem; /* Equivalent to text-4xl */
+  font-size: 2.25rem;     /* Equivalent to text-4xl */
   font-weight: 600;
-  color: #111827; /* Tailwind's gray-900 */
+  color: #111827;         /* Tailwind's gray-900 */
+  word-break: break-word; /* handle narrow widths */
 }
 
 .stat-label {
   font-size: 1rem;
   font-family: 'roboto', sans-serif;
   font-weight: 500;
-  color: #374151; /* Tailwind's gray-700 */
+  color: #374151;         /* Tailwind's gray-700 */
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Media queries for smaller devices */
+
+@media (max-width: 768px) {
+  .stats-section {
+    gap: 0.5rem;
+    justify-content: center;
+  }
+
+  .table-section {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-section {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stat-card {
+    min-width: 100%;
+    flex: none;
+  }
 }

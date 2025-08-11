@@ -1,383 +1,570 @@
-
 /* Root container */
 .responses-root {
   display: flex;
   flex-direction: column;
-  /* allow natural growth rather than forcing exact viewport height */
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
-.sessions-text-header{
+/* Responsive session header */
+.sessions-text-header {
   font-weight: 500;
-  font-size: 20px;
   color: #1f2937;
-  margin: 2rem 0;
-}
-.plan-title{
-  text-align: left;
-}
-.session-checkbox{
-  height: 20px;
-  width: 20px;
-}
-.all-button{
-  height:10px;
-  width: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 30%;
-  border:1px solid #e5e7eb;
-  padding : 15px ;
-  color: #0070FF;
-  background-color: #F7FAFF
-  
-}
-.save-changes-button{
- 
-  background-color: #0070FF;
-  border-radius: 10px;
-  padding: 10px;
-  color: white
-}
-/* Sticky header */
-.sticky-header {
-  position: sticky;
-  top: 0;
-  background-color: #ffffff;
-  z-index: 10;
-  padding: 1rem;
-  border-bottom: 1px solid #e5e7eb;
+  margin: 1rem 0;
+
+  /* Responsive font size that shrinks/grows to fit width */
+  font-size: clamp(14px, 2.5vw, 20px);
+
+  white-space: nowrap;         /* Keep on one line */
+  overflow: hidden;            /* Hide overflow */
+  text-overflow: ellipsis;     /* Show ... if too long */
+
+  max-width: 100%;
+  display: block;
 }
 
-/* Main container */
+/* Ensures the container holding the session header grows/shrinks properly */
+.left-panel .top-bar > div:first-child {
+  flex-grow: 1;      /* Allow it to grow */
+  min-width: 0;      /* Allow it to shrink */
+  overflow: visible; /* Prevent clipping of text */
+}
+
+/* Override flex container to left-align instead of centered */
+.left-panel .top-bar > div.flex {
+  justify-content: flex-start !important;
+}
+
+/* Align the 'All' button nicely */
+.all-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Plan title cell styling */
+.plan-title {
+  text-align: left;
+  word-break: break-word;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  font-size: clamp(0.95rem, 2.3vw, 1.01rem);
+  line-height: 1.2;
+  display: block;
+  width: 100%;
+  min-width: 100px;
+  max-width: 220px;
+}
+
+/* Break very long words in plan title, table cells and headers */
+.plan-title, .plans-table td, .plans-table th {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  hyphens: auto;
+}
+
+@media (max-width: 560px) {
+  .plan-title {
+    font-size: 0.7rem;
+    padding: 0 1px;
+  }
+}
+
+/* Inputs & UI */
+.session-checkbox {
+  height: 18px;
+  width: 18px;
+  min-width: 18px;
+  display: block;
+  margin: 0 auto;
+  border-radius: 3.5px;
+  cursor: pointer;
+}
+
+/* Panels structure - FIXED FOR EQUAL WIDTHS */
+.left-panel, .right-panel {
+  flex: 1; /* Use flex: 1 instead of fixed width */
+  min-width: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Main container - FIXED */
 .main-container {
   display: flex;
   flex-direction: row;
   flex: 1;
-  padding: 1.5rem;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
   gap: 1.5rem;
   border-radius: 1rem;
-  /* allow vertical scrolling when content overflows */
-  overflow-y: auto;
+  overflow: hidden;
+  width: 100%; /* Ensure full width usage */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
-/* Stack panels on narrow screens */
+@media (max-width: 1024px) {
+  .left-panel, .right-panel {
+    flex: 1;
+  }
+}
 @media (max-width: 768px) {
   .main-container {
     flex-direction: column;
+    padding: 1rem;
+    gap: 1rem;
   }
-}
-
-/* Left panel */
-.left-panel {
-  width: 42%;
-  background-color: #ffffff;
-  /* padding: 1.5rem; */
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  border-right: 1px solid #e5e7eb;
-}
-@media (max-width: 768px) {
-  .left-panel {
-    width: 100%;
-    /* padding: 1rem; */
+  .left-panel, .right-panel {
+    width: 100%; /* Full width in mobile */
+    max-width: 100%;
     border-right: none;
+    background-color: #2563eb;
     border-bottom: 1px solid #e5e7eb;
+    height: 50vh;
   }
 }
 
-/* Top bar */
-.top-bar {
-  height: 94px;
+/* Left panel top bar */
+.left-panel .top-bar {
   display: flex;
-  padding: 0 20px 0 20px;
+  flex-wrap: nowrap;
+  gap: 0.75rem;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  /* padding: 0.5rem 1rem */
-  background-color:white;
+  padding: 15px 20px;
+  height: 94px;
+  box-sizing: border-box;
+  overflow: visible;
 }
-
-.top-bar input[type="text"] {
+.left-panel .top-bar > div:first-child {
   flex-grow: 1;
-  max-width: 300px;
-  padding: 0.5rem 0.75rem;
-  border-width: 2px;
-  border-color: #d1d5db; /* gray-300 */
-  border-radius: 0.375rem; /* rounded-md */
+  min-width: 0;
+  overflow: visible; /* Keep consistent */
 }
-
-.top-bar .button-group {
+.left-panel .top-bar span.sessions-text-header {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Button group and new button */
+.left-panel .top-bar .button-group {
   display: flex;
-  /* justify-content:space-evenly; */
+  flex-wrap: nowrap;
+  gap: 0.75rem;
   align-items: center;
-  gap: 1.25rem;
+  flex-shrink: 0;
 }
-
-.top-bar button {
-  border-width: 2px;
-  border-color: #d1d5db;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  background-color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.top-bar button:hover:not(:disabled) {
-  background-color: #e5e7eb; /* gray-200 */
-}
-
-.top-bar button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.top-bar .new-button {
-  border-width: 2px;
-  border-color: #3b82f6; /* blue-600 */
-  color: #3b82f6;
-  padding: 0.375rem 0.75rem;
-  border-radius: 0.375rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.top-bar .new-button:hover {
-  background-color: #bfdbfe; /* blue-300 */
-}
-
-
-.delete-button {
-  background-color: #ef4444;
-  color: #ffffff;
-}
-.delete-button:disabled {
-  background-color: #fca5a5;
-  cursor: not-allowed;
+.left-panel .top-bar .new-button {
+  flex-shrink: 0;
+  min-width: 80px;
+  white-space: nowrap;
 }
 
 /* Table container */
 .table-container {
-  max-height: 700px; /* Adjust this value to your desired height */
-  overflow-y:auto;
-  width: 100%; /* Ensure the table takes up the full width */
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 12px 12px 12px;
+  box-sizing: border-box;
+  min-height: 0;
 }
-.plans-table tbody tr {
-  height: 60px; /* Adjust the height value as needed */
-}
+
+/* Table styling */
 .plans-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.875rem;
+  font-size: 0.92rem;
+  table-layout: fixed;
+  background: white;
+  margin: 0;
 }
 
-.plans-table tbody {
-  overflow-y: auto;
-  max-height: 60vh;
-}
-
-.inp-header{
-  padding: 0.5rem;
-  border: 0;
-  border-bottom: 1px solid #ddd; 
-  border-top: 1px solid #ddd;
-  text-align: center;
-  vertical-align: middle;
-  padding: 10px 15px;
-  background-color:  #f9fafb;
-}
-.session-header{
-  padding: 0.5rem;
-  border: 0;
-  border-bottom: 1px solid #ddd; 
-  border-top: 1px solid #ddd;
-  text-align: left;
-  vertical-align: middle;
-  padding: 10px 15px;
-  background-color:  #f9fafb;
-}
-.prev-header{
-  padding: 0.5rem;
-  border: 0;
-  border-bottom: 1px solid #ddd; 
-  border-top: 1px solid #ddd;
-  text-align: center;
-  vertical-align: middle;
-  padding: 10px 15px;
-  background-color:  #f9fafb;
-}
-.cat-header{
-  padding: 0.5rem;
-  border: 0;
-  border-bottom: 1px solid #ddd; 
-  border-top: 1px solid #ddd;
-  text-align: center;
-  vertical-align: middle;
-  padding: 10px 15px;
-  background-color:  #f9fafb;
-}
-
-
-.p-icon{
-  display: flex;
-  justify-content: center;
-  height: 60px;
-  align-self: center;
-
-}
-.plans-table .plan-title{
-  text-align: left;
-}
-
+.plans-table,
+.plans-table thead,
+.plans-table tbody,
+.plans-table tr,
+.plans-table th,
 .plans-table td {
-  padding: 0.5rem;
-  /* border: 1px solid #e5e7eb; */
-  text-align: center;
-   vertical-align: middle;
-  padding: 10px 15px;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+
+.plans-table thead {
+  position: sticky;
+  top: 0;
+  background: #f9fafb;
+  z-index: 1;
+}
+
+/* Checkbox column */
+.inp-header {
+  padding: 0;
   border: 0;
-  /* border-bottom: 1px solid #ddd; */
-}
-
-/* .table-row:hover {
-  background-color: #f9fafb;
-} */
-
-.table-row{
   border-bottom: 1px solid #ddd;
+  border-top: 1px solid #ddd;
+  background-color: #f9fafb;
+  font-size: clamp(0.85rem, 1.8vw, 1rem);
+  font-weight: 600;
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
 }
 
-
-/* Right panel */
-.right-panel {
-  flex: 1;
-  /* padding: 2rem; */
-  background-color: #ffffff;
-  overflow-y: auto;
+/* Session Name column */
+.session-header {
+  min-width: 115px;
+  max-width: 200px;
+  white-space: nowrap;
+  font-weight: 600;
+  padding: 10px 8px;
+  background-color: #f9fafb;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  vertical-align: middle;
 }
-@media (max-width: 768px) {
-  .right-panel {
-    padding: 1rem;
+
+/* Category column */
+.cat-header {
+  min-width: 84px;
+  max-width: 120px;
+  white-space: nowrap;
+  font-weight: 600;
+  padding: 10px 8px;
+  background-color: #f9fafb;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  vertical-align: middle;
+}
+
+/* Eye (preview) column */
+.prev-header {
+  min-width: 100px;
+  max-width: 150px;
+  font-weight: 600;
+  padding: 10px 8px;
+  background-color: #f9fafb;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+  text-align: center;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+/* Checkbox cell */
+.plans-table td:first-child {
+  width: 36px !important;
+  min-width: 36px !important;
+  max-width: 36px !important;
+  padding: 0 !important;
+  text-align: center;
+  vertical-align: middle;
+}
+
+/* Eye icon cell */
+.plans-table td:last-child {
+  padding: 0 !important;
+  text-align: center;
+  vertical-align: middle;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Eye icon wrapper */
+.p-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  width: 100%;
+  padding: 0 !important;
+  box-sizing: border-box;
+}
+.p-icon button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+/* Other table data cells */
+.plans-table td {
+  padding: 8px 8px;
+  text-align: center;
+  vertical-align: middle;
+  border: 0;
+  font-size: clamp(0.82rem, 1.55vw, 0.97rem);
+  word-break: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+  hyphens: auto;
+}
+
+/* Session Name cell - FIXED DUPLICATION */
+.plans-table .plan-title {
+  text-align: left;
+  word-break: break-word;
+  white-space: normal !important;
+  overflow-wrap: break-word;
+  font-size: clamp(0.95rem, 2.3vw, 1.01rem);
+  line-height: 1.2;
+  display: block;
+  width: 100%;
+  min-width: 100px;
+  max-width: 220px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 900px) {
+  .plans-table {
+    font-size: 0.85rem;
+  }
+  .plans-table td,
+  .plans-table th {
+    padding: 6px 6px;
+  }
+  .session-header {
+    min-width: 90px;
+  }
+  .cat-header {
+    min-width: 68px;
+  }
+  .plans-table .plan-title {
+    min-width: 70px;
+    max-width: 140px;
+  }
+  .prev-header {
+    min-width: 90px;
+    max-width: 140px;
+  }
+  .plans-table td:last-child {
+    min-width: 90px !important;
+    max-width: 140px !important;
+    width: 120px !important;
+  }
+}
+@media (max-width: 700px) {
+  .plans-table {
+    font-size: 0.8rem;
+  }
+  .plans-table td,
+  .plans-table th {
+    padding: 4px 4px;
+  }
+  .plan-title {
+    font-size: 0.8rem;
+  }
+  .session-header {
+    min-width: 70px;
+  }
+  .prev-header {
+    min-width: 70px;
+    max-width: 110px;
+  }
+  .plans-table td:last-child {
+    min-width: 70px !important;
+    max-width: 110px !important;
+    width: 90px !important;
+  }
+}
+@media (max-width: 560px) {
+  .plans-table,
+  .plans-table td,
+  .plans-table th {
+    font-size: 0.63rem;
+    padding: 2px 2px;
+  }
+  .plan-title {
+    font-size: 0.67rem;
+    min-width: 40px;
+    max-width: 90px;
+  }
+  .session-header {
+    min-width: 40px;
+  }
+  .cat-header {
+    min-width: 37px;
+  }
+  .prev-header {
+    min-width: 40px;
+    max-width: 90px;
+  }
+  .plans-table td:last-child {
+    min-width: 40px !important;
+    max-width: 90px !important;
+    width: 60px !important;
+  }
+}
+@media (max-width: 400px) {
+  .plan-title {
+    font-size: 0.58rem;
+  }
+  .plans-table th,
+  .plans-table td {
+    padding: 1.5px 0.5px;
   }
 }
 
-/* Plan details */
+/* Table row hover/select styles */
+.p-icon {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 40px;
+}
+@media (max-width: 768px) {
+  .p-icon {
+    height: 32px;
+  }
+}
+.table-row {
+  border-bottom: 1px solid #ddd;
+  transition: background-color 0.2s ease;
+}
+.table-row:hover {
+  background-color: #f9fafb;
+}
+.table-row.selected_plan {
+  background-color: #e0f2fe;
+}
+
+/* Right panel flex & scroll fixes - UPDATED */
+.right-panel {
+  flex: 1; /* Use flex: 1 for equal distribution */
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
+}
+@media (max-width: 768px) {
+  .right-panel {
+    min-width: unset;
+    height: 50vh;
+    width: 100%;
+    max-width: 100%;
+  }
+}
+/* Right panel plan details */
 .plan-details {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  height: 100%;
+  overflow: hidden;
 }
 
-.plan-name-input{
-  height :94px;
+/* Plan name input */
+.plan-name-input {
+  height: 94px;
   padding: 1rem;
+  border-bottom: 1px solid #d1d5db;
 }
-
 .plan-name-input input {
   width: 100%;
   max-width: 16rem;
   margin-top: 13px;
-  padding: .5rem 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: none;
   border-bottom: 1.25px solid black;
-  /* border-radius: 0.375rem; */
   font-size: 1rem;
+  outline: none;
+}
+@media (max-width: 768px) {
+  .plan-name-input {
+    height: auto;
+    padding: 1rem 0.5rem;
+  }
+  .plan-name-input input {
+    max-width: 100%;
+    font-size: 0.875rem;
+  }
 }
 
-/* Calendar */
-.calendar {
-  display: flex;
-  padding: 1.25rem;
-  flex-direction: column;
-  gap: 1rem;
-}
-.calendar-header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.calendar-header h2 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-}
-.calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 0.25rem;
-  max-height: 60vh; /* Adjust this value as needed */
-  overflow-y: auto;  /* Enables vertical scrolling */
+/* Scrollable grid container */
+.grid-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 1.25rem;
+  min-height: 0;
 }
 
-.week-label {
-  font-weight: bold;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f3f4f6; /* light gray */
-  padding: 0.5rem;
-}
-
-.calendar-cell {
-  height: 4rem;
-  border: 3px solid #e5e7eb;
-  background-color: #ffffff;
-}
-.calendar-cell.clickable {
-  cursor: pointer;
-  background-color: #f0f9ff;
-  border: 1px solid #d1e9ff;
-}
-/* .calendar-cell.clickable:hover {
-  background-color: #6d6f70;
-} */
-
-.calendar-cell.disabled {
-  pointer-events: none;
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-
-.assigned-plan {
-  font-size: 0.75rem;
-  color: #333;
-}
-.calendar-cell.empty {
-  background-color: black;
-}
-
-/* Confirm button */
-.confirm-button {
+/* Footer buttons */
+.footer-buttons {
+  flex-shrink: 0;
+  padding: 1.5rem;
   display: flex;
   justify-content: space-between;
-  
+  box-sizing: border-box;
 }
-.confirm-button button {
+
+/* Right panel header - FIXED DUPLICATE */
+.right-panel-headerr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  border-bottom: 1px solid #d1d5db;
+  height: 94px;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .right-panel-headerr {
+    flex-direction: column;
+    align-items: stretch;
+    height: auto;
+    min-height: 60px;
+    padding: 1rem 0.5rem;
+    gap: 1rem;
+  }
+}
+
+/* Filter buttons */
+.filter-btn {
+  border: 2px solid #d1d5db;
+  background: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  transition: background 0.2s, border 0.2s;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  min-width: 40px;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1.5rem;
-  background-color: #4f46e5;
-  color: #ffffff;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-size: 0.875rem;
+  justify-content: center;
 }
-.confirm-button button:hover {
-  background-color: #4338ca;
+.filter-btn-active {
+  background-color: lightblue !important;
+  border-color: #2563eb !important;
+}
+@media (max-width: 480px) {
+  .filter-btn {
+    margin-right: 0.25rem;
+    padding: 0.25rem;
+  }
 }
 
-
+/* Modal and update modal styles */
 .modal-backdrop {
   position: fixed;
   top: 0;
@@ -389,89 +576,163 @@
   align-items: center;
   justify-content: center;
   z-index: 999;
+  padding: 1rem;
 }
-
 .modal-content {
   background-color: white;
   padding: 24px;
   border-radius: 8px;
-  min-width: 40%;
-  max-width: 60%;
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
   position: relative;
-  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
+  box-shadow: 0px 4px 15px rgba(0,0,0,0.3);
 }
-
-.modal-title {
-  font-size: 1.5rem;
-  margin-bottom: 0.5rem;
+@media (max-width: 768px) {
+  .modal-content {
+    padding: 16px;
+    width: 95%;
+  }
 }
-
-.modal-category {
-  font-size: 1rem;
-  color: gray;
-  margin-bottom: 1.5rem;
-}
-
-.close-button {
-  background-color: blue;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: none;
-  cursor: pointer;
-}
-
-
-.right-panel-headerr{
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 1rem  0 1rem; 
-  border-bottom: 1px solid  #d1d5db;
-}
-
-.right-panel-header-right-side-component{
-  display: flex;
-  justify-content: flex-end;
-
-  width: 50%;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.5rem 1.5rem;
-  /* background-color: aqua; */
-}
-
-.holder-right-sode {
-  border: 1px solid #1976D2;
-  width: 150px;
-  height: 50px;
-  padding: 11px 10px;
+.update-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  z-index: 1000;
+  padding: 1rem;
+}
+.update-modal {
   background-color: white;
-  cursor: pointer;
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 90%;
+  text-align: center;
 }
-
-.customise-text{
-  font-weight: 500;
-  font-size: 16px;
-  color: #1976D2;
+.update-modal-text {
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+  color: #374151;
 }
-
-
-.filter-btn {
-  border: 2px solid #d1d5db;
-  background: white;
-  padding: 0.25rem 0.5rem;
+.update-modal-actions {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+.update-modal-btn {
+  padding: 0.5rem 1rem;
+  border: none;
   border-radius: 0.375rem;
-  transition: background 0.2s, border 0.2s;
   cursor: pointer;
-  margin-right: 0.5rem;
+  font-size: 0.875rem;
+  min-width: 80px;
+}
+.update-modal-btn.yes {
+  background-color: #dc2626;
+  color: white;
+}
+.update-modal-btn.no {
+  background-color: #6b7280;
+  color: white;
+}
+@media (max-width: 480px) {
+  .update-modal {
+    padding: 1.5rem;
+  }
+  .update-modal-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .update-modal-btn {
+    width: 100%;
+  }
 }
 
-.filter-btn-active {
-  background-color: lightblue !important; 
-  border-color: #2563eb !important;
+/* Remove horizontal scroll and ensure full width usage */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden !important;
+}
+
+.responses-root,
+.main-container,
+.left-panel,
+.right-panel {
+  overflow-x: hidden !important;
+}
+
+/* Ensure main container takes full available width */
+.responses-root {
+  width: 100%;
+  max-width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
+/* Filter input wrapper - add this to your existing CSS */
+.filter-input-wrapper {
+  flex: 1 1 0; /* Equal flex grow, shrink, and zero basis for uniform sizing */
+  min-width: 120px; /* Minimum width to prevent over-shrinking */
+  max-width: none; /* Remove max-width constraint */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ensure FormControl takes full width of wrapper */
+.filter-input-wrapper .MuiFormControl-root {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Update existing filter-inputs-container to work better */
+.filter-inputs-container {
+  display: flex !important;
+  flex-wrap: nowrap !important; /* Prevent wrapping on larger screens */
+  gap: 1rem;
+  padding: 0 20px 1rem 20px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  align-items: flex-end; /* Align to bottom for consistent baseline */
+}
+
+/* Responsive behavior - allow wrapping on smaller screens */
+@media (max-width: 1024px) {
+  .filter-inputs-container {
+    flex-wrap: wrap !important;
+    gap: 0.75rem;
+    padding: 0 15px 1rem 15px;
+  }
+  .filter-input-wrapper {
+    flex: 1 1 calc(50% - 0.375rem); /* Two per row on medium screens */
+    min-width: 140px;
+  }
+}
+
+@media (max-width: 768px) {
+  .filter-inputs-container {
+    flex-direction: column !important;
+    gap: 1rem;
+    padding: 0 15px 1rem 15px;
+  }
+  .filter-input-wrapper {
+    flex: 1 1 100%; /* Full width on mobile */
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .filter-inputs-container {
+    padding: 0 10px 1rem 10px;
+  }
 }

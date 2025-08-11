@@ -33,6 +33,7 @@ import { DataContext } from "../store/DataContext";
 import { LowPriority } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import AssessmentPage from "../Pages/ViewAllAssessment";
+import { useLocation } from "react-router-dom";
 
 
 const questionTypes = [
@@ -253,6 +254,16 @@ const QuestionBank = () => {
   }, [shouldEdit, question]); // 👈 Add questions to the dependency array
 
   console.log("selectComponent:", selectComponent);
+  const location = useLocation();
+
+useEffect(() => {
+  // If current path is '/question-bank' and selectComponent isn't '/question-bank', set it
+  if (location.pathname === "/question-bank" && selectComponent !== "/question-bank") {
+    setSelectComponent("/question-bank");
+    setheadingText("Questionnaire Creation"); // Optional: update heading text here on load too
+  }
+}, [location.pathname, selectComponent, setSelectComponent]);
+
   return (
     <div className="question-bank-container">
       

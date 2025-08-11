@@ -1,4 +1,4 @@
-import { useContext, useEffect, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState, useRef } from "react";
 import { CheckCircle, Circle, StickyNote } from "lucide-react";
 import Header from "../questionPaperComponents/Header";
 import { DataContext } from "../store/DataContext";
@@ -23,6 +23,13 @@ function QuestionPaper() {
   const [notes, setNotes] = useState<Notes[]>([]);
   console.log(notes);
   const context = useContext(DataContext);
+
+  // Refs for scroll synchronization
+  const leftPanelRef = useRef<HTMLDivElement>(null);
+  const rightPanelRef = useRef<HTMLDivElement>(null);
+  const questionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const leftQuestionRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const isScrollingProgrammatically = useRef(false);
 
   if (!context) {
     return <div>Loading...</div>;
@@ -99,6 +106,143 @@ function QuestionPaper() {
     }
   }, []);
 
+  // Function to get visible questions in right panel
+  const getVisibleQuestionsInRightPanel = () => {
+    if (!rightPanelRef.current) return [];
+    
+    const rightPanel = rightPanelRef.current;
+    const rightPanelRect = rightPanel.getBoundingClientRect();
+    const visibleQuestions: number[] = [];
+
+    questionRefs.current.forEach((ref, index) => {
+      if (ref) {
+        const questionRect = ref.getBoundingClientRect();
+        // Check if question is at least 50% visible in the right panel
+        const questionTop = questionRect.top - rightPanelRect.top;
+        const questionBottom = questionRect.bottom - rightPanelRect.top;
+        
+        if (questionTop < rightPanelRect.height && questionBottom > 0) {
+          // Question is at least partially visible
+          const visibleHeight = Math.min(questionBottom, rightPanelRect.height) - Math.max(questionTop, 0);
+          const questionHeight = questionRect.height;
+          
+          if (visibleHeight > questionHeight * 0.3) { // At least 30% visible
+            visibleQuestions.push(index);
+          }
+        }
+      }
+    });
+
+    return visibleQuestions;
+  };
+
+  // Function to check if questions are visible in left panel
+  const areQuestionsVisibleInLeftPanel = (questionIndices: number[]) => {
+    if (!leftPanelRef.current || questionIndices.length === 0) return true;
+    
+    const leftPanel = leftPanelRef.current;
+    const leftPanelRect = leftPanel.getBoundingClientRect();
+    
+    return questionIndices.every(index => {
+      const leftQuestionRef = leftQuestionRefs.current[index];
+      if (!leftQuestionRef) return false;
+      
+      const questionRect = leftQuestionRef.getBoundingClientRect();
+      const questionTop = questionRect.top - leftPanelRect.top;
+      const questionBottom = questionRect.bottom - leftPanelRect.top;
+      
+      // Check if question is visible in left panel
+      return questionTop >= 0 && questionBottom <= leftPanelRect.height;
+    });
+  };
+
+  // Function to scroll left panel to show specific question
+  const scrollLeftPanelToQuestion = (questionIndex: number) => {
+    if (!leftPanelRef.current || !leftQuestionRefs.current[questionIndex]) return;
+    
+    isScrollingProgrammatically.current = true;
+    
+    const leftPanel = leftPanelRef.current;
+    const questionElement = leftQuestionRefs.current[questionIndex];
+    
+    if (questionElement) {
+      const leftPanelRect = leftPanel.getBoundingClientRect();
+      const questionRect = questionElement.getBoundingClientRect();
+      
+      const scrollTop = leftPanel.scrollTop;
+      const questionOffsetTop = questionRect.top - leftPanelRect.top + scrollTop;
+      
+      leftPanel.scrollTo({
+        top: questionOffsetTop - 50, // 50px padding from top
+        behavior: 'smooth'
+      });
+    }
+    
+    setTimeout(() => {
+      isScrollingProgrammatically.current = false;
+    }, 500);
+  };
+
+  // Function to scroll right panel to show specific question
+  const scrollRightPanelToQuestion = (questionIndex: number) => {
+    if (!rightPanelRef.current || !questionRefs.current[questionIndex]) return;
+    
+    isScrollingProgrammatically.current = true;
+    
+    const rightPanel = rightPanelRef.current;
+    const questionElement = questionRefs.current[questionIndex];
+    
+    if (questionElement) {
+      const rightPanelRect = rightPanel.getBoundingClientRect();
+      const questionRect = questionElement.getBoundingClientRect();
+      
+      const scrollTop = rightPanel.scrollTop;
+      const questionOffsetTop = questionRect.top - rightPanelRect.top + scrollTop;
+      
+      rightPanel.scrollTo({
+        top: questionOffsetTop - 50, // 50px padding from top
+        behavior: 'smooth'
+      });
+    }
+    
+    setTimeout(() => {
+      isScrollingProgrammatically.current = false;
+    }, 500);
+  };
+
+  // Handle right panel scroll - sync with left panel
+  const handleRightPanelScroll = () => {
+    if (isScrollingProgrammatically.current) return;
+    
+    const visibleQuestions = getVisibleQuestionsInRightPanel();
+    if (visibleQuestions.length > 0) {
+      const areVisible = areQuestionsVisibleInLeftPanel(visibleQuestions);
+      if (!areVisible) {
+        // Scroll left panel to show the first visible question
+        scrollLeftPanelToQuestion(visibleQuestions[0]);
+      }
+    }
+  };
+
+  // Handle left panel question click - sync with right panel
+  const handleLeftQuestionClick = (questionIndex: number) => {
+    setSelectedQuestionIndex(questionIndex);
+    scrollRightPanelToQuestion(questionIndex);
+  };
+
+  // Add scroll event listeners
+  useEffect(() => {
+    const rightPanel = rightPanelRef.current;
+    
+    if (rightPanel) {
+      rightPanel.addEventListener('scroll', handleRightPanelScroll);
+      
+      return () => {
+        rightPanel.removeEventListener('scroll', handleRightPanelScroll);
+      };
+    }
+  }, [questions]);
+
   const handleOptionSelect = (questionIndex: number, optionValue: string) => {
     setAnswers((prev) => ({
       ...prev,
@@ -127,36 +271,21 @@ function QuestionPaper() {
     });
   };
 
-  // const allAnswered = questions
-  //   .filter((q) => q.isRequired)
-  //   .every((q: any, index: any) => {
-  //     const val = answers[index];
-  //     if (q.answerType === "choose_many") {
-  //       return Array.isArray(val) && val.length > 0;
-  //     }
-  //     return val !== undefined && val !== "";
-  //   });
+  const allAnswered = questions
+    .filter((q) => q.isRequired)
+    .every((q, index) => {
+      const val = answers[index];
 
+      const isAnswered = q.answerType === "choose_many"
+        ? Array.isArray(val) && val.length > 0
+        : val !== undefined && val !== "";
 
-const allAnswered = questions
-  .filter((q) => q.isRequired)
-  .every((q, index) => {
-    const val = answers[index];
-
-    const isAnswered = q.answerType === "choose_many"
-      ? Array.isArray(val) && val.length > 0
-      : val !== undefined && val !== "";
-
-    
-
-    const note = notes.find((n) => n.questionId === q.questionId);
-    const isCommentValid = note && note.comment.trim() !== "";
-    
-    
-    // Accept if either answered or commented
-    return isAnswered || isCommentValid;
-  });
-
+      const note = notes.find((n) => n.questionId === q.questionId);
+      const isCommentValid = note && note.comment.trim() !== "";
+      
+      // Accept if either answered or commented
+      return isAnswered || isCommentValid;
+    });
 
   console.log(JSON.parse(localStorage.getItem("latestAssessmentTemplate")));
   console.log(
@@ -164,11 +293,6 @@ const allAnswered = questions
   );
 
   console.log(localStorage.getItem("type"));
-
-  // console.log(JSON.parse(
-  //   localStorage.getItem("assessmentDetails")
-  // ))
-
 
   const handleSubmit = async () => {
     if(!allAnswered) {
@@ -212,9 +336,6 @@ const allAnswered = questions
           }
 
           if (question.answerType === "number_ws") {
-
-            
-           
                 const value_score = await getScore(
                   question.questionId,
                   userDetail.userId,
@@ -224,7 +345,6 @@ const allAnswered = questions
                 scoreZone = value_score?.scoreZone ?? null;
                 scoreValue = value_score?.scoreValue ?? null;
                 scoreLevel = value_score?.scoreLevel ?? null;
-          
           }
 
           const noteObj = notes.find(
@@ -347,13 +467,14 @@ const allAnswered = questions
           {/* Main Scrollable Panels */}
           <div className="main-container">
             {/* Left Scrollable Questions List */}
-            <div className="questions-list">
+            <div className="questions-list" ref={leftPanelRef}>
               <div className="questions-title">Questions</div>
               <div className="questions-container">
                 {questions.map((q, index) => (
                   <div
                     key={q.questionId}
-                    onClick={() => setSelectedQuestionIndex(index)}
+                    ref={(el) => (leftQuestionRefs.current[index] = el)}
+                    onClick={() => handleLeftQuestionClick(index)}
                     className={`question-item ${
                       selectedQuestionIndex === index ? "selected" : "hover"
                     }`}
@@ -373,9 +494,13 @@ const allAnswered = questions
             </div>
 
             {/* Right Scrollable All Questions Display */}
-            <div className="questions-display">
+            <div className="questions-display" ref={rightPanelRef}>
               {questions.map((question, questionIndex: number) => (
-                <div key={question.questionId} className="question-header">
+                <div 
+                  key={question.questionId} 
+                  className="question-header"
+                  ref={(el) => (questionRefs.current[questionIndex] = el)}
+                >
                   <div className="question-subheader">
                     <div>
                       <div className="question-number">

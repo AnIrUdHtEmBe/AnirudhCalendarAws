@@ -1,72 +1,271 @@
-.loading-state{
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	height: 100%;
-	
+.loading-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
 }
-.--add-customer{
-	border: 1px solid lightgray;
-	display: flex;
-	justify-content: space-between;
-	padding:7px;
-	gap: 10px;
+
+.--add-customer {
+  border: 1px solid lightgray;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px;
+  gap: 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.--add-customer:hover {
+  border-color: #1976d2;
+  background-color: #f5f5f5;
 }
 
 .customer-dashboard-outlay-container {
-	display: flex;
-	flex-direction: column;
-	gap: 4px;
-	height: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
 }
 
 .customer-dashboard-container {
-	display: flex;
-	flex-direction: column;
-	gap: 6px;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  flex: 1;
 }
 
-.customer-dashboard-outlay-container .customer-dashboard-footer-container {
-	display: flex;
-	gap: 10px;
-	align-items: center;
-	height: 135px;
-	width: 100%;
+.customer-dashboard-main-table-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
 }
 
-
-
-.customer-dashboard-outlay-container .customer-dashboard-main-table-container {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	height: calc(100% - 150px);
-	gap: 20px;
+.customer-dashboard-main-top-filter-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  flex-shrink: 0;
+  gap: 20px;
+  background-color: #fff;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.customer-dashboard-outlay-container
-	.customer-dashboard-main-top-filter-container {
-	display: flex;
-	justify-content: space-between;
-	padding: 18px;
+.customer-dashboard-search-container {
+  flex: 1;
+  min-width: 250px;
 }
 
-.customer-dashboard-outlay-container .customer-dashboard-filter-container {
-	display: flex;
-	align-items: center;
-	gap: 20px;
-}
-.customer-dashboard-outlay-container .customer-dashboard-footer-container {
-	display: flex;
-	gap: 50px;
-  padding-left: 50px;
+.customer-dashboard-filter-container {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-shrink: 0;
 }
 
-.customer-dashboard-outlay-container .customer-dashboard-footer-container div {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
-	align-items: center;
-	font-size: 30px;
-	font-weight: 600;
+.customer-dashboard-table {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* DataGrid specific fixes */
+.customer-dashboard-table .MuiDataGrid-root {
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  border: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-dashboard-table .MuiDataGrid-main {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.customer-dashboard-table .MuiDataGrid-virtualScroller {
+  flex: 1;
+}
+
+.customer-dashboard-table .MuiDataGrid-virtualScrollerContent {
+  width: 100%;
+}
+
+.customer-dashboard-table .MuiDataGrid-virtualScrollerRenderZone {
+  width: 100%;
+}
+
+.customer-dashboard-table .MuiDataGrid-columnHeaders {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.customer-dashboard-table .MuiDataGrid-columnHeader {
+  font-weight: 600;
+  background-color: #f8f9fa;
+  color: #374151;
+  font-size: 14px;
+}
+
+.customer-dashboard-table .MuiDataGrid-columnHeaderTitle {
+  font-weight: 600;
+}
+
+.customer-dashboard-table .MuiDataGrid-row {
+  border-bottom: 1px solid #f0f0f0;
+  width: 100%;
+}
+
+.customer-dashboard-table .MuiDataGrid-row:hover {
+  background-color: #f8f9fa;
+}
+
+.customer-dashboard-table .MuiDataGrid-cell {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #374151;
+  border-right: none;
+  display: flex;
+  align-items: center;
+}
+
+.customer-dashboard-table .MuiDataGrid-footerContainer {
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+  min-height: 52px;
+}
+
+/* Ensure proper column sizing */
+.customer-dashboard-table .MuiDataGrid-columnHeader--sortable:hover {
+  background-color: #f1f5f9;
+}
+
+.customer-dashboard-table .MuiDataGrid-columnSeparator {
+  display: none;
+}
+
+/* Footer styling */
+.customer-dashboard-footer-container {
+  display: flex;
+  gap: 50px;
+  padding: 20px 50px;
+  background-color: #fff;
+  border-top: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.--customer-dashboard-bottom-box {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  border-radius: 8px;
+  background-color: #f8f9fa;
+  min-width: 120px;
+  border: 1px solid #e5e7eb;
+}
+
+.--customer-dashboard-bottom-box .--head {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1976d2;
+  margin-bottom: 5px;
+}
+
+.--customer-dashboard-bottom-box .--tail {
+  font-size: 14px;
+  font-weight: 500;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Responsive design */
+@media (max-width: 1200px) {
+  .customer-dashboard-main-top-filter-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 15px;
+    padding: 16px;
+  }
+  
+  .customer-dashboard-search-container {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .customer-dashboard-filter-container {
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-dashboard-main-top-filter-container {
+    padding: 12px;
+  }
+  
+  .customer-dashboard-filter-container {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  
+  .--add-customer {
+    justify-content: center;
+  }
+  
+  .customer-dashboard-footer-container {
+    gap: 20px;
+    padding: 15px 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .--customer-dashboard-bottom-box {
+    min-width: 100px;
+    padding: 15px;
+  }
+  
+  .customer-dashboard-table .MuiDataGrid-cell {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+  
+  .customer-dashboard-table .MuiDataGrid-columnHeader {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-dashboard-main-top-filter-container {
+    padding: 10px;
+  }
+  
+  .customer-dashboard-footer-container {
+    padding: 15px;
+    gap: 15px;
+  }
+  
+  .--customer-dashboard-bottom-box .--head {
+    font-size: 24px;
+  }
+  
+  .customer-dashboard-table .MuiDataGrid-cell {
+    padding: 6px 8px;
+    font-size: 12px;
+  }
 }
