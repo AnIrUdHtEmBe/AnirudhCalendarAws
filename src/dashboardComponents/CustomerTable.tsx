@@ -25,34 +25,42 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
- 
+  IconButton,
   InputLabel,
   FormControl,
   Box
 } from '@mui/material';
 import { enqueueSnackbar } from "notistack";
+import CloseIcon from '@mui/icons-material/Close';
 
-const actions = ["Go to profile", "See plan", "Take Assessment"];
+const actions = ["Edit profile", "See plan", "Take Assessment"];
 
 interface ActionsContainerProps {
   takeAssessment: () => void;
   seePlan: () => void;
+  editProfile: () => void;
 }
 
 const ActionsContainer = ({
   takeAssessment,
   seePlan,
+  editProfile,
 }: ActionsContainerProps) => {
-  const [value, setValue] = useState(actions[0]);
+  const [value, setValue] = useState("Go to profile");
 
   const changeHandler = (event: SelectChangeEvent) => {
     const selectedAction = event.target.value;
-    setValue(selectedAction);
+    console.log("Action selected:", selectedAction);
+    
+    // Don't update the display value, keep it as "Go to profile"
+    setValue("Go to profile");
 
     if (selectedAction === "Take Assessment") {
       takeAssessment();
     } else if (selectedAction === "See plan") {
       seePlan();
+    } else if (selectedAction === "Edit profile") {
+      editProfile();
     }
   };
 
@@ -74,6 +82,9 @@ const ActionsContainer = ({
       }}
       onChange={changeHandler}
     >
+      <MenuItem value="Go to profile" style={{ display: 'none' }}>
+    Go to profile
+  </MenuItem>
       {actions.map((action) => (
         <MenuItem key={action} value={action}>
           {action}
@@ -93,7 +104,9 @@ const CustomerTable = () => {
   const [term, setTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState<any | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUserIDs, setSelectedUserIDs] = useState<Array<string>>([]);
+  const [editingCustomer, setEditingCustomer] = useState<any>(null);
 
   // console.log("Customers API Call:", customers_Api_call);
 
@@ -109,6 +122,24 @@ const CustomerTable = () => {
     weight: "",
     healthCondition: "",
     membershipType: "",
+    startDate: "",
+    endDate: "",
+  });
+
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    age: "",
+    gender: "",
+    mobile: "",
+    email: "",
+    password:"",
+    type:"",
+    height: "",
+    weight: "",
+    healthCondition: "",
+    membershipType: "",
+    startDate: "",
+    endDate: "",
   });
 
   const modalHeaderStyle: React.CSSProperties = {
@@ -148,15 +179,44 @@ const CustomerTable = () => {
     transition: "background 0.18s",
   };
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  //changed to handle new form data
+const handleInputChange = (e) => {
+  const { name, value } = e.target;
+  
+  setFormData(prevData => {
+    const newData = { ...prevData, [name]: value };
+    
+    // Auto-calculate end date when start date or membership type changes
+    if (name === 'startDate' || name === 'membershipType') {
+      const endDate = calculateEndDate(
+        name === 'startDate' ? value : newData.startDate,
+        name === 'membershipType' ? value : newData.membershipType
+      );
+      newData.endDate = endDate;
+    }
+    
+    return newData;
+  });
+};
+
+const handleEditInputChange = (e) => {
+  const { name, value } = e.target;
+  
+  setEditFormData(prevData => {
+    const newData = { ...prevData, [name]: value };
+    
+    // Auto-calculate end date when start date or membership type changes
+    if (name === 'startDate' || name === 'membershipType') {
+      const endDate = calculateEndDate(
+        name === 'startDate' ? value : newData.startDate,
+        name === 'membershipType' ? value : newData.membershipType
+      );
+      newData.endDate = endDate;
+    }
+    
+    return newData;
+  });
+};
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,12 +253,80 @@ const CustomerTable = () => {
     if(res)
     {
     setModalOpen(false);
-
+      // Clear the form by resetting formData to initial empty values
+    setFormData({
+      name: "",
+      age: "",
+      gender: "",
+      mobile: "",
+      email: "",
+      password: "",
+      type: "",
+      height: "",
+      weight: "",
+      healthCondition: "",
+      membershipType: "",
+      startDate: "",
+      endDate: "",
+    });
     }
     // Optionally, reset form fields here
   };
 
+  const handleEditFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Convert numeric fields
+    const payload = {
+      ...editFormData,
+      age: Number(editFormData.age),
+      height: Number(editFormData.height) || null ,
+      weight: Number(editFormData.weight) || null,
+      healthCondition: editFormData.healthCondition || null,
+    };
+
+    console.log("Edit payload:", payload);
+    // TODO: Add edit API call here
+    
+    setEditModalOpen(false);
+    setEditingCustomer(null);
+    // Clear the edit form
+    setEditFormData({
+      name: "",
+      age: "",
+      gender: "",
+      mobile: "",
+      email: "",
+      password: "",
+      type: "",
+      height: "",
+      weight: "",
+      healthCondition: "",
+      membershipType: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
+
   const handleCloseModal = () => setModalOpen(false);
+  const handleCloseEditModal = () => {
+    setEditModalOpen(false);
+    setEditingCustomer(null);
+    setEditFormData({
+      name: "",
+      age: "",
+      gender: "",
+      mobile: "",
+      email: "",
+      password: "",
+      type: "",
+      height: "",
+      weight: "",
+      healthCondition: "",
+      membershipType: "",
+      startDate: "",
+      endDate: "",
+    });
+  };
 
   const {
     customers_fetching,
@@ -226,6 +354,29 @@ const CustomerTable = () => {
     setSelectComponent("seePlan");
   };
 
+  const editProfileHandler = (customer: Customers_Api_call) => {
+    console.log("Edit profile clicked for customer:", customer);
+    setEditingCustomer(customer);
+    // Pre-fill the edit form with customer data
+    setEditFormData({
+      name: customer.name || "",
+      age: customer.age?.toString() || "",
+      gender: customer.gender || "",
+      mobile: customer.mobile || "",
+      email: customer.email || "",
+      password: customer.password || "",
+      type: customer.type || "",
+      height: customer.height?.toString() || "",
+      weight: customer.weight?.toString() || "",
+      healthCondition: customer.healthCondition || "",
+      membershipType: customer.membershipType || "",
+      startDate: customer.startDate || "",
+      endDate: customer.endDate || "",
+    });
+    console.log("Opening edit modal");
+    setEditModalOpen(true);
+  };
+
   const dateChangeHandler = (date: any) => {
     const dateObj = new Date(date);
     return dateObj.toLocaleDateString("en-IN", {
@@ -243,6 +394,7 @@ const CustomerTable = () => {
       { field: "gender", headerName: "Gender" },
       { field: "email", headerName: "Email" },
       { field: "joinedOn", headerName: "Joined On" },
+      { field: "endsOn", headerName: "Ends On" },
       { field: "phoneNumber", headerName: "Phone Number" },
       { field: "memberShip", headerName: "Membership" },
       { field: "lastAssessedOn", headerName: "Last Assessed On" },
@@ -254,6 +406,7 @@ const CustomerTable = () => {
           <ActionsContainer
             takeAssessment={() => assessmentHandler(params.row.customerData)}
             seePlan={() => seePlanHandler(params.row.customerData)}
+            editProfile={() => editProfileHandler(params.row.customerData)}
           />
         ),
       },
@@ -322,6 +475,7 @@ const CustomerTable = () => {
         gender: customer.gender || "-",
         email: customer.email || "-",
         joinedOn: dateChangeHandler(customer.createdOn),
+        endsOn: dateChangeHandler(customer.createdOn),
         phoneNumber: customer.mobile || "-",
         memberShip: customer.membershipType,
         lastAssessedOn: customer.lastAssessed || "-",
@@ -353,7 +507,7 @@ const CustomerTable = () => {
       }
       return {
         ...col,
-        width: width / 10,
+        flex: 1,
         headerAlign: "left",
         align: "left",
       };
@@ -365,7 +519,7 @@ const CustomerTable = () => {
 
     const fetchData = async () => {
       // console.log("console")
-      const _rows = await generateRows(); // ✅ Wait for async rows
+      const _rows = await generateRows(); 
       const _columns = formatColumns(generateColumns());
 
       setRows(_rows);
@@ -468,6 +622,31 @@ const CustomerTable = () => {
     (row) => !row.lastAssessedOn || row.lastAssessedOn === "-"
   ).length;
 
+  // enddate calculation
+  const calculateEndDate = (startDate, membershipType) => {
+  if (!startDate || !membershipType) return '';
+  
+  const start = new Date(startDate);
+  const endDate = new Date(start);
+  
+  switch (membershipType.toLowerCase()) {
+    case 'basic':
+      endDate.setMonth(start.getMonth() + 1);
+      break;
+    case 'premium':
+      endDate.setMonth(start.getMonth() + 3);
+      break;
+    case 'vip':
+      endDate.setMonth(start.getMonth() + 6);
+      break;
+    default:
+      return '';
+  }
+  
+  // Format date to YYYY-MM-DD for input field
+  return endDate.toISOString().split('T')[0];
+};
+
   return (
     <div className="customer-dashboard-outlay-container">
       <div className="--side-bar"></div>
@@ -550,7 +729,7 @@ const CustomerTable = () => {
               columns={columns}
               pageSizeOptions={[5, 10]}
               checkboxSelection
-              sx={{ border: 0, maxHeight: "600px" }}
+              sx={{ border: 0 }}
               onRowSelectionModelChange={(ids) => setSelectedUserIDs(ids)}
             />
           </div>
@@ -572,240 +751,379 @@ const CustomerTable = () => {
       </div>
 
       <div>
-        {/*<Modal isOpen={modalOpen} onClose={handleCloseModal}>
-          <h2 style={modalHeaderStyle}>Create New Customer</h2>
-          <form style={modalFormStyle} onSubmit={handleFormSubmit}>
-            <input
-              style={modalInputStyle}
-              type="text"
-              name="name"
-              placeholder="Name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-            />
-            <input
-              style={modalInputStyle}
-              type="number"
-              name="age"
-              placeholder="Age"
-              value={formData.age}
-              onChange={handleInputChange}
-              required
-            />
-            <select
-              style={modalInputStyle}
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="" disabled hidden>
-                Select Type
-              </option>
-              <option value="forge">Forge</option>
-              <option value="play">Play</option>
-              <option value="coach_wellness">COACH WELLNESS</option>
-              <option value="coach_fitness">COACH FITNESS</option>
-              <option value="coach_sports">COACH SPORTS</option>
-              <option value="employee">EMPLOYEE</option>
-              <option value="other">OTHERS</option>
-            </select>
-            <select
-              style={modalInputStyle}
-              name="gender"
-              value={formData.gender}
-              onChange={handleInputChange}
-              required
-            >
-              <option value="" disabled hidden>
-                Select Gender
-              </option>
-              <option value="male">Male</option>
-              <option value="other">Other</option>
-              <option value="female">Female</option>
-            </select>
-            <input
-              type="text"
-              style={modalInputStyle}
-              onChange={handleInputChange}
-              value={formData.mobile}
-              placeholder="Mobile"
-              name="mobile"
-            />
-             <input
-              type="email"
-              style={modalInputStyle}
-              onChange={handleInputChange}
-              value={formData.email}
-              placeholder="Email"
-              name="email"
-            />
-             <input
-              type="text"
-              style={modalInputStyle}
-              onChange={handleInputChange}
-              value={formData.password}
-              placeholder="Password ***"
-              name="password"
-            />
-            <select
-              style={modalInputStyle}
-              name="membershipType"
-              value={formData.membershipType}
-              onChange={handleInputChange}
-            >
-              <option value="">Select Membership</option>
-              <option value="premium">PREMIUM</option>
-              <option value="basic">BASIC</option>
-              <option value="vip">VIP</option>
-            </select>
-            <input
-              style={modalInputStyle}
-              type="number"
-              name="height"
-              placeholder="Height (cm)"
-              value={formData.height}
-              onChange={handleInputChange}
-            />
-            <input
-              style={modalInputStyle}
-              type="number"
-              step="0.1"
-              name="weight"
-              placeholder="Weight (kg)"
-              value={formData.weight}
-              onChange={handleInputChange}
-            />
-            <input
-              style={modalInputStyle}
-              type="text"
-              name="healthCondition"
-              placeholder="Health Condition"
-              value={formData.healthCondition}
-              onChange={handleInputChange}
-            />
-            <button style={modalButtonStyle} type="submit">
-              Create
-            </button>
-          </form>
-        </Modal>*/}
+        {/* Add New Customer Modal */}
         <Dialog open={modalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
-      <DialogTitle>Create New Customer</DialogTitle>
-      <DialogContent>
-        <Box
-          component="form"
-          onSubmit={handleFormSubmit}
-          sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 1 }}
-        >
-          <TextField
-            label="Name"
-            name="name"
-            value={formData.name}
-            onChange={handleInputChange}
-            required
-          />
-          <TextField
-            label="Age"
-            type="number"
-            name="age"
-            value={formData.age}
-            onChange={handleInputChange}
-            required
-          />
-          <FormControl fullWidth required>
-            <InputLabel>Type</InputLabel>
-            <Select
-              name="type"
-              value={formData.type}
-              label="Type"
-              onChange={handleInputChange}
+          <DialogTitle>
+            Create New Customer
+            <IconButton
+              aria-label="close"
+              onClick={handleCloseModal}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
             >
-              <MenuItem value="forge">Forge</MenuItem>
-              <MenuItem value="play">Play</MenuItem>
-              <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
-              <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
-              <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
-              <MenuItem value="employee">EMPLOYEE</MenuItem>
-              <MenuItem value="other">OTHERS</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth required>
-            <InputLabel>Gender</InputLabel>
-            <Select
-              name="gender"
-              value={formData.gender}
-              label="Gender"
-              onChange={handleInputChange}
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              height: '70vh',  // adjust height as needed
+              p: 0,
+            }}
+          >
+            <Box
+              component="form"
+              id="create-customer-form"
+              onSubmit={handleFormSubmit}
+              sx={{
+                flex: 1,            // take all vertical space available in DialogContent
+                overflowY: 'auto',  // enable vertical scrolling only inside the Box
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
             >
-              <MenuItem value="male">Male</MenuItem>
-              <MenuItem value="female">Female</MenuItem>
-              <MenuItem value="other">Other</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            label="Mobile"
-            name="mobile"
-            value={formData.mobile}
-            onChange={handleInputChange}
-          />
-          <TextField
-            label="Email"
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleInputChange}
-          />
-          <TextField
-            label="Password"
-            name="password"
-            type="text"
-            value={formData.password}
-            onChange={handleInputChange}
-          />
-          <FormControl fullWidth>
-            <InputLabel>Membership</InputLabel>
-            <Select
-              name="membershipType"
-              value={formData.membershipType}
-              label="Membership"
-              onChange={handleInputChange}
-            >
-              <MenuItem value="premium">PREMIUM</MenuItem>
-              <MenuItem value="basic">BASIC</MenuItem>
-              <MenuItem value="vip">VIP</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField
-            label="Height (cm)"
-            name="height"
-            type="number"
-            value={formData.height}
-            onChange={handleInputChange}
-          />
-          <TextField
-            label="Weight (kg)"
-            name="weight"
-            type="number"
-            step="0.1"
-            value={formData.weight}
-            onChange={handleInputChange}
-          />
-          <TextField
-            label="Health Condition"
-            name="healthCondition"
-            value={formData.healthCondition}
-            onChange={handleInputChange}
-          />
-          <DialogActions>
+              {/* Your form inputs */}
+              <TextField
+                label="Name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                required
+              />
+              <TextField
+                label="Age"
+                type="number"
+                name="age"
+                value={formData.age}
+                onChange={handleInputChange}
+                required
+              />
+              <TextField
+                label="Start Date"
+                name="startDate"
+                type="date"
+                value={formData.startDate}
+                onChange={handleInputChange}
+                InputLabelProps={{ shrink: true }}
+                required
+              />
+              <FormControl fullWidth required>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  name="type"
+                  value={formData.type}
+                  label="Type"
+                  onChange={handleInputChange}
+                >
+                  <MenuItem value="forge">Forge</MenuItem>
+                  <MenuItem value="play">Play</MenuItem>
+                  <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
+                  <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
+                  <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+                  <MenuItem value="employee">EMPLOYEE</MenuItem>
+                  <MenuItem value="other">OTHERS</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth required>
+                <InputLabel>Gender</InputLabel>
+                <Select
+                  name="gender"
+                  value={formData.gender}
+                  label="Gender"
+                  onChange={handleInputChange}
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Mobile"
+                name="mobile"
+                value={formData.mobile}
+                onChange={handleInputChange}
+              />
+              <TextField
+                label="Email"
+                name="email"
+                type="email"
+                value={formData.email}
+                onChange={handleInputChange}
+              />
+              <TextField
+                label="Password"
+                name="password"
+                type="text"
+                value={formData.password}
+                onChange={handleInputChange}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Membership</InputLabel>
+                <Select
+                  name="membershipType"
+                  value={formData.membershipType}
+                  label="Membership"
+                  onChange={handleInputChange}
+                >
+                  <MenuItem value="premium">PREMIUM</MenuItem>
+                  <MenuItem value="basic">BASIC</MenuItem>
+                  <MenuItem value="vip">VIP</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="End Date"
+                name="endDate"
+                type="date"
+                value={formData.endDate}
+                InputLabelProps={{ shrink: true }}
+                InputProps={{
+                  readOnly: true,
+                }}
+                sx={{
+                  '& .MuiInputBase-input': {
+                    backgroundColor: '#f5f5f5',
+                    cursor: 'not-allowed',
+                  },
+                }}
+              />
+              <TextField
+                label="Height (cm)"
+                name="height"
+                type="number"
+                value={formData.height}
+                onChange={handleInputChange}
+              />
+              <TextField
+                label="Weight (kg)"
+                name="weight"
+                type="number"
+                step="0.1"
+                value={formData.weight}
+                onChange={handleInputChange}
+              />
+              <TextField
+                label="Health Condition"
+                name="healthCondition"
+                value={formData.healthCondition}
+                onChange={handleInputChange}
+              />
+            </Box>
+          </DialogContent>
+
+          <DialogActions
+            sx={{
+              position: 'sticky',    // keeps buttons visible on scroll
+              bottom: 0,
+              bgcolor: 'background.paper',
+              zIndex: 1,
+            }}
+          >
             <Button onClick={handleCloseModal}>Cancel</Button>
-            <Button type="submit" variant="contained" color="primary">
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              form="create-customer-form"  
+            >
               Create
             </Button>
           </DialogActions>
-        </Box>
-      </DialogContent>
-    </Dialog>
+        </Dialog>
+
+        {/* Edit Customer Modal */}
+        <Dialog open={editModalOpen} onClose={handleCloseEditModal} fullWidth maxWidth="sm">
+          <DialogTitle>
+            Edit Customer Profile
+            <IconButton
+              aria-label="close"
+              onClick={handleCloseEditModal}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              display: 'flex',
+              flexDirection: 'column',
+              height: '70vh',
+              p: 0,
+            }}
+          >
+            <Box
+              component="form"
+              id="edit-customer-form"
+              onSubmit={handleEditFormSubmit}
+              sx={{
+                flex: 1,
+                overflowY: 'auto',
+                p: 3,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
+              }}
+            >
+              <TextField
+                label="Name"
+                name="name"
+                value={editFormData.name}
+                onChange={handleEditInputChange}
+                required
+              />
+              <TextField
+                label="Age"
+                type="number"
+                name="age"
+                value={editFormData.age}
+                onChange={handleEditInputChange}
+                required
+              />
+              <TextField
+                label="Start Date"
+                name="startDate"
+                type="date"
+                value={editFormData.startDate}
+                onChange={handleEditInputChange}
+                InputLabelProps={{ shrink: true }}
+                required
+              />
+              <FormControl fullWidth required>
+                <InputLabel>Type</InputLabel>
+                <Select
+                  name="type"
+                  value={editFormData.type}
+                  label="Type"
+                  onChange={handleEditInputChange}
+                >
+                  <MenuItem value="forge">Forge</MenuItem>
+                  <MenuItem value="play">Play</MenuItem>
+                  <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
+                  <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
+                  <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+                  <MenuItem value="employee">EMPLOYEE</MenuItem>
+                  <MenuItem value="other">OTHERS</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth required>
+                <InputLabel>Gender</InputLabel>
+                <Select
+                  name="gender"
+                  value={editFormData.gender}
+                  label="Gender"
+                  onChange={handleEditInputChange}
+                >
+                  <MenuItem value="male">Male</MenuItem>
+                  <MenuItem value="female">Female</MenuItem>
+                  <MenuItem value="other">Other</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="Mobile"
+                name="mobile"
+                value={editFormData.mobile}
+                onChange={handleEditInputChange}
+              />
+              <TextField
+                label="Email"
+                name="email"
+                type="email"
+                value={editFormData.email}
+                onChange={handleEditInputChange}
+              />
+              <TextField
+                label="Password"
+                name="password"
+                type="text"
+                value={editFormData.password}
+                onChange={handleEditInputChange}
+              />
+              <FormControl fullWidth>
+                <InputLabel>Membership</InputLabel>
+                <Select
+                  name="membershipType"
+                  value={editFormData.membershipType}
+                  label="Membership"
+                  onChange={handleEditInputChange}
+                >
+                  <MenuItem value="premium">PREMIUM</MenuItem>
+                  <MenuItem value="basic">BASIC</MenuItem>
+                  <MenuItem value="vip">VIP</MenuItem>
+                </Select>
+              </FormControl>
+              <TextField
+                label="End Date"
+                name="endDate"
+                type="date"
+                value={editFormData.endDate}
+                InputLabelProps={{ shrink: true }}
+                InputProps={{
+                  readOnly: true,
+                }}
+                sx={{
+                  '& .MuiInputBase-input': {
+                    backgroundColor: '#f5f5f5',
+                    cursor: 'not-allowed',
+                  },
+                }}
+              />
+              <TextField
+                label="Height (cm)"
+                name="height"
+                type="number"
+                value={editFormData.height}
+                onChange={handleEditInputChange}
+              />
+              <TextField
+                label="Weight (kg)"
+                name="weight"
+                type="number"
+                step="0.1"
+                value={editFormData.weight}
+                onChange={handleEditInputChange}
+              />
+              <TextField
+                label="Health Condition"
+                name="healthCondition"
+                value={editFormData.healthCondition}
+                onChange={handleEditInputChange}
+              />
+            </Box>
+          </DialogContent>
+
+          <DialogActions
+            sx={{
+              position: 'sticky',
+              bottom: 0,
+              bgcolor: 'background.paper',
+              zIndex: 1,
+            }}
+          >
+            <Button onClick={handleCloseEditModal}>Cancel</Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              form="edit-customer-form"
+            >
+              Edit
+            </Button>
+          </DialogActions>
+        </Dialog>
+
       </div>
 
       

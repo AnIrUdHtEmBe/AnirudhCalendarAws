@@ -5,11 +5,12 @@ import {
   MenuItem,
   Select,
   SelectChangeEvent,
+  TextField
 } from "@mui/material";
 
 import {
   Activity_Api_call,
-  DataContext,
+  DataContext,  
   Plan_Api_call,
   Session_Api_call,
 } from "../store/DataContext";
@@ -47,6 +48,57 @@ function SessionPage() {
   const [sessionName, setSessionName] = useState("");
   const [category, setCategory] = useState("");
 
+  // *** NEW FILTER STATES ***
+  const [planNameFilter, setPlanNameFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [themes, setThemes] = useState([]);
+  const [theme, setTheme] = useState(""); // currently selected theme
+  const { getTags } = useApiCalls(); // or wherever getTags comes from
+  const [goals, setGoals] = useState([]);
+  const [goal, setGoal] = useState(""); // current selected goal
+
+  useEffect(() => {
+  const fetchThemes = async () => {
+    const res = await getTags();
+    if (res) {
+      setThemes(res.filter((tag) => tag.type === "theme"));
+    } else {
+      console.error("Failed to fetch themes");
+    }
+  };
+    fetchThemes();
+  }, []);
+
+  useEffect(() => {
+  const fetchGoals = async () => {
+    const res = await getTags();
+    if (res) {
+      setGoals(res.filter((tag) => tag.type === "goal"));
+    } else {
+      console.error("Failed to fetch goals");
+    }
+  };
+  fetchGoals();
+}, []);
+
+  useEffect(() => {
+  if (activeFilter === null) {
+    setCategoryFilter("");
+  } else {
+    setCategoryFilter(activeFilter.toUpperCase());
+  }
+}, [activeFilter]);
+
+const handleCategoryFilterChange = (event: SelectChangeEvent<string>) => {
+  const value = event.target.value;
+  setCategoryFilter(value);
+  if (value === "") {
+    setActiveFilter(null);
+  } else {
+    setActiveFilter(value.toLowerCase());
+  }
+};
+
   // console.log(selectedIds,"eleczzzz")
   const {
     getSessions,
@@ -64,21 +116,42 @@ function SessionPage() {
   // grid and checked cell interaction
   const [activePlan, setActivePlan] = useState<Session_Api_call | null>(null);
 
-  const filteredSessions = sessions_api_call.filter(
-    (plan) =>
+ // Updated filteredSessions applying *all* filters: your old searchTerm + activeFilter + new filters
+  const filteredSessions = sessions_api_call.filter((plan) => {
+    const matchesSearchOrActiveFilter =
       plan.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      plan.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (activeFilter ? plan.category?.toLowerCase() === activeFilter.toLowerCase() : true);
 
-  const filterPlansAccordingTo = (category: string) => {
-    if (activeFilter === category) {
-      setActiveFilter(null); // Remove filter if clicked again
-      setSearchTerm(""); // Show all
-    } else {
-      setActiveFilter(category);
-      setSearchTerm(category);
-    }
-  };
+    const matchesPlanNameFilter = planNameFilter
+      ? plan.title.toLowerCase().includes(planNameFilter.toLowerCase())
+      : true;
+    const matchesCategoryFilter = categoryFilter
+      ? plan.category?.toLowerCase().includes(categoryFilter.toLowerCase())
+      : true;
+    return (
+      matchesSearchOrActiveFilter &&
+      matchesPlanNameFilter &&
+      matchesCategoryFilter 
+    );
+  });
+
+
+const filterPlansAccordingTo = (category: string) => {
+  const categoryLower = category.toLowerCase();
+
+  if (activeFilter === categoryLower) {
+    // Clear selection
+    setActiveFilter(null);
+    setCategoryFilter("");
+    setSearchTerm("");
+  } else {
+    setActiveFilter(categoryLower);
+    setCategoryFilter(category.toUpperCase());
+    setSearchTerm(category);
+  }
+};
+
 
   const isAllSelected =
     filteredSessions.length > 0 &&
@@ -288,30 +361,31 @@ function SessionPage() {
             </div>
 
             <div className="button-group">
-              <button
-                className={`filter-btn ${
-                  activeFilter === "Fitness" ? "filter-btn-active" : ""
-                }`}
-                onClick={() => filterPlansAccordingTo("Fitness")}
-              >
-                <Dumbbell size={20} />
-              </button>
-              <button
-                className={`filter-btn ${
-                  activeFilter === "Wellness" ? "filter-btn-active" : ""
-                }`}
-                onClick={() => filterPlansAccordingTo("Wellness")}
-              >
-                <Mediation style={{ fontSize: "20px" }} />
-              </button>
-              <button
-                className={`filter-btn ${
-                  activeFilter === "Sports" ? "filter-btn-active" : ""
-                }`}
-                onClick={() => filterPlansAccordingTo("Sports")}
-              >
-                <NordicWalking style={{ fontSize: "20px" }} />
-              </button>
+<button
+  className={`filter-btn ${
+    activeFilter === "fitness" ? "filter-btn-active" : ""
+  }`}
+  onClick={() => filterPlansAccordingTo("Fitness")}
+>
+  <Dumbbell size={20} />
+</button>
+<button
+  className={`filter-btn ${
+    activeFilter === "wellness" ? "filter-btn-active" : ""
+  }`}
+  onClick={() => filterPlansAccordingTo("Wellness")}
+>
+  <Mediation style={{ fontSize: "20px" }} />
+</button>
+<button
+  className={`filter-btn ${
+    activeFilter === "sports" ? "filter-btn-active" : ""
+  }`}
+  onClick={() => filterPlansAccordingTo("Sports")}
+>
+  <NordicWalking style={{ fontSize: "20px" }} />
+</button>
+
             </div>
 
             <button
@@ -327,6 +401,119 @@ function SessionPage() {
               <span>New</span>
             </button>
           </div>
+
+{/*New filter inputs with improved responsive structure*/}
+<div className="filter-inputs-container">
+  <div className="filter-input-wrapper">
+    <FormControl fullWidth variant="standard" sx={{ minWidth: 0 }}>
+      <TextField
+        label="Session Name"
+        variant="standard"
+        value={planNameFilter}
+        onChange={(e) => setPlanNameFilter(e.target.value)}
+        InputProps={{
+          sx: { 
+            fontSize: { xs: "1rem", sm: "1.25rem" }, 
+            fontFamily: "Roboto" 
+          },
+        }}
+        InputLabelProps={{
+          sx: { 
+            fontSize: { xs: "0.875rem", sm: "1rem" } 
+          }
+        }}
+      />
+    </FormControl>
+  </div>
+
+  <div className="filter-input-wrapper">
+    <FormControl fullWidth variant="standard" sx={{ minWidth: 0 }}>
+      <InputLabel 
+        id="category-filter-label"
+        shrink={true}
+        sx={{ 
+          fontSize: { xs: "0.875rem", sm: "1rem" } 
+        }}
+      >
+        Category
+      </InputLabel>
+      <Select
+        labelId="category-filter-label"
+        value={categoryFilter}
+        label="Category"
+        onChange={handleCategoryFilterChange}
+        sx={{ 
+          fontSize: { xs: "1rem", sm: "1.25rem" }, 
+          fontFamily: "Roboto" 
+        }}
+      >
+        <MenuItem value="">
+          <em>None</em>
+        </MenuItem>
+        <MenuItem value="FITNESS">Fitness</MenuItem>
+        <MenuItem value="SPORTS">Sports</MenuItem>
+        <MenuItem value="WELLNESS">Wellness</MenuItem>
+        <MenuItem value="OTHER">Other</MenuItem>
+      </Select>
+    </FormControl>
+  </div>
+
+  <div className="filter-input-wrapper">
+    <FormControl fullWidth variant="standard" sx={{ minWidth: 0 }}>
+      <InputLabel id="theme-select-label" shrink={true}>
+        Theme
+      </InputLabel>
+      <Select
+        labelId="theme-select-label"
+        value={theme}
+        onChange={(e) => setTheme(e.target.value)}
+        displayEmpty
+        renderValue={(selected) => {
+          if (!selected) return <span></span>;
+          return selected;
+        }}
+        sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
+      >
+        <MenuItem value="">
+          <em>None</em>
+        </MenuItem>
+        {themes.map((tag, i) => (
+          <MenuItem key={i} value={tag?.title}>
+            {tag.title}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </div>
+
+  <div className="filter-input-wrapper">
+    <FormControl fullWidth variant="standard" sx={{ minWidth: 0 }}>
+      <InputLabel id="goal-select-label" shrink={true}>
+        Goal
+      </InputLabel>
+      <Select
+        labelId="goal-select-label"
+        value={goal}
+        onChange={(e) => setGoal(e.target.value)}
+        displayEmpty
+        sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
+        renderValue={(selected) => {
+          if (!selected) return <span></span>;
+          return selected;
+        }}
+      >
+        <MenuItem value="">
+          <em>None</em>
+        </MenuItem>
+        {goals.map((tag, i) => (
+          <MenuItem key={i} value={tag?.title}>
+            {tag.title}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </div>
+</div>
 
           {/* Table */}
           <div className="table-container">
@@ -368,7 +555,7 @@ function SessionPage() {
                       />
                     </td>
 
-                    <td className="plan-title">{session.title}</td>
+                    <td className="plan-title" style={{marginBottom : '18px'}}>{session.title}</td>
                     <td>{session.category}</td>
                     <td className="p-icon">
                       <button onClick={() => handlePreviewClick(session)}>

@@ -7,6 +7,7 @@ import AddPlanInstance from './AddPlanInstance';
 import AddSession from './AddSession';
 import AddActivity from './AddActivity';
 import AddNutrition from './AddNutrition';
+import QuestionsDone from './QuestionsDone';
 export default function DateRangePicker({ startDate, userDate ,setStartDate, endDate, setEndDate ,userId ,planForAlacatre , getData} ) {
   React.useEffect(()=> {
     console.log(userDate);

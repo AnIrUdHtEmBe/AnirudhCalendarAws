@@ -67,6 +67,7 @@ function ActivityTable() {
       description: "",
       target: null,
       unit: "",
+      targetReps: null,
     },
   ]);
   const [emptyArr, setEmptyArr] = useState<Activity_Api_call[]>([
@@ -119,6 +120,7 @@ function ActivityTable() {
         target: null,
         unit: "",
         icon: "",
+        targetReps: null,
       },
     ]);
   };
@@ -452,7 +454,7 @@ useEffect(() => {
                   </td>
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center">
                     <button onClick={() => handleDelete(index)}>
-                      <LucideCircleMinus className="text-red-400" size={24} />
+                      <LucideCircleMinus className="text-red-400" size={24}  />
                     </button>
                   </td>
                 </tr>
@@ -484,7 +486,7 @@ useEffect(() => {
               <X size={20} />
             </button>
 
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative p-6 ">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-6xl max-h-[90vh] overflow-y-auto relative p-6 ">
               {/* Close Button */}
 
               <div className="flex justify-between items-center border-gray-200 border-b pb-2 mb-4">
@@ -508,6 +510,8 @@ useEffect(() => {
                       <th className="px-4 py-2">Description</th>
                       <th className="px-4 py-2">Target</th>
                       <th className="px-4 py-2">Units</th>
+                      <th className="px-4 py-2">New Target</th>
+                      <th className="px-4 py-2">Reps</th>
                       <th className="px-4 py-2"></th>
                     </tr>
                   </thead>
@@ -557,7 +561,7 @@ useEffect(() => {
                                 label="Select Activity"
                                 variant="outlined"
                                 size="small"
-                                sx={{ width: 200 }}
+                                sx={{ width: 180 }}
                               />
                             )}
                             freeSolo // allows custom input as well as selection
@@ -588,17 +592,6 @@ useEffect(() => {
                           />
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200">
-                          {/* <input
-                            type="text"
-                            value={activity.unit}
-                            onChange={(e) => {
-                              const updated = [...newActivities];
-                              updated[index].unit = e.target.value;
-                              setNewActivities(updated);
-                            }}
-                            className="w-full border border-gray-400 rounded p-2"
-                          /> */}
-
                             <Autocomplete
                               options ={ActivityUtils}
                               getOptionsLable={(option :any) => option || ""}
@@ -618,6 +611,31 @@ useEffect(() => {
                                 />
                               )}
                             />
+                        </td>
+                        <td className="px-4 py-2 border-b-2 border-gray-200">
+                          <input
+                            type="number"
+                            value={activity.targetNew || ""}
+                            onChange={(e) => {
+                              const updated = [...newActivities];
+                              updated[index].targetNew = e.target.value;
+                              setNewActivities(updated);
+                            }}
+                            className="w-full border border-gray-400 rounded p-2"
+                          />
+                        </td>
+                        <td className="px-4 py-2 border-b-2 border-gray-200">
+                          <input
+                            type="number"
+                            value={activity.reps || ""}
+                            onChange={(e) => {
+                              const updated = [...newActivities];
+                              updated[index].reps = e.target.value;
+                              setNewActivities(updated);
+                            }}
+                            className="w-full border border-gray-400 rounded p-2"
+            
+                          />
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200 text-center">
                           <button

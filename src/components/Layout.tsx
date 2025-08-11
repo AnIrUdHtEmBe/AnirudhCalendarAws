@@ -35,7 +35,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     <div style={layoutStyle}>
       <Sidebar collapsed={sidebarCollapsed} toggleSidebar={toggleSidebar} />
       <main style={mainStyle}>
-        <Breadcrumb />
         {children}
       </main>
     </div>
