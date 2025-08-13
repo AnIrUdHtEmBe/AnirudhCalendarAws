@@ -7,7 +7,6 @@ import {
 } from "../store/DataContext";
 import { ActivityUtils } from "../Utils/ActivityUtils";
 
-import "../sessionsPageComponets/ActivityTable.css";
 import {
   Autocomplete,
   FormControl,
@@ -18,31 +17,31 @@ import {
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
 import { NutritionUnits, NutritionUtils } from "../Utils/NutritionUtils";
+
 function NutritionActivityTable() {
   const context = useContext(DataContext);
   if (!context) {
     return <div>Loading...</div>;
   }
-  const { getActivities, createNutritionActivity, getActivityById, createSession ,getTags} =
+  const { getActivities, createNutritionActivity, getActivityById, createSession, getTags } =
     useApiCalls();
+  
   useEffect(() => {
-    getActivities("","","NUTRITION");
+    getActivities("", "", "NUTRITION");
   }, []);
 
-  
   const { setSelectComponent, activities_api_call } = context;
   const [tags, setTags] = useState([]);
   const [planName, setPlanName] = useState<string>("");
   const [category, setCategory] = useState<string>("Nutrition");
   const [theme, setTheme] = useState("");
   const [goal, setGoal] = useState("");
-  const [themes , setThemes] = useState([]);
-  const [goals, setGoals ] = useState([]);
-   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
+  const [themes, setThemes] = useState([]);
+  const [goals, setGoals] = useState([]);
+  const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
-  // const [trackDublicate , setTrackDublicate] = useState<object[]>([]);
-  // console.log(trackDublicate)
-  useEffect(() => {} , [])
+
+  useEffect(() => {}, [])
 
   useEffect(() => {
     const taggetter = async () => {
@@ -56,40 +55,47 @@ function NutritionActivityTable() {
       }
     };
     taggetter();
-
-     
   }, []);
+
   useEffect(() => {
-    // console.log("Tags fetched:", tags);
+    console.log("Tags fetched:", tags);
   }, [tags]);
+
   const [newActivities, setNewActivities] = useState<Activity_Api_call[]>([
     {
       name: "",
       description: "",
       target: null,
+      target2: null,
       unit: "",
-      type:"",
+      unit2: "",
+      type: "",
+      videoLink: "",
     },
   ]);
+
   const [emptyArr, setEmptyArr] = useState<Activity_Api_call[]>([
     {
       name: "",
       description: "",
       target: null,
+      target2: null,
       unit: "",
+      unit2: "",
       icon: "",
-      type:"",
+      type: "",
+      videoLink: "",
     },
   ]);
 
   useEffect(() => {
     console.log(emptyArr);
     const activityIds = emptyArr.map((activity) => activity.activityId);
-    // console.log(activityIds);
+    console.log(activityIds);
   }, [emptyArr]);
 
   useEffect(() => {
-    // console.log(activities_api_call);
+    console.log(activities_api_call);
   }, [activities_api_call]);
 
   const handlePlanSaving = () => {
@@ -97,7 +103,6 @@ function NutritionActivityTable() {
   };
 
   const handleSessionCreation = async () => {
-    // const activityIds = emptyArr.map((activity) => activity.activityId);
     const activityIds: string[] = emptyArr
       .map((item) => item.activityId)
       .filter((id): id is string => typeof id === "string");
@@ -120,9 +125,12 @@ function NutritionActivityTable() {
         name: "",
         description: "",
         target: null,
+        target2: null,
         unit: "",
+        unit2: "",
         icon: "",
-        type:"",
+        type: "",
+        videoLink: "",
       },
     ]);
   };
@@ -135,9 +143,12 @@ function NutritionActivityTable() {
         name: "",
         description: "",
         target: null,
+        target2: null,
         unit: "",
+        unit2: "",
         icon: "",
-        type:"",
+        type: "",
+        videoLink: "",
       },
     ]);
   };
@@ -145,45 +156,70 @@ function NutritionActivityTable() {
   const handleModalSave = async () => {
     const validActivities = newActivities.filter(
       (activity) =>
-        activity.name.trim() !== "" &&
-        activity.description.trim() !== "" &&
-        (activity.target !== 0 || activity.target !== null) &&
-        activity.unit.trim() !== ""
+        activity.name && activity.name.trim() !== "" &&
+        activity.description && activity.description.trim() !== "" &&
+        activity.target && activity.target !== "" && activity.target !== null && activity.target !== "0" &&
+        activity.unit && activity.unit.trim() !== ""
     );
 
     if (validActivities.length === 0) {
+      alert("Please fill in all required fields (Name, Description, Target, Unit)");
       setShowModal(false);
       return;
     }
 
-    const newItems = validActivities.map((activity) => ({
-      name: activity.name,
-      description: activity.description,
-      target: activity.target,
-      unit: activity.unit,
-      type:activity.type,
-    }));
+    const newItems = validActivities.map((activity) => {
+      // Ensure all fields have proper values and types
+      const item = {
+        name: activity.name.trim(),
+        description: activity.description.trim(),
+        target: Number(activity.target), // Convert to number
+        unit: activity.unit,
+        type: activity.type || "",
+        videoLink: "", // Always pass empty string for nutrition
+      };
+
+      // Only include target2 and unit2 if they have values
+      if (activity.target2 && activity.target2 !== "" && activity.target2 !== null) {
+        item.target2 = Number(activity.target2); // Convert to number
+      }
+      
+      if (activity.unit2 && activity.unit2 !== "" && activity.unit2 !== null) {
+        item.unit2 = activity.unit2;
+      }
+
+      return item;
+    });
+
     const postEachActivity = async () => {
       try {
         for (const item of newItems) {
-          console.log(item,"jiiji")
+          console.log("Sending item to API:", item);
           await createNutritionActivity(item);
+          console.log("Successfully created:", item.name);
         }
       } catch (error) {
-        console.error("Error posting some activities:", error);
+        console.error("Error posting activities:", error);
+        console.error("Failed item data:", newItems);
+        // Still show user feedback but don't break the flow
+        alert("Some activities could not be saved. Please check the console for details.");
+        throw error; // Re-throw to prevent continuing
       }
     };
     // ✅ Wait for posting to finish
     await postEachActivity();
     // ✅ Then update the state
-    await getActivities("","","NUTRITION");
+    await getActivities("", "", "NUTRITION");
     setNewActivities([
       {
         name: "",
         description: "",
         target: null,
+        target2: null,
         unit: "",
-        type:"",
+        unit2: "",
+        type: "",
+        videoLink: "",
       },
     ]);
     setShowModal(false);
@@ -208,9 +244,10 @@ function NutritionActivityTable() {
       return shiftedActivities;
     });
   };
+
   const updateTheActivitityById = async (activityId: string, index: number) => {
     const activity = await getActivityById(activityId);
-    console.log(activity,"['pilkujhgfd")
+    console.log(activity, "['pilkujhgfd")
     if (activity) {
       emptyArr[index] = activity;
       setEmptyArr([...emptyArr]);
@@ -218,6 +255,7 @@ function NutritionActivityTable() {
       console.error("Activity not found");
     }
   };
+
   const [selectedActivities, setSelectedActivities] = useState<{
     [id: number]: string;
   }>({});
@@ -227,44 +265,66 @@ function NutritionActivityTable() {
     updateTheActivitityById(value, id);
   };
 
-  // console.log(newActivities);
-useEffect(() => {
-  // console.log(theme);
-  // console.log(goal);
-}
-, [theme, goal]);
+  const formatUnit = (unit: string) => {
+    switch (unit) {
+      case "weight":
+        return "Kg";
+      case "time":
+        return "Min";
+      case "distance":
+        return "Km";
+      case "repetitions":
+        return "Reps";
+      case "grams":
+        return "g";
+      case "meter":
+        return "m";
+      case "litre":
+        return "L";
+      case "millilitre":
+        return "ml";
+      case "glasses":
+        return "glasses";
+      default:
+        return "";
+    }
+  };
 
-useEffect(() => {
+  console.log(newActivities);
+  useEffect(() => {
+    console.log(theme);
+    console.log(goal);
+  }, [theme, goal]);
+
+  useEffect(() => {
     if (theme && goal) {
       console.log("Theme and Goal are set:", theme, goal);
-      getActivities(theme, goal,"NUTRITION");
+      getActivities(theme, goal, "NUTRITION");
       return;
-      // You can add any additional logic here that depends on both theme and goal being set
     }
-    if(theme){
+    if (theme) {
       console.log("Theme is set:", theme);
-      getActivities(theme,"","NUTRITION");
+      getActivities(theme, "", "NUTRITION");
       return;
     }
-    if(goal){
+    if (goal) {
       console.log("Goal is set:", goal);
-      getActivities("",goal,"NUTRITION");
+      getActivities("", goal, "NUTRITION");
       return;
-    }if(category){
-        getActivities("","","NUTRITION")
     }
-    getActivities("","","NUTRITION");
-  }, [theme , goal]);
+    getActivities("", "", "NUTRITION");
+  }, [theme, goal]);
 
-  useEffect(()=>{
-    // console.log(emptyArr,"this is emort")
-  },[emptyArr])
+  useEffect(() => {
+    console.log(emptyArr, "this is emort")
+  }, [emptyArr])
+
   return (
     <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
       {/* Header */}
-      <div className="flex justify-between items-center py-4">
-        <div className="flex w-2xl gap-8">
-          <div className="flex flex-col w-full">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 gap-4">
+        <div className="flex flex-col lg:flex-row w-full lg:w-auto gap-4 lg:gap-8">
+          <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 170 }}>
               <TextField
                 label="Nutrition Name"
@@ -278,57 +338,55 @@ useEffect(() => {
             </FormControl>
           </div>
 
-          <div className="flex flex-col w-full ">
+          <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
               <TextField
                 label="Category"
                 variant="standard"
                 value={category}
-                
                 InputProps={{
                   sx: { fontSize: "1.25rem", fontFamily: "Roboto" },
                 }}
               />
             </FormControl>
           </div>
-         <div className="flex flex-col w-full">
-  <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-    <InputLabel id="demo-select-label" shrink={true}>
-      Theme
-    </InputLabel>
-    <Select
-      labelId="demo-select-label"
-      value={theme}
-      onChange={(e) => setTheme(e.target.value)}
-      displayEmpty
-      renderValue={(selected) => {
-        if (!selected) {
-          return <span ></span>;
-        }
-        return selected;
-      }}
-      sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
-    >
-      <MenuItem value="">
-        <em>None</em>
-      </MenuItem>
-      {themes.map((tag, i) => (
-        <MenuItem key={i} value={tag?.title}>
-          {tag.title}
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-</div>
+          
+          <div className="flex flex-col w-full lg:w-auto min-w-0">
+            <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
+              <InputLabel id="demo-select-label" shrink={true}>
+                Theme
+              </InputLabel>
+              <Select
+                labelId="demo-select-label"
+                value={theme}
+                onChange={(e) => setTheme(e.target.value)}
+                displayEmpty
+                renderValue={(selected) => {
+                  if (!selected) {
+                    return <span ></span>;
+                  }
+                  return selected;
+                }}
+                sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
+              >
+                <MenuItem value="">
+                  <em>None</em>
+                </MenuItem>
+                {themes.map((tag, i) => (
+                  <MenuItem key={i} value={tag?.title}>
+                    {tag.title}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
 
-
-          <div className="flex flex-col w-full ">
+          <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
               <InputLabel id="demo-select-label" shrink={true}> Goal</InputLabel>
               <Select
                 labelId="demo-select-label"
                 value={goal}
-               
                 onChange={(e) => setGoal(e.target.value)}
                 displayEmpty
                 sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
@@ -347,23 +405,22 @@ useEffect(() => {
                     {tag.title}
                   </MenuItem>
                 ))}
-                
               </Select>
             </FormControl>
           </div>
         </div>
 
         {/* Right Buttons */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
           <button
-            className="flex items-center space-x-2 p-2  text-sm md:text-base plus-new-actvity"
+            className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
             onClick={() => setShowModal(true)}
           >
             <Plus />
             <span>Create New Item</span>
           </button>
           <button
-            className="flex items-center space-x-2 text-white px-4 py-2 rounded-xl text-sm md:text-base btn2 "
+            className="flex items-center justify-center space-x-2 text-white px-4 py-2 rounded-xl text-sm md:text-base btn2 whitespace-nowrap"
             onClick={handleSessionCreation}
           >
             <Save size={20} />
@@ -374,7 +431,7 @@ useEffect(() => {
 
       {/* Scrollable Table Container */}
       <div className="overflow-auto flex-1 w-full">
-        <div className="min-w-[600px]">
+        <div className="min-w-[1200px]">
           <table className="w-full table-auto border-collapse">
             <thead className="sticky top-0 bg-white z-10">
               <tr className="text-left text-gray-700 text-sm md:text-base">
@@ -382,14 +439,19 @@ useEffect(() => {
                   "Sl No.",
                   "Item",
                   "Description",
-                  "Target",
-                  "Unit",
+                  "Target 1",
+                  "Unit 1",
+                  "Target 2",
+                  "Unit 2",
                   "Type",
                   "",
                 ].map((item, index) => (
                   <th
                     key={index}
-                    className="justify-center font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
+                    className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
+                    style={{
+                      minWidth: index === 1 ? '280px' : index === 2 ? '200px' : 'auto'
+                    }}
                   >
                     {item}
                   </th>
@@ -402,87 +464,79 @@ useEffect(() => {
                   key={index}
                   className="text-sm text-gray-800 hover:bg-gray-50"
                 >
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     {index + 1}
                   </td>
 
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    <Autocomplete
-                      options={activities_api_call}
-                      getOptionLabel={(option) => option.name || ""}
-                      value={
-                        activities_api_call.find(
-                          (a) => a.activityId === selectedActivities[index]
-                        ) || null
-                      }
-                      onChange={(_, newValue) => {
-                        // newValue is the selected activity object or null
-                        handleActivitySelectChange(
-                          index,
-                          newValue ? newValue.activityId : ""
-                        );
-                        setActivityForTable(newValue);
-                      }}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Select Item"
-                          variant="outlined"
-                          size="small"
-                          sx={{ width: 250 }}
-                        />
-                      )}
-                      sx={{ width: 100, backgroundColor: "white" }}
-                      isOptionEqualToValue={(option, value) =>
-                        option.activityId === value.activityId
-                      }
-                      freeSolo
-                    />
+                  <td className="px-4 py-7 border-b border-b-gray-200 align-middle" style={{ minWidth: '280px' }}>
+                    <div className="flex justify-center">
+                      <Autocomplete
+                        options={activities_api_call}
+                        getOptionLabel={(option) => option.name || ""}
+                        value={
+                          activities_api_call.find(
+                            (a) => a.activityId === selectedActivities[index]
+                          ) || null
+                        }
+                        onChange={(_, newValue) => {
+                          // newValue is the selected activity object or null
+                          handleActivitySelectChange(
+                            index,
+                            newValue ? newValue.activityId : ""
+                          );
+                          setActivityForTable(newValue);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Select Item"
+                            variant="outlined"
+                            size="small"
+                            sx={{ width: 250 }}
+                          />
+                        )}
+                        sx={{ width: 250, backgroundColor: "white" }}
+                        isOptionEqualToValue={(option, value) =>
+                          option.activityId === value.activityId
+                        }
+                        freeSolo
+                      />
+                    </div>
                   </td>
 
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    {activity.description}
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle" style={{ minWidth: '200px' }}>
+                    <div className="break-words">
+                      {activity.description}
+                    </div>
                   </td>
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     {activity.target}
                   </td>
-                  
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    {activity.unit == "weight"
-                      ? "Kg"
-                      : activity.unit == "distance"
-                      ? "Km"
-                      : activity.unit == "time"
-                      ? "Min"
-                      : activity.unit == "repetitions"
-                      ? "Reps"
-                      :  activity.unit == "grams"
-                      ? "g"
-                      : activity.unit == "meter"
-                      ? "m"
-                      : activity.unit == "litre"
-                      ? "L"
-                      : activity.unit == "millilitre"
-                      ? "ml"
-                      : activity?.unit == "glasses"
-                                                            ? "glasses"
-                      : ""}
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+                    {formatUnit(activity.unit)}
                   </td>
-                  <td  className="px-4 py-7 border-b border-b-gray-200 text-center">
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+                    {activity.target2}
+                  </td>
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+                    {formatUnit(activity.unit2)}
+                  </td>
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     {activity.type}
-                    
                   </td>
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                    <button onClick={() => handleDelete(index)}>
-                      <LucideCircleMinus className="text-red-400" size={24} />
-                    </button>
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+                    <div className="flex justify-center items-center">
+                      <button onClick={() => handleDelete(index)}>
+                        <LucideCircleMinus className="text-red-400" size={24} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
               <tr className="border-b border-b-gray-300">
-                <td className="p-3  " colSpan={5}>
+                <td className="p-3" colSpan={9}>
                   <button
-                    className="space-x-2 px-4 py-2 add-row"
+                    className="flex items-center space-x-2 px-4 py-2 add-row"
                     onClick={addNewRow}
                   >
                     <Plus />
@@ -506,7 +560,7 @@ useEffect(() => {
               <X size={20} />
             </button>
 
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-5xl max-h-[90vh] overflow-y-auto relative p-6 ">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto relative p-6">
               {/* Close Button */}
 
               <div className="flex justify-between items-center border-gray-200 border-b pb-2 mb-4">
@@ -525,97 +579,87 @@ useEffect(() => {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="px-4 py-2">Sl.No</th>
-                      <th className="px-4 py-2">Item Name</th>
-                      <th className="px-4 py-2">Description</th>
-                      <th className="px-4 py-2">Target</th>
-                      <th className="px-4 py-2">Unit</th>
-                      <th className="px-4 py-2">Type</th>
-                      <th className="px-4 py-2"></th>
+                      <th className="px-4 py-2 text-center">Sl.No</th>
+                      <th className="px-4 py-2 text-center">Item Name</th>
+                      <th className="px-4 py-2 text-center">Description</th>
+                      <th className="px-4 py-2 text-center">Target 1</th>
+                      <th className="px-4 py-2 text-center">Unit 1</th>
+                      <th className="px-4 py-2 text-center">Target 2</th>
+                      <th className="px-4 py-2 text-center">Unit 2</th>
+                      <th className="px-4 py-2 text-center">Type</th>
+                      <th className="px-4 py-2 text-center"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {newActivities.map((activity, index) => (
                       <tr key={index}>
-                        <td className="px-4 py-2 text-center border-b-2 border-gray-200">
+                        <td className="px-4 py-2 text-center border-b-2 border-gray-200 align-middle">
                           {index + 1}
                         </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200">
-                          <Autocomplete
-                            options={activities_api_call}
-                            getOptionLabel={(option) => option.name || ""}
-                            getOptionDisabled={() => true} // disables all options
-                            value={
-                              activities_api_call.find(
-                                (a) => a.name === activity.name
-                              ) || null
-                            }
-                            onInputChange={(_, newInputValue) => {
-                              const updated = [...newActivities];
-                              updated[index].name = newInputValue;
-                              // Optionally, clear other fields if not matching an existing activity
-                              setNewActivities(updated);
-                              // Optionally, call handleType here if you want live type detection
-                            }}
-                            // onChange={(_, newValue) => {
-                            //   const updated = [...newActivities];
-                            //   if (newValue) {
-                            //     updated[index].name = newValue.name;
-                            //     updated[index].description =
-                            //       newValue.description || "";
-                            //     updated[index].unit = newValue.unit || "";
-                            //     updated[index].target = newValue.target ||"";
-                            //     // setTrackDublicate((prev) => [...prev, {name : newValue.name , index}]);
-                            //   } else {
-                            //     updated[index].name = "";
-                            //     updated[index].description = "";
-                            //     updated[index].unit = "";
-                            //     updated[index].target = "";
-                            //   }
-                            //   setNewActivities(updated);
-                            // }}
-                            renderInput={(params) => (
-                              <TextField
-                                {...params}
-                                label="Select Item"
-                                variant="outlined"
-                                size="small"
-                                sx={{ width: 200 }}
-                              />
-                            )}
-                            freeSolo // allows custom input as well as selection
-                          />
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <Autocomplete
+                              options={activities_api_call}
+                              getOptionLabel={(option) => option.name || ""}
+                              getOptionDisabled={() => true} // disables all options
+                              value={
+                                activities_api_call.find(
+                                  (a) => a.name === activity.name
+                                ) || null
+                              }
+                              onInputChange={(_, newInputValue) => {
+                                const updated = [...newActivities];
+                                updated[index].name = newInputValue;
+                                setNewActivities(updated);
+                              }}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Select Item"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ width: 180 }}
+                                />
+                              )}
+                              freeSolo // allows custom input as well as selection
+                            />
+                          </div>
                         </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200">
-                          <input
-                            type="text"
-                            value={activity.description}
-                            onChange={(e) => {
-                              const updated = [...newActivities];
-                              updated[index].description = e.target.value;
-                              setNewActivities(updated);
-                            }}
-                            className="w-full rounded p-2 border border-gray-400"
-                          />
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <input
+                              type="text"
+                              value={activity.description}
+                              onChange={(e) => {
+                                const updated = [...newActivities];
+                                updated[index].description = e.target.value;
+                                setNewActivities(updated);
+                              }}
+                              className="w-full rounded p-2 border border-gray-400 text-center"
+                            />
+                          </div>
                         </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200">
-                          <input
-                            type="number"
-                            value={activity.target}
-                            onChange={(e) => {
-                              const updated = [...newActivities];
-                              updated[index].target = e.target.value;
-                              setNewActivities(updated);
-                            }}
-                            className="w-full border border-gray-400 rounded p-2"
-                          />
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <input
+                              type="number"
+                              value={activity.target}
+                              onChange={(e) => {
+                                const updated = [...newActivities];
+                                updated[index].target = e.target.value;
+                                setNewActivities(updated);
+                              }}
+                              className="w-full border border-gray-400 rounded p-2 text-center"
+                            />
+                          </div>
                         </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200">
-                           <Autocomplete
-                              options ={NutritionUnits}
-                              getOptionsLable={(option :any) => option || ""}
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <Autocomplete
+                              options={NutritionUnits}
+                              getOptionsLable={(option: any) => option || ""}
                               value={activity.unit || ""}
-                              onChange={(_ , newValue) => {
+                              onChange={(_, newValue) => {
                                 const updated = [...newActivities];
                                 updated[index].unit = newValue || "";
                                 setNewActivities(updated);
@@ -626,17 +670,56 @@ useEffect(() => {
                                   label="Select Unit"
                                   variant="outlined"
                                   size="small"
-                                  sx={{ width: 180 }}
+                                  sx={{ width: 120 }}
                                 />
                               )}
                             />
+                          </div>
                         </td>
-                        <td>
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <input
+                              type="number"
+                              value={activity.target2 || ""}
+                              onChange={(e) => {
+                                const updated = [...newActivities];
+                                updated[index].target2 = e.target.value;
+                                setNewActivities(updated);
+                              }}
+                              className="w-full border border-gray-400 rounded p-2 text-center"
+                            />
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
                             <Autocomplete
-                              options ={NutritionUtils}
-                              getOptionsLable={(option :any) => option || ""}
+                              options={NutritionUnits}
+                              getOptionsLable={(option: any) => option || ""}
+                              value={activity.unit2 || ""}
+                              onChange={(_, newValue) => {
+                                const updated = [...newActivities];
+                                updated[index].unit2 = newValue || "";
+                                setNewActivities(updated);
+                              }}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Select Unit"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ width: 120 }}
+                                />
+                              )}
+                            />
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <Autocomplete
+                              options={NutritionUtils}
+                              getOptionsLable={(option: any) => option || ""}
                               value={activity.type || ""}
-                              onChange={(_ , newValue) => {
+                              onChange={(_, newValue) => {
                                 const updated = [...newActivities];
                                 updated[index].type = newValue || "";
                                 setNewActivities(updated);
@@ -647,24 +730,27 @@ useEffect(() => {
                                   label="Select Type"
                                   variant="outlined"
                                   size="small"
-                                  sx={{ width: 180 }}
+                                  sx={{ width: 120 }}
                                 />
                               )}
                             />
+                          </div>
                         </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 text-center">
-                          <button
-                            onClick={() => {
-                              const updated = [...newActivities];
-                              updated.splice(index, 1);
-                              setNewActivities(updated);
-                            }}
-                          >
-                            <LucideCircleMinus
-                              className="text-red-500"
-                              size={20}
-                            />
-                          </button>
+                        <td className="px-4 py-2 border-b-2 border-gray-200 text-center align-middle">
+                          <div className="flex justify-center items-center">
+                            <button
+                              onClick={() => {
+                                const updated = [...newActivities];
+                                updated.splice(index, 1);
+                                setNewActivities(updated);
+                              }}
+                            >
+                              <LucideCircleMinus
+                                className="text-red-500"
+                                size={20}
+                              />
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}

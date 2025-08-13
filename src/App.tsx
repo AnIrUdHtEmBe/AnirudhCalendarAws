@@ -70,6 +70,7 @@ import UserChats from "./GoToChat/UserChats";
 import Attendance from "./BookingCalendarComponent/Attendance";
 import RmDash from "./RmDashboard/RmDash";
 import RmDashNew from "./RmDashboard/RmDashNew";
+import PasswordChange from "./PasswordChange/PasswordChange";
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
@@ -87,6 +88,7 @@ function App() {
         {!isAuthenticated?(
             <Routes>
           <Route path='/' element={<LoginPage />} />
+          <Route path="/passwordchange" element={<PasswordChange/>} />
         </Routes>
         ):(
         <Layout>
