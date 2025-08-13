@@ -27,9 +27,11 @@ type Message = {
 interface SimpleChatRoomProps {
   roomName: string;
   onClose: () => void;
+  userId: string;
+  roomType: string;
 }
 
-export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
+export default function GameChat({ roomName, onClose, userId, roomType }: SimpleChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -82,13 +84,26 @@ export default function GameChat({ roomName, onClose }: SimpleChatRoomProps) {
     return () => clearTimeout(timeoutId);
   }, [messages]);
 
-  const sendMessage = useCallback(() => {
+  const sendMessage = useCallback(async () => {
     if (!inputValue.trim()) return;
     send({ text: inputValue.trim() }).catch((err: unknown) =>
-      console.error("Send error", err)
+      console.error("Send error", err)  
     );
     setInputValue("");
     setIsTyping(false);
+//        const seenByUser = await axios.patch(
+//   `https://play-os-backend.forgehub.in/human/human/mark-seen`,
+//   {
+//     userId: userId,
+//     roomType: roomType, // convert to uppercase safely
+//     userType: "team",
+//     handled: inputValue.trim()
+//   }
+// );
+// console.log("seenByTeam", seenByUser);
+
+
+
   }, [inputValue, send]);
 
   const handleKeyDown = useCallback(

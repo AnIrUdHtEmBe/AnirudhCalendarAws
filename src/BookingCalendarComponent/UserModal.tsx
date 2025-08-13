@@ -59,6 +59,25 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const [directGameChatDisplayName, setDirectGameChatDisplayName] =
     useState(""); // for display in GameChat header
 
+  const [directChatUserId, setDirectChatUserId] = useState<string>("");
+  const [directChatRoomType, setDirectChatRoomType] = useState<string>("");
+  // Add these state variables after existing useState declarations
+
+  // Replace existing message tracking state variables with these
+  const [userChatRooms, setUserChatRooms] = useState<{
+    [userId: string]: any[];
+  }>({});
+  const [newMessagesCount, setNewMessagesCount] = useState<{
+    [roomKey: string]: number;
+  }>({});
+  const [isMessageTrackingActive, setIsMessageTrackingActive] = useState(false);
+  const [ablyRoomConnections, setAblyRoomConnections] = useState<{
+    [roomKey: string]: any;
+  }>({});
+  const [messagePollingIntervals, setMessagePollingIntervals] = useState<{
+    [roomKey: string]: NodeJS.Timeout;
+  }>({});
+
   useEffect(() => {
     //@ts-ignore
     return localStorage.setItem("roomGameName", cellData.gameName);
@@ -347,8 +366,6 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     }
   }, [cellData]);
 
-  if (!isOpen) return null;
-
   const clientId = getClientId();
 
   const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`;
@@ -358,76 +375,326 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     logLevel: LogLevel.Info,
   });
 
-const handleOpenRoomChat = async (userId: string) => {
-  if (!userId || !cellData.bookingId) return;
+  useEffect(() => {
+    if (modalUsers.length > 0 && !isMessageTrackingActive) {
+      initializeAllUserChatRooms();
+    }
+  }, [modalUsers]);
 
-  try {
-    // Show the chat immediately with loading state
-    setDirectGameChatRoomName(`loading-${userId}-${Date.now()}`);
-    setDirectGameChatDisplayName("Loading...");
-    setOpenDirectGameChat(true);
+  // Start polling when chat rooms are initialized
+  useEffect(() => {
+    if (Object.keys(userChatRooms).length > 0 && isMessageTrackingActive) {
+      startAllMessagePolling();
+    }
+  }, [userChatRooms, isMessageTrackingActive]);
 
-    // Run all API calls in parallel
-    const [userRoomsRes, bookingRes] = await Promise.all([
-      axios.get(`https://play-os-backend.forgehub.in/human/human/${userId}`),
-      axios.get(`https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`)
-    ]);
-
-    // Process user rooms
-    const userRooms = Array.isArray(userRoomsRes.data)
-      ? userRoomsRes.data
-      : userRoomsRes.data.rooms;
-
-    const courtId = bookingRes.data.courtId;
-
-    // Get court info
-    const courtRes = await axios.get(
-      `https://play-os-backend.forgehub.in/court/${courtId}`
-    );
-    
-    const allowedSports = courtRes.data.allowedSports;
-    const firstSportId = Array.isArray(allowedSports) && allowedSports[0];
-
-    // Get sport info (with fallback)
-    let roomType = "SPORTS"; // default
-    if (firstSportId) {
-      try {
-        const sportRes = await axios.get(
-          `https://play-os-backend.forgehub.in/sports/id/${firstSportId}`
-        );
-        roomType = sportRes.data.category || "SPORTS";
-      } catch (error) {
-        console.warn("Failed to fetch sport info, using default roomType");
-      }
+  // Cleanup on component unmount or modal close
+  useEffect(() => {
+    if (!isOpen) {
+      cleanupMessagePolling();
     }
 
-    // Find matching room
-    let matchedRoom = userRooms?.find(
-      (room: any) =>
-        room.roomType &&
-        room.roomType.trim().toUpperCase() === roomType.trim().toUpperCase()
-    );
+    return () => {
+      cleanupMessagePolling();
+    };
+  }, [isOpen]);
 
-    if (!matchedRoom) {
-      matchedRoom = userRooms && userRooms[0];
+  // Replace the existing handleOpenRoomChat function with this updated version
+  const handleOpenRoomChat = async (userId: string) => {
+    if (!userId || !cellData.bookingId) return;
+
+    try {
+      // Show the chat immediately with loading state
+      setDirectGameChatRoomName(`loading-${userId}-${Date.now()}`);
+      setDirectGameChatDisplayName("Loading...");
+      setOpenDirectGameChat(true);
+      setDirectChatUserId(userId);
+
+      // Run all API calls in parallel
+      const [userRoomsRes, bookingRes] = await Promise.all([
+        axios.get(`https://play-os-backend.forgehub.in/human/human/${userId}`),
+        axios.get(
+          `https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`
+        ),
+      ]);
+
+      // Process user rooms
+      const userRooms = Array.isArray(userRoomsRes.data)
+        ? userRoomsRes.data
+        : userRoomsRes.data.rooms;
+
+      const courtId = bookingRes.data.courtId;
+
+      // Get court info
+      const courtRes = await axios.get(
+        `https://play-os-backend.forgehub.in/court/${courtId}`
+      );
+
+      const allowedSports = courtRes.data.allowedSports;
+      const firstSportId = Array.isArray(allowedSports) && allowedSports[0];
+
+      // Get sport info (with fallback)
+      let roomType = "SPORTS"; // default
+      if (firstSportId) {
+        try {
+          const sportRes = await axios.get(
+            `https://play-os-backend.forgehub.in/sports/id/${firstSportId}`
+          );
+          roomType = sportRes.data.category || "SPORTS";
+          setDirectChatRoomType(roomType);
+          console.log(roomType, "roomType from userModal");
+          localStorage.setItem("roomType", roomType);
+        } catch (error) {
+          console.warn("Failed to fetch sport info, using default roomType");
+        }
+      }
+
+      // Find matching room
+      let matchedRoom = userRooms?.find(
+        (room: any) =>
+          room.roomType &&
+          room.roomType.trim().toUpperCase() === roomType.trim().toUpperCase()
+      );
+
       if (!matchedRoom) {
-        setDirectGameChatDisplayName("No rooms available");
-        return;
+        matchedRoom = userRooms && userRooms[0];
+        if (!matchedRoom) {
+          setDirectGameChatDisplayName("No rooms available");
+          return;
+        }
       }
+
+      const roomNameDisplay = matchedRoom.roomName;
+      const finalRoomName = `${roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${userId}`;
+
+      // Reset new messages count when opening chat
+      setNewMessagesCount((prev) => ({
+        ...prev,
+        [finalRoomName]: 0,
+      }));
+
+      // Update with actual data
+      setDirectGameChatRoomName(finalRoomName);
+      setDirectGameChatDisplayName(roomNameDisplay);
+      const resetRoomKey = `${roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${userId}`;
+      setNewMessagesCount((prev) => ({
+        ...prev,
+        [resetRoomKey]: 0,
+      }));
+
+      // Also update the room connection if it exists
+      if (ablyRoomConnections[resetRoomKey]) {
+        // Force a refresh of message count for this room
+        setTimeout(() => {
+          setNewMessagesCount((prev) => ({
+            ...prev,
+            [resetRoomKey]: 0,
+          }));
+        }, 100);
+      }
+    } catch (error) {
+      console.error("Error opening room chat:", error);
+      setDirectGameChatDisplayName("Error loading chat");
     }
+  };
 
-    const roomNameDisplay = matchedRoom.roomName;
-    const finalRoomName = `${roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${userId}`;
+  // Add this function after existing functions
+  const fetchUserChatRooms = async (userId: string) => {
+    try {
+      const response = await axios.get(
+        `https://play-os-backend.forgehub.in/human/human/${userId}`
+      );
+      const rooms = Array.isArray(response.data)
+        ? response.data
+        : response.data.rooms || [];
 
-    // Update with actual data
-    setDirectGameChatRoomName(finalRoomName);
-    setDirectGameChatDisplayName(roomNameDisplay);
+      setUserChatRooms((prev) => ({
+        ...prev,
+        [userId]: rooms,
+      }));
 
-  } catch (error) {
-    console.error("Error opening room chat:", error);
-    setDirectGameChatDisplayName("Error loading chat");
-  }
-};
+      return rooms;
+    } catch (error) {
+      console.error(`Failed to fetch chat rooms for user ${userId}:`, error);
+      return [];
+    }
+  };
+
+  // Add this function after fetchUserChatRooms
+  const startMessagePolling = async (
+    userId: string,
+    roomType: string,
+    chatId: string,
+    roomName: string,
+    seenByTeamAtUnix: number
+  ) => {
+    const roomKey = `${roomType}-${roomName}-${chatId}-${userId}`;
+    const ablyRoomName = roomKey;
+
+    try {
+      // Get the room connection
+      const room = await chatClient.rooms.get(ablyRoomName);
+
+      // Store room connection
+      setAblyRoomConnections((prev) => ({
+        ...prev,
+        [roomKey]: room,
+      }));
+
+      // Clear existing interval if any
+      if (messagePollingIntervals[roomKey]) {
+        clearInterval(messagePollingIntervals[roomKey]);
+      }
+
+      const pollMessages = async () => {
+        try {
+          // Use the room's messages history method correctly
+          const messageHistory = await room.messages.history({ limit: 1000 });
+          const messages = messageHistory.items;
+
+          // Convert seenByTeamAt unix timestamp to IST Date for comparison
+          const seenByTeamAtIST = new Date(seenByTeamAtUnix * 1000);
+
+          // Count new messages (messages newer than seenByTeamAt)
+          let newMessageCount = 0;
+
+          messages.forEach((message: any) => {
+            const messageTimestamp = message.createdAt || message.timestamp;
+
+            if (
+              messageTimestamp &&
+              new Date(messageTimestamp) > seenByTeamAtIST
+            ) {
+              newMessageCount++;
+            }
+          });
+
+          // Update new messages count
+          setNewMessagesCount((prev) => ({
+            ...prev,
+            [roomKey]: newMessageCount,
+          }));
+        } catch (error) {
+          console.error(`Failed to poll messages for ${roomKey}:`, error);
+          // Reset count on error
+          setNewMessagesCount((prev) => ({
+            ...prev,
+            [roomKey]: 0,
+          }));
+        }
+      };
+
+      // Initial poll
+      await pollMessages();
+
+      // Poll every 5 seconds
+      const interval = setInterval(pollMessages, 5000);
+
+      setMessagePollingIntervals((prev) => ({
+        ...prev,
+        [roomKey]: interval,
+      }));
+
+      console.log(`Started Ably message polling for ${roomKey}`);
+    } catch (error) {
+      console.error(`Failed to create room connection for ${roomKey}:`, error);
+    }
+  };
+
+  const startAllMessagePolling = async () => {
+    console.log("Starting Ably message polling for all user rooms...");
+
+    const pollingPromises = Object.entries(userChatRooms).flatMap(
+      ([userId, rooms]) =>
+        rooms.map((room) =>
+          startMessagePolling(
+            userId,
+            room.roomType,
+            room.chatId,
+            room.roomName,
+            room.seenByTeamAt || 0 // fallback to 0 if seenByTeamAt is missing
+          )
+        )
+    );
+
+    // Start all polling in parallel
+    await Promise.allSettled(pollingPromises);
+
+    console.log(
+      `Started Ably polling for ${Object.keys(userChatRooms).length} users`
+    );
+  };
+
+  const initializeAllUserChatRooms = async () => {
+    if (modalUsers.length === 0) return;
+
+    console.log("Initializing chat rooms for all users...");
+    setIsMessageTrackingActive(true);
+
+    // Fetch chat rooms for all users in parallel
+    const roomPromises = modalUsers.map((user) =>
+      fetchUserChatRooms(user.userId)
+    );
+    await Promise.all(roomPromises);
+
+    // Initialize message counts to 0 for all rooms
+    const initialCounts: { [roomKey: string]: number } = {};
+    modalUsers.forEach((user) => {
+      const userRooms = userChatRooms[user.userId] || [];
+      userRooms.forEach((room) => {
+        const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${user.userId}`;
+        initialCounts[roomKey] = 0;
+      });
+    });
+
+    setNewMessagesCount(initialCounts);
+    console.log(
+      "Initialized chat rooms for all users, starting message tracking..."
+    );
+  };
+
+  const getNewMessagesForUser = (userId: string) => {
+    const userRooms = userChatRooms[userId] || [];
+    let totalNewMessages = 0;
+
+    userRooms.forEach((room) => {
+      const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+      totalNewMessages += newMessagesCount[roomKey] || 0;
+    });
+
+    return totalNewMessages;
+  };
+
+  const cleanupMessagePolling = async () => {
+    console.log("Cleaning up Ably message polling...");
+
+    // Clear all polling intervals
+    Object.values(messagePollingIntervals).forEach((interval) => {
+      if (interval) clearInterval(interval);
+    });
+
+    // Cleanup Ably room connections
+    Object.values(ablyRoomConnections).forEach((room) => {
+      try {
+        // Release room resources if needed
+        if (room && typeof room.release === "function") {
+          room.release();
+        }
+      } catch (error) {
+        console.error("Error releasing room connection:", error);
+      }
+    });
+
+    setMessagePollingIntervals({});
+    setNewMessagesCount({});
+    setUserChatRooms({});
+    setAblyRoomConnections({});
+    setIsMessageTrackingActive(false);
+
+    console.log("Ably message polling cleanup completed");
+  };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-white/30 backdrop-blur-sm flex items-center justify-center z-50">
@@ -498,6 +765,7 @@ const handleOpenRoomChat = async (userId: string) => {
               </thead>
               <tbody>
                 {modalUsers.map((user, index) => (
+                  // Replace the existing table row with this updated version that includes message indicator
                   <tr
                     key={user.userId}
                     className="hover:bg-blue-100 cursor-pointer hover:underline transition duration-150 active:scale-95"
@@ -507,25 +775,21 @@ const handleOpenRoomChat = async (userId: string) => {
                     </td>
                     <td
                       onClick={() => {
-                        // Get date part from bookingStartTime
-
-                        // navigate(
-                        //   `/UserPlanDetails?userId=${
-                        //     user.userId
-                        //   }&startDate=${encodeURIComponent(
-                        //     datePlanStart ?? ""
-                        //   )}&endDate=${encodeURIComponent(datePlanEnd ?? "")}`
-                        // );
-
                         setUserPlanUserId(user.userId);
                         setUserPlanName(user.name);
                         setUserPlanStartDate(datePlanStart ?? "");
                         setUserPlanEndDate(datePlanEnd ?? "");
                         setIsUserPlanModalOpen(true);
                       }}
-                      className="border border-gray-300 px-4 py-2 font-medium"
+                      className="border border-gray-300 px-4 py-2 font-medium relative"
                     >
                       {user.name}
+                      {/* New messages indicator */}
+                      {/* {getNewMessagesForUser(user.userId) > 0 && (
+      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+        {getNewMessagesForUser(user.userId)}
+      </span>
+    )} */}
                     </td>
                     <td className="border border-gray-300 px-4 py-2 text-center">
                       <input
@@ -547,12 +811,18 @@ const handleOpenRoomChat = async (userId: string) => {
                         className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                       />
                     </td>
-                    <td className="flex justify-center border border-gray-300 px-4 py-2 text-center">
+                    <td className="flex justify-center border border-gray-300 px-4 py-2 text-center relative">
                       <TbMessage
                         size={30}
                         style={{ color: "black", cursor: "pointer" }}
                         onClick={() => handleOpenRoomChat(user.userId)}
                       />
+                      {/* New messages indicator on chat icon */}
+                      {getNewMessagesForUser(user.userId) > 0 && (
+                        <span className="absolute top-1 right-14 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                          {/* {getNewMessagesForUser(user.userId)} */}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -597,6 +867,8 @@ const handleOpenRoomChat = async (userId: string) => {
                     <GameChat
                       roomName={`${localStorage.getItem("currentGameName")}`}
                       onClose={() => setOpenGameChat(false)}
+                      userId={directChatUserId}
+                      roomType={directChatRoomType}
                     />
                   </ChatRoomProvider>
                 </ChatClientProvider>
@@ -616,6 +888,8 @@ const handleOpenRoomChat = async (userId: string) => {
                     <GameChat
                       roomName={directGameChatDisplayName}
                       onClose={() => setOpenDirectGameChat(false)}
+                      userId={directChatUserId}
+                      roomType={directChatRoomType}
                     />
                   </ChatRoomProvider>
                 </ChatClientProvider>
