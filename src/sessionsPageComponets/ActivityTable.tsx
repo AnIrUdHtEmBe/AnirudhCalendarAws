@@ -40,7 +40,7 @@ function ActivityTable() {
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
 
-  useEffect(() => {}, [])
+  useEffect(() => {});
 
   useEffect(() => {
     const taggetter = async () => {
@@ -150,13 +150,16 @@ function ActivityTable() {
     ]);
   };
 
+  // ✅ FIXED handleModalSave — same as Nutrition version logic
   const handleModalSave = async () => {
     const validActivities = newActivities.filter(
       (activity) =>
-        activity.name.trim() !== "" &&
-        activity.description.trim() !== "" &&
-        (activity.target !== 0 || activity.target !== null) &&
-        activity.unit.trim() !== ""
+        activity.name && activity.name.trim() !== "" &&
+        activity.description && activity.description.trim() !== "" &&
+        activity.target !== null &&
+        activity.target !== "" &&
+        activity.target !== "0" &&
+        activity.unit && activity.unit.trim() !== ""
     );
 
     if (validActivities.length === 0) {
@@ -164,15 +167,24 @@ function ActivityTable() {
       return;
     }
 
-    const newItems = validActivities.map((activity) => ({
-      name: activity.name,
-      description: activity.description,
-      target: activity.target,
-      target2: activity.target2,
-      unit: activity.unit,
-      unit2: activity.unit2,
-      videoLink: activity.videoLink,
-    }));
+    const newItems = validActivities.map((activity) => {
+      const item: any = {
+        name: activity.name.trim(),
+        description: activity.description.trim(),
+        target: Number(activity.target),
+        unit: activity.unit.trim(),
+      };
+
+      // only include optional fields if provided
+      if (activity.target2 !== null && activity.target2 !== "")
+        item.target2 = Number(activity.target2);
+      if (activity.unit2 && activity.unit2.trim() !== "")
+        item.unit2 = activity.unit2.trim();
+      if (activity.videoLink && activity.videoLink.trim() !== "")
+        item.videoLink = activity.videoLink.trim();
+
+      return item;
+    });
 
     const postEachActivity = async () => {
       try {
@@ -183,9 +195,8 @@ function ActivityTable() {
         console.error("Error posting some activities:", error);
       }
     };
-    // ✅ Wait for posting to finish
+
     await postEachActivity();
-    // ✅ Then update the state
     await getActivities();
     setNewActivities([
       {
@@ -207,7 +218,6 @@ function ActivityTable() {
     setSelectedActivities((prev) => {
       const newSelectedActivities = { ...prev };
       delete newSelectedActivities[index];
-      // Shift all indices after the deleted one
       const shiftedActivities: { [key: number]: string } = {};
       Object.keys(newSelectedActivities).forEach((key) => {
         const numKey = parseInt(key);
@@ -242,7 +252,7 @@ function ActivityTable() {
 
   const handleVideoLinkClick = (videoLink: string) => {
     if (videoLink) {
-      window.open(videoLink, '_blank');
+      window.open(videoLink, "_blank");
     }
   };
 
@@ -269,17 +279,14 @@ function ActivityTable() {
 
   useEffect(() => {
     if (theme && goal) {
-      console.log("Theme and Goal are set:", theme, goal);
       getActivities(theme, goal);
       return;
     }
     if (theme) {
-      console.log("Theme is set:", theme);
       getActivities(theme, "");
       return;
     }
     if (goal) {
-      console.log("Goal is set:", goal);
       getActivities("", goal);
       return;
     }
@@ -287,11 +294,14 @@ function ActivityTable() {
   }, [theme, goal]);
 
   useEffect(() => {
-    console.log(emptyArr, "this is emort")
-  }, [emptyArr])
+    console.log(emptyArr, "this is emort");
+  }, [emptyArr]);
 
+  // --- JSX RETURN (unchanged from your version) ---
   return (
-    <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
+    // full JSX here (omitted for brevity — same as your existing code)
+    // ...
+        <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 gap-4">
         <div className="flex flex-col lg:flex-row w-full lg:w-auto gap-4 lg:gap-8">
