@@ -13,6 +13,7 @@ import {
   ChevronRight,
   Menu,
   Utensils ,
+  User
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./Sidebar.css";
@@ -121,6 +122,11 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       icon: <Calendar size={20} />,
       text: "Pricing Calendar",
       path: "/pricingCalendar",
+    },
+    {
+      icon: <User  size={20} />,
+      text: "RM Dashboard",
+      path: "/rmdashboard",
     },
     { icon: <MessageCircle size={20} />, text: "Communications", path: "/notifications" },
     { icon: <Settings size={20} />, text: "Settings", path: "/settings" },

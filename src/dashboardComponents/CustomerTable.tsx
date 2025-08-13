@@ -28,30 +28,32 @@ import {
   IconButton,
   InputLabel,
   FormControl,
-  Box
-} from '@mui/material';
+  Box,
+} from "@mui/material";
 import { enqueueSnackbar } from "notistack";
-import CloseIcon from '@mui/icons-material/Close';
+import CloseIcon from "@mui/icons-material/Close";
 
-const actions = ["Edit profile", "See plan", "Take Assessment"];
+const actions = ["Edit profile", "See plan", "Take Assessment", "Go to chat"];
 
 interface ActionsContainerProps {
   takeAssessment: () => void;
   seePlan: () => void;
   editProfile: () => void;
+  goToChat: () => void;
 }
 
 const ActionsContainer = ({
   takeAssessment,
   seePlan,
   editProfile,
+  goToChat,
 }: ActionsContainerProps) => {
   const [value, setValue] = useState("Go to profile");
 
   const changeHandler = (event: SelectChangeEvent) => {
     const selectedAction = event.target.value;
     console.log("Action selected:", selectedAction);
-    
+
     // Don't update the display value, keep it as "Go to profile"
     setValue("Go to profile");
 
@@ -61,6 +63,8 @@ const ActionsContainer = ({
       seePlan();
     } else if (selectedAction === "Edit profile") {
       editProfile();
+    } else if (selectedAction === "Go to chat") {
+      goToChat();
     }
   };
 
@@ -82,9 +86,9 @@ const ActionsContainer = ({
       }}
       onChange={changeHandler}
     >
-      <MenuItem value="Go to profile" style={{ display: 'none' }}>
-    Go to profile
-  </MenuItem>
+      <MenuItem value="Go to profile" style={{ display: "none" }}>
+        Go to profile
+      </MenuItem>
       {actions.map((action) => (
         <MenuItem key={action} value={action}>
           {action}
@@ -113,11 +117,12 @@ const CustomerTable = () => {
   const [formData, setFormData] = useState({
     name: "",
     age: "",
+    dob: "",
     gender: "",
     mobile: "",
     email: "",
-    password:"",
-    type:"",
+    password: "",
+    type: "",
     height: "",
     weight: "",
     healthCondition: "",
@@ -129,11 +134,12 @@ const CustomerTable = () => {
   const [editFormData, setEditFormData] = useState({
     name: "",
     age: "",
+    dob: "",
     gender: "",
     mobile: "",
     email: "",
-    password:"",
-    type:"",
+    password: "",
+    type: "",
     height: "",
     weight: "",
     healthCondition: "",
@@ -141,6 +147,25 @@ const CustomerTable = () => {
     startDate: "",
     endDate: "",
   });
+
+  // Function to calculate age from DOB
+  const calculateAge = (dob: string) => {
+    if (!dob) return "";
+
+    const today = new Date();
+    const birthDate = new Date(dob);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    return age.toString();
+  };
 
   const modalHeaderStyle: React.CSSProperties = {
     margin: 0,
@@ -180,43 +205,53 @@ const CustomerTable = () => {
   };
 
   //changed to handle new form data
-const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  
-  setFormData(prevData => {
-    const newData = { ...prevData, [name]: value };
-    
-    // Auto-calculate end date when start date or membership type changes
-    if (name === 'startDate' || name === 'membershipType') {
-      const endDate = calculateEndDate(
-        name === 'startDate' ? value : newData.startDate,
-        name === 'membershipType' ? value : newData.membershipType
-      );
-      newData.endDate = endDate;
-    }
-    
-    return newData;
-  });
-};
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
 
-const handleEditInputChange = (e) => {
-  const { name, value } = e.target;
-  
-  setEditFormData(prevData => {
-    const newData = { ...prevData, [name]: value };
-    
-    // Auto-calculate end date when start date or membership type changes
-    if (name === 'startDate' || name === 'membershipType') {
-      const endDate = calculateEndDate(
-        name === 'startDate' ? value : newData.startDate,
-        name === 'membershipType' ? value : newData.membershipType
-      );
-      newData.endDate = endDate;
-    }
-    
-    return newData;
-  });
-};
+    setFormData((prevData) => {
+      const newData = { ...prevData, [name]: value };
+
+      // Auto-calculate age when DOB changes
+      if (name === "dob") {
+        newData.age = calculateAge(value);
+      }
+
+      // Auto-calculate end date when start date or membership type changes
+      if (name === "startDate" || name === "membershipType") {
+        const endDate = calculateEndDate(
+          name === "startDate" ? value : newData.startDate,
+          name === "membershipType" ? value : newData.membershipType
+        );
+        newData.endDate = endDate;
+      }
+
+      return newData;
+    });
+  };
+
+  const handleEditInputChange = (e) => {
+    const { name, value } = e.target;
+
+    setEditFormData((prevData) => {
+      const newData = { ...prevData, [name]: value };
+
+      // Auto-calculate age when DOB changes
+      if (name === "dob") {
+        newData.age = calculateAge(value);
+      }
+
+      // Auto-calculate end date when start date or membership type changes
+      if (name === "startDate" || name === "membershipType") {
+        const endDate = calculateEndDate(
+          name === "startDate" ? value : newData.startDate,
+          name === "membershipType" ? value : newData.membershipType
+        );
+        newData.endDate = endDate;
+      }
+
+      return newData;
+    });
+  };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -224,7 +259,7 @@ const handleEditInputChange = (e) => {
     const payload = {
       ...formData,
       age: Number(formData.age),
-      height: Number(formData.height) || null ,
+      height: Number(formData.height) || null,
       weight: Number(formData.weight) || null,
       healthCondition: formData.healthCondition || null,
     };
@@ -247,28 +282,27 @@ const handleEditInputChange = (e) => {
       return;
     }
 
-    console.log(payload,"payload")
+    console.log(payload, "payload");
 
-    const res=await customer_creation(payload); // assuming this returns a promise
-    if(res)
-    {
-    setModalOpen(false);
+    const res = await customer_creation(payload); // assuming this returns a promise
+    if (res) {
+      setModalOpen(false);
       // Clear the form by resetting formData to initial empty values
-    setFormData({
-      name: "",
-      age: "",
-      gender: "",
-      mobile: "",
-      email: "",
-      password: "",
-      type: "",
-      height: "",
-      weight: "",
-      healthCondition: "",
-      membershipType: "",
-      startDate: "",
-      endDate: "",
-    });
+      setFormData({
+        name: "",
+        age: "",
+        gender: "",
+        mobile: "",
+        email: "",
+        password: "",
+        type: "",
+        height: "",
+        weight: "",
+        healthCondition: "",
+        membershipType: "",
+        startDate: "",
+        endDate: "",
+      });
     }
     // Optionally, reset form fields here
   };
@@ -279,14 +313,14 @@ const handleEditInputChange = (e) => {
     const payload = {
       ...editFormData,
       age: Number(editFormData.age),
-      height: Number(editFormData.height) || null ,
+      height: Number(editFormData.height) || null,
       weight: Number(editFormData.weight) || null,
       healthCondition: editFormData.healthCondition || null,
     };
 
     console.log("Edit payload:", payload);
     // TODO: Add edit API call here
-    
+
     setEditModalOpen(false);
     setEditingCustomer(null);
     // Clear the edit form
@@ -354,6 +388,11 @@ const handleEditInputChange = (e) => {
     setSelectComponent("seePlan");
   };
 
+  const goToChatHandler = (customer: Customers_Api_call) => {
+    localStorage.setItem("user", JSON.stringify(customer));
+    setSelectComponent("goToChat");
+  };
+
   const editProfileHandler = (customer: Customers_Api_call) => {
     console.log("Edit profile clicked for customer:", customer);
     setEditingCustomer(customer);
@@ -407,6 +446,7 @@ const handleEditInputChange = (e) => {
             takeAssessment={() => assessmentHandler(params.row.customerData)}
             seePlan={() => seePlanHandler(params.row.customerData)}
             editProfile={() => editProfileHandler(params.row.customerData)}
+            goToChat={() => goToChatHandler(params.row.customerData)}
           />
         ),
       },
@@ -414,21 +454,21 @@ const handleEditInputChange = (e) => {
   };
 
   // const generateRows = async () => {
-    
+
   //   const rows = await Promise.all(
   //     customers_Api_call.map(async (customer :any, i :any) => {
   //       console.log(customer,"eeee",customer.plansAllocated?.[0])
   //       const plan =  await getPlanInstanceByPlanID(customer.plansAllocated[0]).then(
   //               (plan) => {
   //                 console.log(plan.PlanTemplateName,"hhhhuhhh")
-  //                 plan?.PlanTemplateName == "alacartePH" ?  "-" : plan?.PlanTemplateName 
+  //                 plan?.PlanTemplateName == "alacartePH" ?  "-" : plan?.PlanTemplateName
   //               }
   //             )
-            
+
   //           console.log("rrrrr",plan)
   //       // const planInstance = await getPlanInstanceByPlanID(customer.plansAllocated[0]);
-  //       // const plan = planInstance?.PlanTemplateName === "alacartePH" 
-  //       //   ? "-" 
+  //       // const plan = planInstance?.PlanTemplateName === "alacartePH"
+  //       //   ? "-"
   //       //   : planInstance?.PlanTemplateName;
 
   //       //   console.log(plan,"plannnningggsss",plan.PlanTemplateName)
@@ -453,40 +493,40 @@ const handleEditInputChange = (e) => {
   //   return rows;
   // };
   const generateRows = async () => {
-  const rows = await Promise.all(
-    customers_Api_call.map(async (customer: any, i: any) => {
-      // console.log(customer, "eeee", customer.plansAllocated?.[0]);
+    const rows = await Promise.all(
+      customers_Api_call.map(async (customer: any, i: any) => {
+        // console.log(customer, "eeee", customer.plansAllocated?.[0]);
 
-      // const planInstance = await getPlanInstanceByPlanID(customer.plansAllocated?.[customer.plansAllocated.length-1]);
+        // const planInstance = await getPlanInstanceByPlanID(customer.plansAllocated?.[customer.plansAllocated.length-1]);
 
-      // const plan = planInstance?.PlanTemplateName === "alacartePH"
-      //   ? "-"
-      //   : planInstance?.PlanTemplateName;
+        // const plan = planInstance?.PlanTemplateName === "alacartePH"
+        //   ? "-"
+        //   : planInstance?.PlanTemplateName;
 
-      const plan='-'
-      // console.log("rtrtrtrtrt", planInstance?.PlanTemplateName,customer.name,customer.plansAllocated?.[-1]);
-      // console.log(customer.createdOn,"createdzzzzzzzzzz")
+        const plan = "-";
+        // console.log("rtrtrtrtrt", planInstance?.PlanTemplateName,customer.name,customer.plansAllocated?.[-1]);
+        // console.log(customer.createdOn,"createdzzzzzzzzzz")
 
-      return {
-        no: i + 1,
-        id: customer.userId,
-        name: customer.name,
-        age: customer.age,
-        gender: customer.gender || "-",
-        email: customer.email || "-",
-        joinedOn: dateChangeHandler(customer.createdOn),
-        endsOn: dateChangeHandler(customer.createdOn),
-        phoneNumber: customer.mobile || "-",
-        memberShip: customer.membershipType,
-        lastAssessedOn: customer.lastAssessed || "-",
-        // planAllocated: plan,
-        customerData: customer,
-      };
-    })
-  );
+        return {
+          no: i + 1,
+          id: customer.userId,
+          name: customer.name,
+          age: customer.age,
+          gender: customer.gender || "-",
+          email: customer.email || "-",
+          joinedOn: dateChangeHandler(customer.createdOn),
+          endsOn: dateChangeHandler(customer.createdOn),
+          phoneNumber: customer.mobile || "-",
+          memberShip: customer.membershipType,
+          lastAssessedOn: customer.lastAssessed || "-",
+          // planAllocated: plan,
+          customerData: customer,
+        };
+      })
+    );
 
-  return rows;
-};
+    return rows;
+  };
 
   // console.log(rows,"roweeeees")
 
@@ -499,11 +539,11 @@ const handleEditInputChange = (e) => {
       if (col.field === "action") {
         return { ...col, width: 150, headerAlign: "center", align: "center" };
       }
-      if(col.field === "gender"){
-        return {...col , width: 100, headerAlign: "center", align: "center"};
+      if (col.field === "gender") {
+        return { ...col, width: 100, headerAlign: "center", align: "center" };
       }
-      if(col.field === "age"){
-        return {...col , width: 80, headerAlign: "center", align: "center"};
+      if (col.field === "age") {
+        return { ...col, width: 80, headerAlign: "center", align: "center" };
       }
       return {
         ...col,
@@ -519,7 +559,7 @@ const handleEditInputChange = (e) => {
 
     const fetchData = async () => {
       // console.log("console")
-      const _rows = await generateRows(); 
+      const _rows = await generateRows();
       const _columns = formatColumns(generateColumns());
 
       setRows(_rows);
@@ -536,9 +576,9 @@ const handleEditInputChange = (e) => {
       (row) =>
         row.name.toLowerCase().includes(lowerTerm) ||
         row.phoneNumber?.includes(lowerTerm) ||
-        row.memberShip?.toLowerCase().includes(lowerTerm) || 
-        row.email?.toLowerCase().includes(lowerTerm)||
-        row.gender?.toLowerCase().includes(lowerTerm) 
+        row.memberShip?.toLowerCase().includes(lowerTerm) ||
+        row.email?.toLowerCase().includes(lowerTerm) ||
+        row.gender?.toLowerCase().includes(lowerTerm)
     );
     setFilteredRows(filtered);
   }, [term, rows]);
@@ -624,119 +664,118 @@ const handleEditInputChange = (e) => {
 
   // enddate calculation
   const calculateEndDate = (startDate, membershipType) => {
-  if (!startDate || !membershipType) return '';
-  
-  const start = new Date(startDate);
-  const endDate = new Date(start);
-  
-  switch (membershipType.toLowerCase()) {
-    case 'basic':
-      endDate.setMonth(start.getMonth() + 1);
-      break;
-    case 'premium':
-      endDate.setMonth(start.getMonth() + 3);
-      break;
-    case 'vip':
-      endDate.setMonth(start.getMonth() + 6);
-      break;
-    default:
-      return '';
-  }
-  
-  // Format date to YYYY-MM-DD for input field
-  return endDate.toISOString().split('T')[0];
-};
+    if (!startDate || !membershipType) return "";
+
+    const start = new Date(startDate);
+    const endDate = new Date(start);
+
+    switch (membershipType.toLowerCase()) {
+      case "basic":
+        endDate.setMonth(start.getMonth() + 1);
+        break;
+      case "premium":
+        endDate.setMonth(start.getMonth() + 3);
+        break;
+      case "vip":
+        endDate.setMonth(start.getMonth() + 6);
+        break;
+      default:
+        return "";
+    }
+
+    // Format date to YYYY-MM-DD for input field
+    return endDate.toISOString().split("T")[0];
+  };
 
   return (
     <>
-    
-    <div className="customer-dashboard-outlay-container">
-      <div className="--side-bar"></div>
-      <div className="customer-dashboard-container" ref={ref}>
-        <div className="customer-dashboard-main-table-container">
-          <div className="customer-dashboard-main-top-filter-container">
-            <div className="customer-dashboard-search-container">
-              <TextField
-                onChange={(e) => setTerm(e.target.value)}
-                variant="outlined"
-                size="small"
-                placeholder="Search by name, mobile or membership..."
-                sx={{ width: 300 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
+      <div className="customer-dashboard-outlay-container">
+        <div className="--side-bar"></div>
+        <div className="customer-dashboard-container" ref={ref}>
+          <div className="customer-dashboard-main-table-container">
+            <div className="customer-dashboard-main-top-filter-container">
+              <div className="customer-dashboard-search-container">
+                <TextField
+                  onChange={(e) => setTerm(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                  placeholder="Search by name, mobile or membership..."
+                  sx={{ width: 300 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </div>
+              <div className="customer-dashboard-filter-container">
+                <div className="--add-customer">
+                  <People className="text-green-700"></People>
+                  <button className="text-green-700" onClick={handleModal}>
+                    Add New Customer
+                  </button>
+                </div>
+                <div className="--date">
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DateTimePicker
+                      onChange={(newDate) => setSelectedDate(newDate)}
+                      slotProps={{
+                        textField: {
+                          size: "small",
+                          sx: { maxWidth: 150, fontSize: "0.8rem" },
+                        },
+                      }}
+                      label="Joined On"
+                    />
+                  </LocalizationProvider>
+                </div>
+                <div className="--delete">
+                  <Button
+                    onClick={() => handleDeactivate()}
+                    variant="outlined"
+                    color="error"
+                    sx={{
+                      padding: "5px 12px",
+                      border: "1.3px solid rgba(0,0,0,0.15)",
+                    }}
+                    startIcon={<DeleteIcon />}
+                    size="small"
+                  >
+                    Deactivate
+                  </Button>
+                </div>
+                <div className="--export">
+                  <Button
+                    onClick={handleExport}
+                    variant="outlined"
+                    sx={{
+                      padding: "5px 12px",
+                      background: "#FFFFFF",
+                      color: "rgba(0, 0, 0, 0.8)",
+                      border: "1.3px solid rgba(0,0,0,0.15)",
+                    }}
+                    startIcon={<FileDownloadIcon />}
+                    size="small"
+                  >
+                    Export CSV
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="customer-dashboard-table">
+              <DataGrid
+                rows={filteredRows}
+                columns={columns}
+                pageSizeOptions={[5, 10]}
+                checkboxSelection
+                sx={{ border: 0 }}
+                onRowSelectionModelChange={(ids) => setSelectedUserIDs(ids)}
               />
             </div>
-            <div className="customer-dashboard-filter-container">
-              <div className="--add-customer">
-                <People className="text-green-700"></People>
-                <button className="text-green-700" onClick={handleModal}>
-                  Add New Customer
-                </button>
-              </div>
-              <div className="--date">
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DateTimePicker
-                    onChange={(newDate) => setSelectedDate(newDate)}
-                    slotProps={{
-                      textField: {
-                        size: "small",
-                        sx: { maxWidth: 150, fontSize: "0.8rem" },
-                      },
-                    }}
-                    label="Joined On"
-                  />
-                </LocalizationProvider>
-              </div>
-              <div className="--delete">
-                <Button
-                  onClick={() => handleDeactivate()}
-                  variant="outlined"
-                  color="error"
-                  sx={{
-                    padding: "5px 12px",
-                    border: "1.3px solid rgba(0,0,0,0.15)",
-                  }}
-                  startIcon={<DeleteIcon />}
-                  size="small"
-                >
-                  Deactivate
-                </Button>
-              </div>
-              <div className="--export">
-                <Button
-                  onClick={handleExport}
-                  variant="outlined"
-                  sx={{
-                    padding: "5px 12px",
-                    background: "#FFFFFF",
-                    color: "rgba(0, 0, 0, 0.8)",
-                    border: "1.3px solid rgba(0,0,0,0.15)",
-                  }}
-                  startIcon={<FileDownloadIcon />}
-                  size="small"
-                >
-                  Export CSV
-                </Button>
-              </div>
-            </div>
           </div>
-          <div className="customer-dashboard-table">
-            <DataGrid
-              rows={filteredRows}
-              columns={columns}
-              pageSizeOptions={[5, 10]}
-              checkboxSelection
-              sx={{ border: 0 }}
-              onRowSelectionModelChange={(ids) => setSelectedUserIDs(ids)}
-            />
-          </div>
-        </div>
-        {/* <div className="customer-dashboard-footer-container">
+          {/* <div className="customer-dashboard-footer-container">
           <div className="--customer-dashboard-bottom-box">
             <span className="--head">{neverAssessedCount}</span>
             <span className="--tail">Assessment Due</span>
@@ -750,386 +789,436 @@ const handleEditInputChange = (e) => {
             <span className="--tail">Total Members</span>
           </div>
         </div> */}
-      </div>
+        </div>
 
-      <div>
-        {/* Add New Customer Modal */}
-        <Dialog open={modalOpen} onClose={handleCloseModal} fullWidth maxWidth="sm">
-          <DialogTitle>
-            Create New Customer
-            <IconButton
-              aria-label="close"
-              onClick={handleCloseModal}
-              sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-
-          <DialogContent
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              height: '70vh',  // adjust height as needed
-              p: 0,
-            }}
+        <div>
+          {/* Add New Customer Modal */}
+          <Dialog
+            open={modalOpen}
+            onClose={handleCloseModal}
+            fullWidth
+            maxWidth="sm"
           >
-            <Box
-              component="form"
-              id="create-customer-form"
-              onSubmit={handleFormSubmit}
-              sx={{
-                flex: 1,            // take all vertical space available in DialogContent
-                overflowY: 'auto',  // enable vertical scrolling only inside the Box
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-              }}
-            >
-              {/* Your form inputs */}
-              <TextField
-                label="Name"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                required
-              />
-              <TextField
-                label="Age"
-                type="number"
-                name="age"
-                value={formData.age}
-                onChange={handleInputChange}
-                required
-              />
-              <TextField
-                label="Start Date"
-                name="startDate"
-                type="date"
-                value={formData.startDate}
-                onChange={handleInputChange}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-              <FormControl fullWidth required>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  name="type"
-                  value={formData.type}
-                  label="Type"
-                  onChange={handleInputChange}
-                >
-                  <MenuItem value="forge">Forge</MenuItem>
-                  <MenuItem value="play">Play</MenuItem>
-                  <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
-                  <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
-                  <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
-                  <MenuItem value="employee">EMPLOYEE</MenuItem>
-                  <MenuItem value="other">OTHERS</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth required>
-                <InputLabel>Gender</InputLabel>
-                <Select
-                  name="gender"
-                  value={formData.gender}
-                  label="Gender"
-                  onChange={handleInputChange}
-                >
-                  <MenuItem value="male">Male</MenuItem>
-                  <MenuItem value="female">Female</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="Mobile"
-                name="mobile"
-                value={formData.mobile}
-                onChange={handleInputChange}
-              />
-              <TextField
-                label="Email"
-                name="email"
-                type="email"
-                value={formData.email}
-                onChange={handleInputChange}
-              />
-              <TextField
-                label="Password"
-                name="password"
-                type="text"
-                value={formData.password}
-                onChange={handleInputChange}
-              />
-              <FormControl fullWidth>
-                <InputLabel>Membership</InputLabel>
-                <Select
-                  name="membershipType"
-                  value={formData.membershipType}
-                  label="Membership"
-                  onChange={handleInputChange}
-                >
-                  <MenuItem value="premium">PREMIUM</MenuItem>
-                  <MenuItem value="basic">BASIC</MenuItem>
-                  <MenuItem value="vip">VIP</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="End Date"
-                name="endDate"
-                type="date"
-                value={formData.endDate}
-                InputLabelProps={{ shrink: true }}
-                InputProps={{
-                  readOnly: true,
-                }}
+            <DialogTitle>
+              Create New Customer
+              <IconButton
+                aria-label="close"
+                onClick={handleCloseModal}
                 sx={{
-                  '& .MuiInputBase-input': {
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'not-allowed',
-                  },
+                  position: "absolute",
+                  right: 8,
+                  top: 8,
+                  color: (theme) => theme.palette.grey[500],
                 }}
-              />
-              <TextField
-                label="Height (cm)"
-                name="height"
-                type="number"
-                value={formData.height}
-                onChange={handleInputChange}
-              />
-              <TextField
-                label="Weight (kg)"
-                name="weight"
-                type="number"
-                step="0.1"
-                value={formData.weight}
-                onChange={handleInputChange}
-              />
-              <TextField
-                label="Health Condition"
-                name="healthCondition"
-                value={formData.healthCondition}
-                onChange={handleInputChange}
-              />
-            </Box>
-          </DialogContent>
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
 
-          <DialogActions
-            sx={{
-              position: 'sticky',    // keeps buttons visible on scroll
-              bottom: 0,
-              bgcolor: 'background.paper',
-              zIndex: 1,
-            }}
-          >
-            <Button onClick={handleCloseModal}>Cancel</Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              form="create-customer-form"  
-            >
-              Create
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* Edit Customer Modal */}
-        <Dialog open={editModalOpen} onClose={handleCloseEditModal} fullWidth maxWidth="sm">
-          <DialogTitle>
-            Edit Customer Profile
-            <IconButton
-              aria-label="close"
-              onClick={handleCloseEditModal}
+            <DialogContent
               sx={{
-                position: 'absolute',
-                right: 8,
-                top: 8,
-                color: (theme) => theme.palette.grey[500],
+                display: "flex",
+                flexDirection: "column",
+                height: "70vh", // adjust height as needed
+                p: 0,
               }}
             >
-              <CloseIcon />
-            </IconButton>
-          </DialogTitle>
-
-          <DialogContent
-            sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              height: '70vh',
-              p: 0,
-            }}
-          >
-            <Box
-              component="form"
-              id="edit-customer-form"
-              onSubmit={handleEditFormSubmit}
-              sx={{
-                flex: 1,
-                overflowY: 'auto',
-                p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 2,
-              }}
-            >
-              <TextField
-                label="Name"
-                name="name"
-                value={editFormData.name}
-                onChange={handleEditInputChange}
-                required
-              />
-              <TextField
-                label="Age"
-                type="number"
-                name="age"
-                value={editFormData.age}
-                onChange={handleEditInputChange}
-                required
-              />
-              <TextField
-                label="Start Date"
-                name="startDate"
-                type="date"
-                value={editFormData.startDate}
-                onChange={handleEditInputChange}
-                InputLabelProps={{ shrink: true }}
-                required
-              />
-              <FormControl fullWidth required>
-                <InputLabel>Type</InputLabel>
-                <Select
-                  name="type"
-                  value={editFormData.type}
-                  label="Type"
-                  onChange={handleEditInputChange}
-                >
-                  <MenuItem value="forge">Forge</MenuItem>
-                  <MenuItem value="play">Play</MenuItem>
-                  <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
-                  <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
-                  <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
-                  <MenuItem value="employee">EMPLOYEE</MenuItem>
-                  <MenuItem value="other">OTHERS</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth required>
-                <InputLabel>Gender</InputLabel>
-                <Select
-                  name="gender"
-                  value={editFormData.gender}
-                  label="Gender"
-                  onChange={handleEditInputChange}
-                >
-                  <MenuItem value="male">Male</MenuItem>
-                  <MenuItem value="female">Female</MenuItem>
-                  <MenuItem value="other">Other</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="Mobile"
-                name="mobile"
-                value={editFormData.mobile}
-                onChange={handleEditInputChange}
-              />
-              <TextField
-                label="Email"
-                name="email"
-                type="email"
-                value={editFormData.email}
-                onChange={handleEditInputChange}
-              />
-              <TextField
-                label="Password"
-                name="password"
-                type="text"
-                value={editFormData.password}
-                onChange={handleEditInputChange}
-              />
-              <FormControl fullWidth>
-                <InputLabel>Membership</InputLabel>
-                <Select
-                  name="membershipType"
-                  value={editFormData.membershipType}
-                  label="Membership"
-                  onChange={handleEditInputChange}
-                >
-                  <MenuItem value="premium">PREMIUM</MenuItem>
-                  <MenuItem value="basic">BASIC</MenuItem>
-                  <MenuItem value="vip">VIP</MenuItem>
-                </Select>
-              </FormControl>
-              <TextField
-                label="End Date"
-                name="endDate"
-                type="date"
-                value={editFormData.endDate}
-                InputLabelProps={{ shrink: true }}
-                InputProps={{
-                  readOnly: true,
-                }}
+              <Box
+                component="form"
+                id="create-customer-form"
+                onSubmit={handleFormSubmit}
                 sx={{
-                  '& .MuiInputBase-input': {
-                    backgroundColor: '#f5f5f5',
-                    cursor: 'not-allowed',
-                  },
+                  flex: 1, // take all vertical space available in DialogContent
+                  overflowY: "auto", // enable vertical scrolling only inside the Box
+                  p: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
                 }}
-              />
-              <TextField
-                label="Height (cm)"
-                name="height"
-                type="number"
-                value={editFormData.height}
-                onChange={handleEditInputChange}
-              />
-              <TextField
-                label="Weight (kg)"
-                name="weight"
-                type="number"
-                step="0.1"
-                value={editFormData.weight}
-                onChange={handleEditInputChange}
-              />
-              <TextField
-                label="Health Condition"
-                name="healthCondition"
-                value={editFormData.healthCondition}
-                onChange={handleEditInputChange}
-              />
-            </Box>
-          </DialogContent>
+              >
+                {/* Your form inputs */}
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                />
+                <TextField
+                  label="Date of Birth"
+                  name="dob"
+                  type="date"
+                  value={formData.dob}
+                  onChange={handleInputChange}
+                  InputLabelProps={{ shrink: true }}
+                  required
+                />
+                <TextField
+                  label="Age"
+                  type="number"
+                  name="age"
+                  value={formData.age}
+                  onChange={handleInputChange}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "#f5f5f5",
+                      cursor: "not-allowed",
+                    },
+                  }}
+                  required
+                />
+                <TextField
+                  label="Start Date"
+                  name="startDate"
+                  type="date"
+                  value={formData.startDate}
+                  onChange={handleInputChange}
+                  InputLabelProps={{ shrink: true }}
+                  required
+                />
+                <FormControl fullWidth required>
+                  <InputLabel>Type</InputLabel>
+                  <Select
+                    name="type"
+                    value={formData.type}
+                    label="Type"
+                    onChange={handleInputChange}
+                  >
+                    <MenuItem value="forge">Forge</MenuItem>
+                    <MenuItem value="play">Play</MenuItem>
+                    <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
+                    <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
+                    <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+                    <MenuItem value="employee">EMPLOYEE</MenuItem>
+                    <MenuItem value="other">OTHERS</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth required>
+                  <InputLabel>Gender</InputLabel>
+                  <Select
+                    name="gender"
+                    value={formData.gender}
+                    label="Gender"
+                    onChange={handleInputChange}
+                  >
+                    <MenuItem value="male">Male</MenuItem>
+                    <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Mobile"
+                  name="mobile"
+                  value={formData.mobile}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  label="Password"
+                  name="password"
+                  type="text"
+                  value={formData.password}
+                  onChange={handleInputChange}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Membership</InputLabel>
+                  <Select
+                    name="membershipType"
+                    value={formData.membershipType}
+                    label="Membership"
+                    onChange={handleInputChange}
+                  >
+                    <MenuItem value="premium">PREMIUM</MenuItem>
+                    <MenuItem value="basic">BASIC</MenuItem>
+                    <MenuItem value="vip">VIP</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="End Date"
+                  name="endDate"
+                  type="date"
+                  value={formData.endDate}
+                  InputLabelProps={{ shrink: true }}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "#f5f5f5",
+                      cursor: "not-allowed",
+                    },
+                  }}
+                />
+                <TextField
+                  label="Height (cm)"
+                  name="height"
+                  type="number"
+                  value={formData.height}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  label="Weight (kg)"
+                  name="weight"
+                  type="number"
+                  step="0.1"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                />
+                <TextField
+                  label="Health Condition"
+                  name="healthCondition"
+                  value={formData.healthCondition}
+                  onChange={handleInputChange}
+                />
+              </Box>
+            </DialogContent>
 
-          <DialogActions
-            sx={{
-              position: 'sticky',
-              bottom: 0,
-              bgcolor: 'background.paper',
-              zIndex: 1,
-            }}
-          >
-            <Button onClick={handleCloseEditModal}>Cancel</Button>
-            <Button
-              type="submit"
-              variant="contained"
-              color="primary"
-              form="edit-customer-form"
+            <DialogActions
+              sx={{
+                position: "sticky", // keeps buttons visible on scroll
+                bottom: 0,
+                bgcolor: "background.paper",
+                zIndex: 1,
+              }}
             >
-              Edit
-            </Button>
-          </DialogActions>
-        </Dialog>
+              <Button onClick={handleCloseModal}>Cancel</Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                form="create-customer-form"
+              >
+                Create
+              </Button>
+            </DialogActions>
+          </Dialog>
 
+          {/* Edit Customer Modal */}
+          <Dialog
+            open={editModalOpen}
+            onClose={handleCloseEditModal}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>
+              Edit Customer Profile
+              <IconButton
+                aria-label="close"
+                onClick={handleCloseEditModal}
+                sx={{
+                  position: "absolute",
+                  right: 8,
+                  top: 8,
+                  color: (theme) => theme.palette.grey[500],
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+
+            <DialogContent
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                height: "70vh",
+                p: 0,
+              }}
+            >
+              <Box
+                component="form"
+                id="edit-customer-form"
+                onSubmit={handleEditFormSubmit}
+                sx={{
+                  flex: 1,
+                  overflowY: "auto",
+                  p: 3,
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 2,
+                }}
+              >
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={editFormData.name}
+                  onChange={handleEditInputChange}
+                  required
+                />
+                <TextField
+                  label="Name"
+                  name="name"
+                  value={editFormData.name}
+                  onChange={handleEditInputChange}
+                  required
+                />
+                <TextField
+                  label="Date of Birth"
+                  name="dob"
+                  type="date"
+                  value={editFormData.dob}
+                  onChange={handleEditInputChange}
+                  InputLabelProps={{ shrink: true }}
+                  required
+                />
+                <TextField
+                  label="Age"
+                  type="number"
+                  name="age"
+                  value={editFormData.age}
+                  onChange={handleEditInputChange}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "#f5f5f5",
+                      cursor: "not-allowed",
+                    },
+                  }}
+                  required
+                />
+                <TextField
+                  label="Start Date"
+                  name="startDate"
+                  type="date"
+                  value={editFormData.startDate}
+                  onChange={handleEditInputChange}
+                  InputLabelProps={{ shrink: true }}
+                  required
+                />
+                <FormControl fullWidth required>
+                  <InputLabel>Type</InputLabel>
+                  <Select
+                    name="type"
+                    value={editFormData.type}
+                    label="Type"
+                    onChange={handleEditInputChange}
+                  >
+                    <MenuItem value="forge">Forge</MenuItem>
+                    <MenuItem value="play">Play</MenuItem>
+                    <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
+                    <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
+                    <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+                    <MenuItem value="employee">EMPLOYEE</MenuItem>
+                    <MenuItem value="other">OTHERS</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl fullWidth required>
+                  <InputLabel>Gender</InputLabel>
+                  <Select
+                    name="gender"
+                    value={editFormData.gender}
+                    label="Gender"
+                    onChange={handleEditInputChange}
+                  >
+                    <MenuItem value="male">Male</MenuItem>
+                    <MenuItem value="female">Female</MenuItem>
+                    <MenuItem value="other">Other</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="Mobile"
+                  name="mobile"
+                  value={editFormData.mobile}
+                  onChange={handleEditInputChange}
+                />
+                <TextField
+                  label="Email"
+                  name="email"
+                  type="email"
+                  value={editFormData.email}
+                  onChange={handleEditInputChange}
+                />
+                <TextField
+                  label="Password"
+                  name="password"
+                  type="text"
+                  value={editFormData.password}
+                  onChange={handleEditInputChange}
+                />
+                <FormControl fullWidth>
+                  <InputLabel>Membership</InputLabel>
+                  <Select
+                    name="membershipType"
+                    value={editFormData.membershipType}
+                    label="Membership"
+                    onChange={handleEditInputChange}
+                  >
+                    <MenuItem value="premium">PREMIUM</MenuItem>
+                    <MenuItem value="basic">BASIC</MenuItem>
+                    <MenuItem value="vip">VIP</MenuItem>
+                  </Select>
+                </FormControl>
+                <TextField
+                  label="End Date"
+                  name="endDate"
+                  type="date"
+                  value={editFormData.endDate}
+                  InputLabelProps={{ shrink: true }}
+                  InputProps={{
+                    readOnly: true,
+                  }}
+                  sx={{
+                    "& .MuiInputBase-input": {
+                      backgroundColor: "#f5f5f5",
+                      cursor: "not-allowed",
+                    },
+                  }}
+                />
+                <TextField
+                  label="Height (cm)"
+                  name="height"
+                  type="number"
+                  value={editFormData.height}
+                  onChange={handleEditInputChange}
+                />
+                <TextField
+                  label="Weight (kg)"
+                  name="weight"
+                  type="number"
+                  step="0.1"
+                  value={editFormData.weight}
+                  onChange={handleEditInputChange}
+                />
+                <TextField
+                  label="Health Condition"
+                  name="healthCondition"
+                  value={editFormData.healthCondition}
+                  onChange={handleEditInputChange}
+                />
+              </Box>
+            </DialogContent>
+
+            <DialogActions
+              sx={{
+                position: "sticky",
+                bottom: 0,
+                bgcolor: "background.paper",
+                zIndex: 1,
+              }}
+            >
+              <Button onClick={handleCloseEditModal}>Cancel</Button>
+              <Button
+                type="submit"
+                variant="contained"
+                color="primary"
+                form="edit-customer-form"
+              >
+                Edit
+              </Button>
+            </DialogActions>
+          </Dialog>
+        </div>
       </div>
-
-      
-    </div>
     </>
   );
 };

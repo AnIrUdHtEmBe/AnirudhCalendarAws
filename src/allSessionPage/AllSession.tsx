@@ -5,7 +5,7 @@ import {
   Session_Api_call,
 } from "../store/DataContext";
 import { useApiCalls } from "../store/axios";
-import { Dumbbell, MinusCircle, Plus } from "lucide-react";
+import { Dumbbell, MinusCircle, Plus, Eye } from "lucide-react";
 import "./AllSession.css";
 import {
   CircularProgress,
@@ -83,8 +83,11 @@ function AllSession() {
     name: "",
     description: "",
     target: null,
+    target2: null,
     unit: "",
+    unit2: "",
     icon: "",
+    videoLink: "",
   };
   const addEmptyActivityRow = () => {
     const updatedActivities = [...selecteddPlan.activities, emptyActivity];
@@ -101,7 +104,6 @@ function AllSession() {
   };
 
   console.log("Selected Plan:", selecteddPlan);
-
 
   const filterPlansAccordingTo = (category: string) => {
     if (activeFilter === category) {
@@ -123,8 +125,28 @@ function AllSession() {
       activities: [...selecteddPlan.activities],
       activityIds: [...selecteddPlan.activityIds],
     });
-  }
+  };
 
+  const handleVideoLinkClick = (videoLink: string) => {
+    if (videoLink) {
+      window.open(videoLink, '_blank');
+    }
+  };
+
+  const formatUnit = (unit: string) => {
+    switch (unit) {
+      case "weight":
+        return "Kg";
+      case "time":
+        return "Min";
+      case "distance":
+        return "Km";
+      case "repetitions":
+        return "Reps";
+      default:
+        return "";
+    }
+  };
 
   let slNo = 1;
 
@@ -247,8 +269,11 @@ function AllSession() {
                   <th className="actone">Sl.No</th>
                   <th id="acttwo">Activity</th>
                   <th className="actthree" id="acttwo">Description</th>
-                  <th className="actfour"> Target</th>
-                  <th>Unit</th>
+                  <th className="actfour">Target 1</th>
+                  <th>Unit 1</th>
+                  <th className="actfour">Target 2</th>
+                  <th>Unit 2</th>
+                  <th>Video</th>
                   <th></th>
                 </tr>
               </thead>
@@ -257,7 +282,7 @@ function AllSession() {
                   (item: Activity_Api_call, index: number) => (
                     <tr key={index} className="activity-row">
                       {loadingRowIndex === index ? (
-                        <td colSpan={5} className="activity-cell text-center py-4">
+                        <td colSpan={9} className="activity-cell text-center py-4">
                           <div className="flex items-center justify-center gap-2">
                             <CircularProgress size={30} className="text-blue-500" />
                           </div>
@@ -336,24 +361,46 @@ function AllSession() {
                           <td className="activity-cell" id="acttwo">{item.description}</td>
                           <td className="activity-cell">{item.target}</td>
                           <td className="activity-cell">
-                            {item.unit === "weight"
-                              ? "Kg"
-                              : item.unit === "time"
-                                ? "Min"
-                                : item.unit === "distance"
-                                  ? "Km"
-                                  : item.unit === "repetitions"
-                                    ? "Reps"
-                                    : ""}
+                            {formatUnit(item.unit)}
                           </td>
-                          <td><MinusCircle className="text-red-500" onClick={() => handleDelete(index)}></MinusCircle></td>
+                          <td className="activity-cell">{item.target2}</td>
+                          <td className="activity-cell">
+                            {formatUnit(item.unit2)}
+                          </td>
+                          <td className="activity-cell">
+                            {item.videoLink && (
+                              <button
+                                onClick={() => handleVideoLinkClick(item.videoLink)}
+                                className="video-link-button"
+                                title="Watch Video"
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  cursor: 'pointer',
+                                  padding: '4px',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                }}
+                              >
+                                <Eye size={16} className="text-blue-500 hover:text-blue-700" />
+                              </button>
+                            )}
+                          </td>
+                          <td>
+                            <MinusCircle 
+                              className="text-red-500 cursor-pointer hover:text-red-700" 
+                              onClick={() => handleDelete(index)}
+                            />
+                          </td>
                         </>
                       )}
                     </tr>
                   )
                 )}
                 <tr>
-                  <td colSpan={5} className="activity-cell">
+                  <td colSpan={9} className="activity-cell">
                     <button
                       onClick={addEmptyActivityRow}
                       className="add-activity-button"

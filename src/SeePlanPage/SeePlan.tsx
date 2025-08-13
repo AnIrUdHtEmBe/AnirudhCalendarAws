@@ -143,7 +143,13 @@ function SeePlan() {
   // NEW: Sync local assessments with context data when context changes
   useEffect(() => {
     if (assessmentInstance_expanded_Api_call && assessmentInstance_expanded_Api_call.length > 0) {
-      setLocalAssessments(assessmentInstance_expanded_Api_call);
+      // Sort assessments by submittedOn in descending order (latest first)
+      const sortedAssessments = [...assessmentInstance_expanded_Api_call].sort((a, b) => {
+        if (!a.submittedOn) return 1; // Move items without submittedOn to end
+        if (!b.submittedOn) return -1; // Move items without submittedOn to end
+        return new Date(b.submittedOn) - new Date(a.submittedOn);
+      });
+      setLocalAssessments(sortedAssessments);
     }
   }, [assessmentInstance_expanded_Api_call]);
 
@@ -189,66 +195,15 @@ function SeePlan() {
   return (
     <div className='bg-white h-screen w-full flex overflow-hidden'>
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        {/* Header and User Info Section */}
-        <div className="flex-shrink-0 p-2 sm:p-3">
-          <div className="flex flex-col lg:flex-row justify-between gap-2 lg:gap-4">
-            {/* Left side - User Info */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
+        {/* Header and User Info Section - Fixed height - MODIFIED FOR COMPACT DESIGN */}
+        <div className="flex-shrink-0 p-1 border-b border-gray-100">
+          {/* Header row - more compact */}
+          <div className="flex items-center justify-between gap-2 mb-1">
             <div className="flex-1 min-w-0">
               <Header userData={user}></Header>
-              <div className="p-1 sm:p-2">
-                <div className="space-y-2">
-                  {/* Latest Plan Instance */}
-                  <div className="w-full">
-                    <div className="flex flex-wrap items-baseline gap-1">
-                      <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">Latest Plan:</span>
-                      <span className="text-xs sm:text-sm text-gray-700 break-words flex-1 min-w-0">{LatestPAdetails?.latestPlanName || "No plans available"}</span>
-                    </div>
-                  </div>
-                  
-                  {/* Latest Assessment */}
-                  <div className="w-full">
-                    <div className="flex flex-wrap items-baseline gap-1">
-                      <span className="text-xs sm:text-sm font-semibold whitespace-nowrap">Latest Assessment:</span>
-                      <span 
-                        className="text-xs sm:text-sm underline text-blue-600 hover:text-blue-800 cursor-pointer break-words flex-1 min-w-0 transition-colors" 
-                        onClick={() => {
-                          setSelectComponent("responses")
-                          navigate('/response', {
-                            state: {
-                              assessmentInstanceId: LatestPAdetails?.latestAssessmentId
-                            }
-                          })
-                        }}
-                      >
-                        {LatestPAdetails?.latestAssessmentName || "no assessment available"} - {LatestPAdetails?.latestAssessmentScore || 0}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Height, Weight, Problems */}
-                  <div className="w-full">
-                    <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-                      <div className="whitespace-nowrap">
-                        <span className="text-xs sm:text-sm font-semibold">Height:</span>
-                        <span className="text-xs sm:text-sm text-gray-700 ml-1">{user?.height || "-"} cm</span>
-                      </div>
-                      <div className="whitespace-nowrap">
-                        <span className="text-xs sm:text-sm font-semibold">Weight:</span>
-                        <span className="text-xs sm:text-sm text-gray-700 ml-1">{user?.weight || "-"} kg</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-xs sm:text-sm font-semibold">Problems:</span>
-                        <span className="text-xs sm:text-sm text-gray-700 ml-1 break-words">{user?.healthCondition || "Not found"}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
-
-            {/* Right side - Controls */}
-            <div className="flex flex-col items-stretch lg:items-end gap-2 w-full lg:w-auto lg:min-w-[240px] xl:min-w-[280px]">
+            <div className="shrink-0">
               <DateRangePicker
                 userId={userId}
                 startDate={startDate}
@@ -261,72 +216,125 @@ function SeePlan() {
               />
             </div>
           </div>
+
+          {/* Compact info section - single row with dividers */}
+          <div className="w-full">
+            <div className="flex items-center gap-3 text-xs text-gray-700 flex-wrap">
+              {/* Plan info */}
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-gray-800">Plan:</span>
+                <span className="truncate max-w-[120px]">{LatestPAdetails?.latestPlanName || "None"}</span>
+              </div>
+              
+              <span className="text-gray-300">|</span>
+              
+              {/* Assessment info */}
+              <div className="flex items-center gap-1">
+                <span className="font-semibold text-gray-800">Assessment:</span>
+                <span 
+                  className="underline text-blue-600 hover:text-blue-800 cursor-pointer transition-colors truncate max-w-[140px]" 
+                  onClick={() => {
+                    setSelectComponent("responses")
+                    navigate('/response', {
+                      state: {
+                        assessmentInstanceId: LatestPAdetails?.latestAssessmentId
+                      }
+                    })
+                  }}
+                >
+                  {LatestPAdetails?.latestAssessmentName || "None"} - {LatestPAdetails?.latestAssessmentScore || 0}
+                </span>
+              </div>
+              
+              <span className="text-gray-300">|</span>
+              
+              {/* Height and Weight info - inline */}
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-gray-800">H:</span>
+                <span>{user?.height || "-"}cm</span>
+                <span className="font-semibold text-gray-800 ml-1">W:</span>
+                <span>{user?.weight || "-"}kg</span>
+              </div>
+              
+              <span className="text-gray-300">|</span>
+              
+              {/* Problems info */}
+              <div className="flex items-center gap-1 flex-1 min-w-0">
+                <span className="font-semibold text-gray-800">Problems:</span>
+                <span className="truncate">{user?.healthCondition || "None"}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Calendar Section */}
-        <div className="flex-1 px-2 sm:px-3 pb-2 sm:pb-3 min-h-0 max-h-full overflow-hidden">
-          <div className="h-full w-full overflow-hidden">
-            <EventCalendar data={data} onEventClick={handleEventClick} getData={getData} />
+        {/* Calendar Section - Scrollable container with proper overflow handling */}
+        <div className="flex-1 overflow-hidden">
+          <div className="h-full w-full overflow-auto p-2 sm:p-3">
+            <div className="min-w-[600px] h-full">
+              <EventCalendar data={data} onEventClick={handleEventClick} getData={getData} />
+            </div>
           </div>
         </div>
       </div>
 
       {/* Right Sidebar - Assessments */}
-      <div className="bg-white shadow-2xl border-l border-gray-200 flex flex-col w-80 h-screen max-h-screen overflow-hidden">
+      <div className="bg-white shadow-2xl border-l border-gray-200 flex flex-col w-64 lg:w-72 xl:w-80 h-full max-h-screen overflow-hidden shrink-0">
         {!showModal ? (
           <>
             {/* Sidebar Header */}
-            <div className="flex justify-between items-center p-3 lg:p-4 border-b border-gray-200 bg-gray-50 shrink-0">
+            <div className="flex justify-between items-center p-2 lg:p-3 border-b border-gray-200 bg-gray-50 shrink-0">
               <div>
-                <h2 className="text-base lg:text-lg font-bold text-gray-800">Assessments</h2>
+                <h2 className="text-sm lg:text-base font-bold text-gray-800">Assessments</h2>
               </div>
             </div>
 
             {/* Sidebar Body */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden p-3 lg:p-4">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden p-2 lg:p-3">
               {assessmentsLoading ? (
-                <div className="flex flex-col justify-center items-center py-12 lg:py-16">
-                  <CircularProgress size={30} style={{ color: "#2563eb" }} />
-                  <p className="mt-4 text-xs lg:text-sm text-gray-600">Loading assessments...</p>
+                <div className="flex flex-col justify-center items-center py-8">
+                  <CircularProgress size={24} style={{ color: "#2563eb" }} />
+                  <p className="mt-3 text-xs text-gray-600">Loading assessments...</p>
                 </div>
               ) : (
-                <div className="space-y-3 lg:space-y-4">              
+                <div className="space-y-2">              
                   {localAssessments && localAssessments.length > 0 ? (
-                    <div className="space-y-2 lg:space-y-3">
+                    <div className="space-y-1">
                       {localAssessments.map((assessment, index) => (
                         <div 
-                          key={`${assessment.assessmentInstanceId}-${userId}-${index}`} // More unique key
-                          className="bg-white border border-gray-200 rounded-lg p-2 lg:p-3 hover:shadow-lg hover:border-blue-200 transition-all duration-200"
+                          key={`${assessment.assessmentInstanceId}-${userId}-${index}`}
+                          className="bg-white border border-gray-200 rounded-md p-2 hover:shadow-md hover:border-blue-200 transition-all duration-200"
                         >
-                          <div className="flex items-center mb-2 gap-2">
-                            <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-1 rounded-full">
-                              #{index + 1}
-                            </span>
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full shrink-0">
+                                #{index + 1}
+                              </span>
+                              <span className="text-xs font-medium text-gray-800 truncate flex-1">
+                                {assessment.template.name}
+                              </span>
+                              <span className="text-xs text-gray-500 shrink-0">
+                                {assessment.answers?.length || 0} qs
+                              </span>
+                            </div>
+                            {assessment.template.questions.length > 0 && (
+                              <button
+                                className="cursor-pointer text-blue-500 hover:text-blue-700 p-1 rounded transition-colors shrink-0"
+                                onClick={() => handlePreviewClick(assessment)}
+                              >
+                                <Eye size={16} />
+                              </button>
+                            )}
                           </div>
-                          <h4 className="font-semibold text-xs lg:text-sm text-gray-800 mb-2 lg:mb-3 break-words leading-tight">
-                            {assessment.template.name}
-                          </h4>
-                          {assessment.template.questions.length > 0 && (
-                            <button
-                              className="cursor-pointer w-full bg-blue-500 text-white py-1.5 lg:py-2 px-2 lg:px-3 rounded-md hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-xs lg:text-sm"
-                              onClick={() => handlePreviewClick(assessment)}
-                            >
-                              <Eye size={14} className="lg:hidden" />
-                              <Eye size={16} className="hidden lg:block" />
-                              Preview
-                            </button>
-                          )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="text-center py-12 lg:py-16">
-                      <div className="bg-gray-100 rounded-full w-12 h-12 lg:w-16 lg:h-16 flex items-center justify-center mx-auto mb-4">
-                        <Eye size={20} className="lg:hidden text-gray-400" />
-                        <Eye size={24} className="hidden lg:block text-gray-400" />
+                    <div className="text-center py-8">
+                      <div className="bg-gray-100 rounded-full w-10 h-10 flex items-center justify-center mx-auto mb-3">
+                        <Eye size={16} className="text-gray-400" />
                       </div>
-                      <h4 className="text-sm lg:text-md font-medium text-gray-600 mb-2">No Assessments</h4>
-                      <p className="text-gray-500 text-xs lg:text-sm">This user has no completed assessments yet.</p>
+                      <h4 className="text-sm font-medium text-gray-600 mb-1">No Assessments</h4>
+                      <p className="text-gray-500 text-xs">No completed assessments yet.</p>
                     </div>
                   )}
                 </div>
@@ -338,57 +346,48 @@ function SeePlan() {
           selectedAssessment && (
             <div className="flex flex-col h-full bg-white">
               {/* Modal Header */}
-              <div className="flex justify-between items-center p-3 lg:p-4 border-b border-gray-200 bg-gray-50 shrink-0">
-                <div className="flex items-center gap-2 lg:gap-3">
+              <div className="flex justify-between items-center p-2 lg:p-3 border-b border-gray-200 bg-gray-50 shrink-0">
+                <div className="flex items-center gap-2">
                   <button
                     className="cursor-pointer text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-white hover:shadow-md transition-all duration-200"
                     onClick={closeModal}
                   >
-                    <X size={16} className="lg:hidden" />
-                    <X size={18} className="hidden lg:block" />
+                    <X size={16} />
                   </button>
-                  <h3 className="text-sm lg:text-base font-bold text-gray-800 break-words leading-tight">
+                  <h3 className="text-sm font-bold text-gray-800 break-words leading-tight">
                     Assessment Preview
                   </h3>
                 </div>
               </div>
 
               {/* Assessment Name */}
-              <div className="p-3 lg:p-4 border-b border-gray-100 bg-blue-50 shrink-0">
-                <h4 className="text-xs lg:text-sm font-semibold text-blue-800 break-words">
+              <div className="p-2 lg:p-3 border-b border-gray-100 bg-blue-50 shrink-0">
+                <h4 className="text-xs font-semibold text-blue-800 break-words">
                   {selectedAssessment?.template?.name}
                 </h4>
               </div>
 
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden">
-                <div className="p-2 lg:p-3 space-y-2 lg:space-y-3">
+                <div className="p-2 lg:p-3 space-y-3">
                   {selectedAssessment?.answers?.map((answer, index) => (
-                    <div key={answer.questionId} className="border border-gray-200 rounded-lg overflow-hidden">
-                      {/* Question Header */}
-                      <div className="bg-gray-50 px-2 lg:px-3 py-1.5 lg:py-2 border-b border-gray-200">
-                        <div className="flex items-center gap-2">
-                          <span className="bg-blue-600 text-white text-xs font-bold px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-full min-w-[20px] lg:min-w-[24px] h-5 lg:h-6 flex items-center justify-center">
-                            {index + 1}
-                          </span>
-                          <span className={`text-xs px-1.5 lg:px-2 py-0.5 lg:py-1 rounded-full font-medium ${
-                            answer.isRequired 
-                              ? 'bg-red-100 text-red-700' 
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {answer.isRequired ? "Required" : "Optional"}
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {/* Question Content */}
-                      <div className="p-2 lg:p-3 space-y-1.5 lg:space-y-2">
-                        <p className="text-xs font-medium text-gray-800 break-words leading-relaxed">
+                    <div key={answer.questionId} className="border-b border-gray-200 pb-3 last:border-b-0">
+                      {/* Question with number and required indicator */}
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-sm font-semibold text-gray-700 shrink-0">
+                          {index + 1}
+                          {answer.isRequired && <span className="text-red-500 ml-1">*</span>}
+                        </span>
+                        <p className="text-sm text-gray-800 break-words leading-relaxed flex-1">
                           {answer.mainText}
                         </p>
-                        <div className="bg-blue-50 rounded-md p-1.5 lg:p-2 border border-blue-200">
-                          <p className="text-xs text-blue-800 break-words font-medium">
-                            <span className="text-blue-600">Answer:</span> {answer.value || "No answer provided"}
+                      </div>
+                      
+                      {/* Answer */}
+                      <div className="ml-6">
+                        <div className="bg-blue-50 rounded-md p-2 border border-blue-200">
+                          <p className="text-sm text-blue-800 break-words">
+                            {answer.value || "No answer provided"}
                           </p>
                         </div>
                       </div>
