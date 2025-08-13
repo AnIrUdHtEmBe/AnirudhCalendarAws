@@ -8,6 +8,7 @@ import EventModal from "./EventModal";
 import AddPlanInstance from "./AddPlanInstance"; // Adjust the path if needed
 import './styles/EventCalendar.css'
 import NutrtitionEventModal from "./NutritionEventModal";
+
 export default function EventCalendar({ data ,  onEventClick,getData }) {
   const [events, setEvents] = useState([]);
   const { getSessionById , updateSessionInPlanInstance } = useApiCalls();
@@ -151,68 +152,70 @@ useEffect(() => {
   },[events])
 
   return (
-    <div className="p-4">
-    <FullCalendar
-      // key={events.length}
-      key={activities_length}
-      plugins={[dayGridPlugin, interactionPlugin]}
-      initialView="dayGridMonth"
-      events={events}
-      editable={true}
-      selectable={true}
-      height="auto"
-      eventClassNames={(arg) => {
-    if (arg.event.title === "DUMMY") {
-      return ['event-alacarte'];
-    }
-    const sessionTemplateId = arg.event.id;
-    if (sessionTemplateId?.startsWith("SENT")) {
-      return["event-sent-orange"];
-    }
+    <div className="w-full h-full calendar-container">
+      <FullCalendar
+        // key={events.length}
+        key={activities_length}
+        plugins={[dayGridPlugin, interactionPlugin]}
+        initialView="dayGridMonth"
+        events={events}
+        editable={true}
+        selectable={true}
+        height="100%" // Use 100% to fill the container
+        contentHeight="auto" // Let content determine its own height
+        aspectRatio={1.35} // Adjust aspect ratio for better fit
+        eventClassNames={(arg) => {
+          if (arg.event.title === "DUMMY") {
+            return ['event-alacarte'];
+          }
+          const sessionTemplateId = arg.event.id;
+          if (sessionTemplateId?.startsWith("SENT")) {
+            return["event-sent-orange"];
+          }
 
-    return [];
-  }}
-      eventContent={(arg) => {
-    return (
-      <div>
-        <strong>{arg.event.title==="DUMMY"?"ACTIVITIES":arg.event.title}</strong>
-        {/* <div>{arg.event.extendedProps.planTitle}</div> */}
-      </div>
-    );
-  }}
-      dateClick={(info) => {
-        onEventClick(info.dateStr);
-        console.log("New event on:", info.dateStr);
-      }}
-      eventClick={handleEventClick}
-      eventDrop={handleEventDrop}
-    />
-      {isModalOpen && <EventModal
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          eventData={selectedEvent}
-          sessionId={sessionId}
-          planInstanceId={planInstanceId}
-          getData={getData}
-          regenerate={async () => {
-            // await fetchPlanData();
-            await generateEvents();
-          }}
-        />}
-      {
-        SenuModalOpen && <NutrtitionEventModal
-        isOpen={SenuModalOpen}
-          onClose={() => setSenuModalOpen(false)}
-          eventData={selectedEvent}
-          sessionId={sessionId}
-          planInstanceId={planInstanceId}
-          getData={getData}
-          regenerate={async () => {
-            // await fetchPlanData();
-            await generateEvents();
-          }}
-        />
-      }
+          return [];
+        }}
+        eventContent={(arg) => {
+          return (
+            <div>
+              <strong>{arg.event.title==="DUMMY"?"ACTIVITIES":arg.event.title}</strong>
+              {/* <div>{arg.event.extendedProps.planTitle}</div> */}
+            </div>
+          );
+        }}
+        dateClick={(info) => {
+          onEventClick(info.dateStr);
+          console.log("New event on:", info.dateStr);
+        }}
+        eventClick={handleEventClick}
+        eventDrop={handleEventDrop}
+      />
+        {isModalOpen && <EventModal
+            isOpen={isModalOpen}
+            onClose={() => setIsModalOpen(false)}
+            eventData={selectedEvent}
+            sessionId={sessionId}
+            planInstanceId={planInstanceId}
+            getData={getData}
+            regenerate={async () => {
+              // await fetchPlanData();
+              await generateEvents();
+            }}
+          />}
+        {
+          SenuModalOpen && <NutrtitionEventModal
+          isOpen={SenuModalOpen}
+            onClose={() => setSenuModalOpen(false)}
+            eventData={selectedEvent}
+            sessionId={sessionId}
+            planInstanceId={planInstanceId}
+            getData={getData}
+            regenerate={async () => {
+              // await fetchPlanData();
+              await generateEvents();
+            }}
+          />
+        }
 
     </div>
   );

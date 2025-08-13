@@ -192,7 +192,7 @@ const Assessment: React.FC = () => {
                       }
                     >
                       <td>{index + 1}</td>
-                      <td style={{textAlign:"left"}}>{assessment.name}</td>
+                      <td>{assessment.name}</td>
                       <td>{assessment.questions.length}</td>
                       <td>
                         {assessment.questions.length !== 0 && (

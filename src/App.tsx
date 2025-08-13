@@ -66,6 +66,9 @@ import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
 import NutritionTabPage from "./Pages/NutritionTabPage";
 import UserNutitionPage from "./Pages/UserBasedNutritionPage";
 import CellGridLatestPerformance from "./BookingCalendarComponent/CellPerformance";
+import UserChats from "./GoToChat/UserChats";
+import Attendance from "./BookingCalendarComponent/Attendance";
+import RmDash from "./RmDashboard/RmDash";
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
@@ -155,6 +158,10 @@ function App() {
             </Route>
 
             <Route element={<PrivateRoute />}>
+              <Route path="/attendance" element={<Attendance/>}/>
+            </Route>
+
+            <Route element={<PrivateRoute />}>
               <Route
                 path="/pricingCalendarDaily"
                 element={<PricingCalendarDaily />}
@@ -183,6 +190,8 @@ function App() {
                   ) : selectComponent === "planCreation" ? (
                     // <PlansPage />
                     <UserPersonalisedPlan></UserPersonalisedPlan>
+                  ) : selectComponent === "goToChat" ? (
+                    <UserChats/>
                   ) : (
                     <Dashboard />
                   )
@@ -254,6 +263,10 @@ function App() {
                 path="/pricingCalendar"
                 element={<PricingCalendarPage />}
               />
+            </Route>
+
+            <Route element={<PrivateRoute/>} >
+              <Route path="/rmdashboard" element={<RmDash/>}/>
             </Route>
 
             <Route element={<PrivateRoute />}>
