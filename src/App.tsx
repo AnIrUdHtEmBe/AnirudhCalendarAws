@@ -69,6 +69,7 @@ import CellGridLatestPerformance from "./BookingCalendarComponent/CellPerformanc
 import UserChats from "./GoToChat/UserChats";
 import Attendance from "./BookingCalendarComponent/Attendance";
 import RmDash from "./RmDashboard/RmDash";
+import RmDashNew from "./RmDashboard/RmDashNew";
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
@@ -266,7 +267,7 @@ function App() {
             </Route>
 
             <Route element={<PrivateRoute/>} >
-              <Route path="/rmdashboard" element={<RmDash/>}/>
+              <Route path="/rmdashboard" element={<RmDashNew/>}/>
             </Route>
 
             <Route element={<PrivateRoute />}>

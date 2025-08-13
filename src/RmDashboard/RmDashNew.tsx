@@ -34,29 +34,29 @@
 //   };
 
 //   const columns = [
-//     { 
-//       title: 'Fitness', 
-//       type: 'fitness', 
+//     {
+//       title: 'Fitness',
+//       type: 'fitness',
 //       icon: <Dumbbell className="w-5 h-5" />
 //     },
-//     { 
-//       title: 'Wellness', 
-//       type: 'wellness', 
+//     {
+//       title: 'Wellness',
+//       type: 'wellness',
 //       icon: <Heart className="w-5 h-5" />
 //     },
-//     { 
-//       title: 'Sports', 
-//       type: 'sports', 
+//     {
+//       title: 'Sports',
+//       type: 'sports',
 //       icon: <Trophy className="w-5 h-5" />
 //     },
-//     { 
-//       title: 'Nutrition', 
-//       type: 'nutrition', 
+//     {
+//       title: 'Nutrition',
+//       type: 'nutrition',
 //       icon: <Utensils className="w-5 h-5" />
 //     },
-//     { 
-//       title: 'Events', 
-//       type: 'events', 
+//     {
+//       title: 'Events',
+//       type: 'events',
 //       icon: <Calendar className="w-5 h-5" />
 //     },
 //   ];
@@ -107,14 +107,37 @@
 
 // export default RmDash;
 
-
-import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
-import { Dumbbell, Heart, Trophy, Utensils, Users, Send, X, Check } from 'lucide-react';
+import React, {
+  useEffect,
+  useState,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+import {
+  Dumbbell,
+  Heart,
+  Trophy,
+  Utensils,
+  Users,
+  Send,
+  X,
+  Check,
+} from "lucide-react";
 import { TbMessage } from "react-icons/tb";
-import axios from 'axios';
-import * as Ably from 'ably';
-import { ChatClient, ChatMessageEvent, ChatMessageEventType, LogLevel } from "@ably/chat";
-import { ChatClientProvider, ChatRoomProvider, useMessages } from "@ably/chat/react";
+import axios from "axios";
+import * as Ably from "ably";
+import {
+  ChatClient,
+  ChatMessageEvent,
+  ChatMessageEventType,
+  LogLevel,
+} from "@ably/chat";
+import {
+  ChatClientProvider,
+  ChatRoomProvider,
+  useMessages,
+} from "@ably/chat/react";
 import { AblyProvider } from "ably/react";
 
 // Types
@@ -150,7 +173,14 @@ interface Message {
 }
 
 // Chat Component
-const ChatBox = ({ roomName, onClose, userId, roomType, userName, onHandleChat }: {
+const ChatBox = ({
+  roomName,
+  onClose,
+  userId,
+  roomType,
+  userName,
+  onHandleChat,
+}: {
   roomName: string;
   onClose: () => void;
   userId: string;
@@ -202,7 +232,9 @@ const ChatBox = ({ roomName, onClose, userId, roomType, userName, onHandleChat }
       nameRequestsCache.current.add(clientId);
 
       try {
-        const res = await axios.get(`https://play-os-backend.forgehub.in/human/${clientId}`);
+        const res = await axios.get(
+          `https://play-os-backend.forgehub.in/human/${clientId}`
+        );
         if (res.data?.name) {
           setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
         } else {
@@ -223,26 +255,32 @@ const ChatBox = ({ roomName, onClose, userId, roomType, userName, onHandleChat }
     if (historyBeforeSubscribe && loading) {
       historyBeforeSubscribe({ limit: 60 }).then(async (result) => {
         const allMessages: Message[] = result.items as unknown as Message[];
-        
+
         // Get user's room data to find seenByTeamAt
         try {
-          const userRes = await axios.get(`https://play-os-backend.forgehub.in/human/human/${userId}`);
+          const userRes = await axios.get(
+            `https://play-os-backend.forgehub.in/human/human/${userId}`
+          );
           const userRooms = userRes.data.rooms || userRes.data;
-          const currentRoom = userRooms.find((room: ChatRoom) => room.roomType === roomType);
-          
+          const currentRoom = userRooms.find(
+            (room: ChatRoom) => room.roomType === roomType
+          );
+
           if (currentRoom) {
             const seenByTeamAtDate = new Date(currentRoom.seenByTeamAt * 1000);
             // Filter messages newer than seenByTeamAt
-            const newMessages = allMessages.filter(msg => {
+            const newMessages = allMessages.filter((msg) => {
               const msgDate = new Date(msg.timestamp || msg.createdAt);
               return msgDate > seenByTeamAtDate;
             });
-            
+
             setMessages(newMessages);
-            
+
             // Fetch names for unique client IDs
-            const uniqueClientIds = [...new Set(newMessages.map(msg => msg.clientId))];
-            uniqueClientIds.forEach(clientId => fetchSenderName(clientId));
+            const uniqueClientIds = [
+              ...new Set(newMessages.map((msg) => msg.clientId)),
+            ];
+            uniqueClientIds.forEach((clientId) => fetchSenderName(clientId));
           } else {
             setMessages(allMessages);
           }
@@ -250,7 +288,7 @@ const ChatBox = ({ roomName, onClose, userId, roomType, userName, onHandleChat }
           console.error("Error filtering messages:", error);
           setMessages(allMessages);
         }
-        
+
         setLoading(false);
       });
     }
@@ -273,27 +311,33 @@ const ChatBox = ({ roomName, onClose, userId, roomType, userName, onHandleChat }
     }
   }, [inputValue, send]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      sendMessage();
-    }
-  }, [sendMessage]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    },
+    [sendMessage]
+  );
 
   const sortedMessages = useMemo(() => {
     return [...messages].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, [messages]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-96 h-96 flex flex-col shadow-xl">
         {/* Header */}
         <div className="bg-blue-500 text-white p-3 rounded-t-lg flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="font-medium">{userName}</span>
-            <span className="text-xs bg-blue-600 px-2 py-1 rounded">{roomType}</span>
+            <span className="text-xs bg-blue-600 px-2 py-1 rounded">
+              {roomType}
+            </span>
           </div>
           <button onClick={onClose} className="hover:bg-blue-600 rounded p-1">
             <X className="w-4 h-4" />
@@ -373,7 +417,12 @@ const ChatBox = ({ roomName, onClose, userId, roomType, userName, onHandleChat }
 };
 
 // Handle Chat Modal
-const HandleChatModal = ({ isOpen, onClose, onSave, userName }: {
+const HandleChatModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  userName,
+}: {
   isOpen: boolean;
   onClose: () => void;
   onSave: (comment: string) => void;
@@ -391,22 +440,25 @@ const HandleChatModal = ({ isOpen, onClose, onSave, userName }: {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60]">
+    <div className="fixed inset-0 backdrop-blur bg-opacity-50 flex items-center justify-center z-[60]">
       <div className="bg-white rounded-lg w-80 p-4 shadow-xl">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-medium">Handle Chat - {userName}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
             <X className="w-4 h-4" />
           </button>
         </div>
-        
+
         <textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           className="w-full border rounded p-3 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder="Add your comment..."
         />
-        
+
         <div className="flex space-x-2 mt-4">
           <button
             onClick={onClose}
@@ -426,7 +478,7 @@ const HandleChatModal = ({ isOpen, onClose, onSave, userName }: {
   );
 };
 
-const RmDash = () => {
+const RmDashNew = () => {
   const [loggedInUser, setLoggedInUser] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersWithRooms, setUsersWithRooms] = useState<UserWithRooms[]>([]);
@@ -446,40 +498,61 @@ const RmDash = () => {
 
   // Ably setup
   const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
-  const realtimeClient = useMemo(() => new Ably.Realtime({ 
-    key: API_KEY, 
-    clientId: loggedInUser || "RM_Dashboard" 
-  }), [loggedInUser]);
-  const chatClient = useMemo(() => new ChatClient(realtimeClient, { 
-    logLevel: LogLevel.Info 
-  }), [realtimeClient]);
+  const realtimeClient = useMemo(
+    () =>
+      new Ably.Realtime({
+        key: API_KEY,
+        clientId: loggedInUser || "RM_Dashboard",
+      }),
+    [loggedInUser]
+  );
+  const chatClient = useMemo(
+    () =>
+      new ChatClient(realtimeClient, {
+        logLevel: LogLevel.Info,
+      }),
+    [realtimeClient]
+  );
 
   // Polling refs
   const pollingIntervals = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const roomConnections = useRef<{ [key: string]: any }>({});
+  const [connectionCount, setConnectionCount] = useState(0);
 
   const columns = [
-    { title: 'Fitness', type: 'FITNESS', icon: <Dumbbell className="w-5 h-5" /> },
-    { title: 'Wellness', type: 'WELLNESS', icon: <Heart className="w-5 h-5" /> },
-    { title: 'Sports', type: 'SPORTS', icon: <Trophy className="w-5 h-5" /> },
-    { title: 'Nutrition', type: 'NUTRITION', icon: <Utensils className="w-5 h-5" /> },
-    { title: 'RM', type: 'RM', icon: <Users className="w-5 h-5" /> },
+    {
+      title: "Fitness",
+      type: "FITNESS",
+      icon: <Dumbbell className="w-5 h-5" />,
+    },
+    {
+      title: "Wellness",
+      type: "WELLNESS",
+      icon: <Heart className="w-5 h-5" />,
+    },
+    { title: "Sports", type: "SPORTS", icon: <Trophy className="w-5 h-5" /> },
+    {
+      title: "Nutrition",
+      type: "NUTRITION",
+      icon: <Utensils className="w-5 h-5" />,
+    },
+    { title: "RM", type: "RM", icon: <Users className="w-5 h-5" /> },
   ];
 
   const getColumnHeaderStyle = (type: string) => {
     switch (type) {
-      case 'FITNESS':
-        return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white';
-      case 'WELLNESS':
-        return 'bg-gradient-to-r from-green-500 to-green-600 text-white';
-      case 'SPORTS':
-        return 'bg-gradient-to-r from-red-500 to-red-600 text-white';
-      case 'NUTRITION':
-        return 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white';
-      case 'RM':
-        return 'bg-gradient-to-r from-purple-500 to-purple-600 text-white';
+      case "FITNESS":
+        return "bg-gradient-to-r from-blue-500 to-blue-600 text-white";
+      case "WELLNESS":
+        return "bg-gradient-to-r from-green-500 to-green-600 text-white";
+      case "SPORTS":
+        return "bg-gradient-to-r from-red-500 to-red-600 text-white";
+      case "NUTRITION":
+        return "bg-gradient-to-r from-yellow-500 to-yellow-600 text-white";
+      case "RM":
+        return "bg-gradient-to-r from-purple-500 to-purple-600 text-white";
       default:
-        return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white';
+        return "bg-gradient-to-r from-gray-500 to-gray-600 text-white";
     }
   };
 
@@ -487,15 +560,20 @@ const RmDash = () => {
   useEffect(() => {
     const fetchAllUsers = async () => {
       try {
-        const response = await axios.get('https://play-os-backend.forgehub.in/human/all?type=forge');
-        const users = response.data.map((user: any) => ({
-          userId: user.userId,
-          name: user.name,
-          type: user.type || 'play'
-        }));
+        const response = await axios.get(
+          "https://play-os-backend.forgehub.in/human/all?type=forge"
+        );
+        const users = response.data
+          .map((user: any) => ({
+            userId: user.userId,
+            name: user.name,
+            type: user.type || "play",
+          }))
+          .slice(0, 38); // ✅ Limit to first 10 users
+
         setAllUsers(users);
       } catch (error) {
-        console.error('Failed to fetch users:', error);
+        console.error("Failed to fetch users:", error);
       }
     };
 
@@ -518,22 +596,29 @@ const RmDash = () => {
         const batch = allUsers.slice(i, i + batchSize);
         const batchPromises = batch.map(async (user) => {
           try {
-            const response = await axios.get(`https://play-os-backend.forgehub.in/human/human/${user.userId}`);
-            const rooms = Array.isArray(response.data) ? response.data : response.data.rooms || [];
-            
+            const response = await axios.get(
+              `https://play-os-backend.forgehub.in/human/human/${user.userId}`
+            );
+            const rooms = Array.isArray(response.data)
+              ? response.data
+              : response.data.rooms || [];
+
             return {
               user,
               rooms,
               hasNewMessages: {},
-              lastMessageTime: {}
+              lastMessageTime: {},
             };
           } catch (error) {
-            console.error(`Failed to fetch rooms for user ${user.userId}:`, error);
+            console.error(
+              `Failed to fetch rooms for user ${user.userId}:`,
+              error
+            );
             return {
               user,
               rooms: [],
               hasNewMessages: {},
-              lastMessageTime: {}
+              lastMessageTime: {},
             };
           }
         });
@@ -553,31 +638,74 @@ const RmDash = () => {
   useEffect(() => {
     if (usersWithRooms.length === 0) return;
 
-    const startPolling = async () => {
-      // Clear existing intervals
-      Object.values(pollingIntervals.current).forEach(clearInterval);
-      pollingIntervals.current = {};
+    const setupAlwaysOnConnections = async () => {
+      // Properly cleanup existing connections first
+      for (const [roomKey, room] of Object.entries(roomConnections.current)) {
+        try {
+          if (room) {
+            // Unsubscribe from all message listeners
+            if (room.messages?.unsubscribeAll) {
+              await room.messages.unsubscribeAll();
+            } else if (room.messages?.unsubscribe) {
+              room.messages.unsubscribe();
+            }
+
+            // Detach and release room
+            if (room.detach) {
+              await room.detach();
+            }
+            if (room.release) {
+              await room.release();
+            }
+          }
+        } catch (error) {
+          console.error(`Error cleaning up room ${roomKey}:`, error);
+        }
+      }
+      roomConnections.current = {};
+
+      // Add a small delay to ensure cleanup is complete
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
       for (const userWithRooms of usersWithRooms) {
         for (const room of userWithRooms.rooms) {
           const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userWithRooms.user.userId}`;
-          
+
+          // Skip if room already exists and is connected
+          if (roomConnections.current[roomKey]) {
+            console.log(`⏭️ Skipping ${roomKey} - already connected`);
+            continue;
+          }
+
           try {
             const ablyRoom = await chatClient.rooms.get(roomKey);
+
+            // Ensure room is attached before setting up listeners
+            if (ablyRoom.status !== "attached") {
+              await ablyRoom.attach();
+            }
+
             roomConnections.current[roomKey] = ablyRoom;
 
-            const pollMessages = async () => {
+            // Initial message check
+            const checkInitialMessages = async () => {
               try {
-                const messageHistory = await ablyRoom.messages.history({ limit: 60 });
+                const messageHistory = await ablyRoom.messages.history({
+                  limit: 60,
+                });
                 const messages = messageHistory.items;
-                
+
                 const seenByTeamAtDate = new Date(room.seenByTeamAt * 1000);
                 let hasNew = false;
                 let latestTimestamp = 0;
 
                 messages.forEach((message: any) => {
-                  const messageTimestamp = message.createdAt || message.timestamp;
-                  if (messageTimestamp && new Date(messageTimestamp) > seenByTeamAtDate) {
+                  const messageTimestamp =
+                    message.createdAt || message.timestamp;
+                  if (
+                    messageTimestamp &&
+                    new Date(messageTimestamp) > seenByTeamAtDate
+                  ) {
                     hasNew = true;
                     const msgTime = new Date(messageTimestamp).getTime();
                     if (msgTime > latestTimestamp) {
@@ -586,84 +714,166 @@ const RmDash = () => {
                   }
                 });
 
-                // Update state
-                setUsersWithRooms(prev => prev.map(uwr => {
-                  if (uwr.user.userId === userWithRooms.user.userId) {
-                    return {
-                      ...uwr,
-                      hasNewMessages: {
-                        ...uwr.hasNewMessages,
-                        [room.roomType]: hasNew
-                      },
-                      lastMessageTime: {
-                        ...uwr.lastMessageTime,
-                        [room.roomType]: latestTimestamp
-                      }
-                    };
-                  }
-                  return uwr;
-                }));
-
+                // Update state for initial check
+                setUsersWithRooms((prev) =>
+                  prev.map((uwr) => {
+                    if (uwr.user.userId === userWithRooms.user.userId) {
+                      return {
+                        ...uwr,
+                        hasNewMessages: {
+                          ...uwr.hasNewMessages,
+                          [room.roomType]: hasNew,
+                        },
+                        lastMessageTime: {
+                          ...uwr.lastMessageTime,
+                          [room.roomType]: latestTimestamp,
+                        },
+                      };
+                    }
+                    return uwr;
+                  })
+                );
               } catch (error) {
-                console.error(`Polling error for ${roomKey}:`, error);
+                console.error(
+                  `Initial message check error for ${roomKey}:`,
+                  error
+                );
               }
             };
 
-            // Initial poll
-            await pollMessages();
-            
-            // Set up interval
-            pollingIntervals.current[roomKey] = setInterval(pollMessages, 50000);
-            
+            // Set up always-on message listener
+            const messageListener = (messageEvent: any) => {
+              const message = messageEvent.message || messageEvent;
+              const messageTimestamp = message.createdAt || message.timestamp;
+              const seenByTeamAtDate = new Date(room.seenByTeamAt * 1000);
+
+              if (
+                messageTimestamp &&
+                new Date(messageTimestamp) > seenByTeamAtDate
+              ) {
+                const msgTime = new Date(messageTimestamp).getTime();
+
+                // Update state immediately when new message arrives
+                setUsersWithRooms((prev) =>
+                  prev.map((uwr) => {
+                    if (uwr.user.userId === userWithRooms.user.userId) {
+                      return {
+                        ...uwr,
+                        hasNewMessages: {
+                          ...uwr.hasNewMessages,
+                          [room.roomType]: true,
+                        },
+                        lastMessageTime: {
+                          ...uwr.lastMessageTime,
+                          [room.roomType]: Math.max(
+                            uwr.lastMessageTime[room.roomType] || 0,
+                            msgTime
+                          ),
+                        },
+                      };
+                    }
+                    return uwr;
+                  })
+                );
+              }
+            };
+
+            // Subscribe to real-time message events
+            ablyRoom.messages.subscribe(messageListener);
+
+            // Perform initial check
+            await checkInitialMessages();
+
+            console.log(`✅ Always-on connection established for ${roomKey}`);
+            updateConnectionCount();
           } catch (error) {
-            console.error(`Failed to create room connection for ${roomKey}:`, error);
+            console.error(
+              `Failed to create always-on connection for ${roomKey}:`,
+              error
+            );
           }
         }
       }
     };
 
-    startPolling();
+    setupAlwaysOnConnections();
 
     // Cleanup on unmount
     return () => {
-      Object.values(pollingIntervals.current).forEach(clearInterval);
-      Object.values(roomConnections.current).forEach(room => {
-        try {
-          if (room && typeof room.release === 'function') {
-            room.release();
+      const cleanup = async () => {
+        for (const [roomKey, room] of Object.entries(roomConnections.current)) {
+          try {
+            if (room) {
+              console.log(`🧹 Cleaning up ${roomKey}`);
+
+              // Unsubscribe from all message listeners
+              if (room.messages?.unsubscribeAll) {
+                await room.messages.unsubscribeAll();
+              } else if (room.messages?.unsubscribe) {
+                room.messages.unsubscribe();
+              }
+
+              // Detach room connection
+              if (room.detach && room.status === "attached") {
+                await room.detach();
+              }
+
+              // Release room
+              if (room.release) {
+                await room.release();
+              }
+            }
+          } catch (error) {
+            console.error(`Error cleaning up room ${roomKey}:`, error);
           }
-        } catch (error) {
-          console.error('Error releasing room connection:', error);
         }
-      });
+        roomConnections.current = {};
+        updateConnectionCount();
+      };
+
+      cleanup();
     };
-  }, [usersWithRooms, chatClient]);
+  }, [usersWithRooms.length, chatClient]);
 
-const getUsersForColumn = (roomType: string) => {
-  return usersWithRooms
-    .filter(uwr => {
-      // Only show users who have new messages in this specific room type
-      const hasNewMessagesInThisRoom = uwr.hasNewMessages[roomType] || false;
-      const hasRoomOfThisType = uwr.rooms.some(room => room.roomType === roomType);
-      
-      return hasRoomOfThisType && hasNewMessagesInThisRoom;
-    })
-    .sort((a, b) => {
-      // Sort by latest message time
-      const aTime = a.lastMessageTime[roomType] || 0;
-      const bTime = b.lastMessageTime[roomType] || 0;
-      return bTime - aTime;
-    });
-};
+  const updateConnectionCount = () => {
+    const count = Object.keys(roomConnections.current).length;
+    setConnectionCount(count);
+  };
 
-  const handleChatOpen = (userId: string, roomType: string, userName: string) => {
+  const getUsersForColumn = (roomType: string) => {
+    return usersWithRooms
+      .filter((uwr) => {
+        // Only show users who have new messages in this specific room type
+        const hasNewMessagesInThisRoom = uwr.hasNewMessages[roomType] || false;
+        const hasRoomOfThisType = uwr.rooms.some(
+          (room) => room.roomType === roomType
+        );
+
+        return hasRoomOfThisType && hasNewMessagesInThisRoom;
+      })
+      .sort((a, b) => {
+        // Sort by latest message time
+        const aTime = a.lastMessageTime[roomType] || 0;
+        const bTime = b.lastMessageTime[roomType] || 0;
+        return bTime - aTime;
+      })
+      .slice(0, 38); // Ensure we never show more than 10 users per column
+  };
+
+  const handleChatOpen = (
+    userId: string,
+    roomType: string,
+    userName: string
+  ) => {
     // Close any existing chat
     setOpenChat(null);
-    
+
     // Find the room
-    const userWithRooms = usersWithRooms.find(uwr => uwr.user.userId === userId);
-    const room = userWithRooms?.rooms.find(r => r.roomType === roomType);
-    
+    const userWithRooms = usersWithRooms.find(
+      (uwr) => uwr.user.userId === userId
+    );
+    const room = userWithRooms?.rooms.find((r) => r.roomType === roomType);
+
     if (room) {
       const roomName = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
       setOpenChat({ userId, roomType, userName, roomName });
@@ -672,18 +882,72 @@ const getUsersForColumn = (roomType: string) => {
 
   const handleChatSave = async (comment: string) => {
     try {
-      await axios.patch('https://play-os-backend.forgehub.in/human/human', {
-        userId: handleChatModal.userId,
-        roomType: handleChatModal.roomType,
-        handledMsg: comment,
-        handledAt: Math.floor(Date.now() / 1000)
+      // Call the patch API to mark chat as handled
+      await axios.patch(
+        "https://play-os-backend.forgehub.in/human/human/mark-seen",
+        {
+          userId: handleChatModal.userId,
+          roomType: handleChatModal.roomType,
+          handled: comment,
+          userType: "team",
+        }
+      );
+
+      // Close the handle chat modal
+      setHandleChatModal({
+        isOpen: false,
+        userId: "",
+        roomType: "",
+        userName: "",
       });
-      
-      setHandleChatModal({ isOpen: false, userId: "", roomType: "", userName: "" });
-      // You might want to show a success message here
+
+      // Refresh the user's room data to get updated seenByTeamAt
+      await refreshUserRoomData(
+        handleChatModal.userId,
+        handleChatModal.roomType
+      );
     } catch (error) {
-      console.error('Failed to handle chat:', error);
+      console.error("Failed to handle chat:", error);
       // You might want to show an error message here
+    }
+  };
+
+  const refreshUserRoomData = async (userId: string, roomType: string) => {
+    try {
+      // Fetch updated room data for the specific user
+      const response = await axios.get(
+        `https://play-os-backend.forgehub.in/human/human/${userId}`
+      );
+      const updatedRooms = Array.isArray(response.data)
+        ? response.data
+        : response.data.rooms || [];
+
+      // Update the specific user's room data and reset message indicators
+      setUsersWithRooms((prev) =>
+        prev.map((uwr) => {
+          if (uwr.user.userId === userId) {
+            return {
+              ...uwr,
+              rooms: updatedRooms,
+              hasNewMessages: {
+                ...uwr.hasNewMessages,
+                [roomType]: false, // Reset new message flag for this room type
+              },
+              lastMessageTime: {
+                ...uwr.lastMessageTime,
+                [roomType]: 0, // Reset timestamp
+              },
+            };
+          }
+          return uwr;
+        })
+      );
+
+      console.log(
+        `✅ Refreshed room data for user ${userId}, room type ${roomType}`
+      );
+    } catch (error) {
+      console.error(`Failed to refresh room data for user ${userId}:`, error);
     }
   };
 
@@ -706,16 +970,26 @@ const getUsersForColumn = (roomType: string) => {
                 RM Dashboard
               </h1>
               <p className="text-gray-600">Chat monitoring and management</p>
-              <p className="text-sm text-gray-500">Monitoring {usersWithRooms.length} users across 5 room types</p>
+              <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+                <span>
+                  Monitoring {usersWithRooms.length} users across 5 room types
+                </span>
+                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                  🔗 {connectionCount} Live Connections
+                </span>
+              </div>
             </div>
 
             {/* Columns Grid */}
             <div className="grid grid-cols-5 gap-6">
               {columns.map((column) => {
                 const usersInColumn = getUsersForColumn(column.type);
-                
+
                 return (
-                  <div key={column.type} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div
+                    key={column.type}
+                    className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+                  >
                     {/* Column Header */}
                     <div className={`p-3 ${getColumnHeaderStyle(column.type)}`}>
                       <div className="flex items-center justify-center space-x-2">
@@ -734,11 +1008,13 @@ const getUsersForColumn = (roomType: string) => {
                           No users in this category
                         </div>
                       ) : (
-                        usersInColumn.slice(0, 50).map((userWithRooms) => { // Limit to 50 for performance
-                          const hasNewMessages = userWithRooms.hasNewMessages[column.type] || false;
-                          
+                        usersInColumn.slice(0, 50).map((userWithRooms) => {
+                          // Limit to 50 for performance
+                          const hasNewMessages =
+                            userWithRooms.hasNewMessages[column.type] || false;
+
                           return (
-                            <div 
+                            <div
                               key={`${userWithRooms.user.userId}-${column.type}`}
                               className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
                             >
@@ -751,13 +1027,15 @@ const getUsersForColumn = (roomType: string) => {
                                     <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
                                   )}
                                 </div>
-                                
-                                <button 
-                                  onClick={() => handleChatOpen(
-                                    userWithRooms.user.userId, 
-                                    column.type, 
-                                    userWithRooms.user.name
-                                  )}
+
+                                <button
+                                  onClick={() =>
+                                    handleChatOpen(
+                                      userWithRooms.user.userId,
+                                      column.type,
+                                      userWithRooms.user.name
+                                    )
+                                  }
                                   className="cursor-pointer hover:bg-gray-200 p-1 rounded transition-colors flex-shrink-0"
                                 >
                                   <TbMessage className="w-4 h-4 text-gray-600" />
@@ -787,7 +1065,7 @@ const getUsersForColumn = (roomType: string) => {
                       isOpen: true,
                       userId: openChat.userId,
                       roomType: openChat.roomType,
-                      userName: openChat.userName
+                      userName: openChat.userName,
                     });
                   }}
                 />
@@ -797,7 +1075,14 @@ const getUsersForColumn = (roomType: string) => {
             {/* Handle Chat Modal */}
             <HandleChatModal
               isOpen={handleChatModal.isOpen}
-              onClose={() => setHandleChatModal({ isOpen: false, userId: "", roomType: "", userName: "" })}
+              onClose={() =>
+                setHandleChatModal({
+                  isOpen: false,
+                  userId: "",
+                  roomType: "",
+                  userName: "",
+                })
+              }
               onSave={handleChatSave}
               userName={handleChatModal.userName}
             />
@@ -808,4 +1093,4 @@ const getUsersForColumn = (roomType: string) => {
   );
 };
 
-export default RmDash;
+export default RmDashNew;
