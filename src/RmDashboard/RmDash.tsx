@@ -16,7 +16,7 @@ const RmDash = () => {
     }
   }, []);
 
-  const getColumnHeaderStyle = (type) => {
+  const getColumnHeaderStyle = (type: string) => {
     switch (type) {
       case 'fitness':
         return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white';
