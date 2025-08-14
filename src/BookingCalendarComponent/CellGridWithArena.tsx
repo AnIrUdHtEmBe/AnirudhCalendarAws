@@ -13,6 +13,7 @@ import React from "react";
 // Add after existing imports
 import * as Ably from "ably";
 import { ChatClient, LogLevel } from "@ably/chat";
+import UserModalNew from "./UserModalNew";
 
 // Add before CellGridLatest component definition
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
@@ -2994,7 +2995,7 @@ const CellGridLatest = () => {
         {/* Current Date - Full Width */}
         <div className="text-xs text-gray-500 text-center mt-1 w-full"></div>
       </div>
-      <UserModal
+      <UserModalNew
         isOpen={isModalOpen}
         onClose={closeModal}
         cellData={

@@ -11,9 +11,9 @@ import {
   useMessages,
 } from "@ably/chat/react";
 import axios from "axios";
-import { ChevronLeft, Send } from "lucide-react";
+import { Check, ChevronLeft, Send, X } from "lucide-react";
 import { enqueueSnackbar } from "notistack";
-import React, { useState, useEffect, useRef, ChangeEvent } from "react";
+import React, { useState, useEffect, useRef, ChangeEvent, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import GameChat from "./GameChat";
 import { AblyProvider } from "ably/react";
@@ -78,6 +78,15 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const [messagePollingIntervals, setMessagePollingIntervals] = useState<{
     [roomKey: string]: NodeJS.Timeout;
   }>({});
+  const [openSmallChatBox, setOpenSmallChatBox] = useState(false);
+const [smallChatBoxData, setSmallChatBoxData] = useState<{
+  userId: string;
+  roomType: string;
+  userName: string;
+  roomName: string;
+} | null>(null);
+const [handleChatModalOpen, setHandleChatModalOpen] = useState(false);
+const [handleChatComment, setHandleChatComment] = useState("");
 
   useEffect(() => {
     //@ts-ignore
@@ -695,6 +704,346 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
     console.log("Ably message polling cleanup completed");
   };
 
+  const SmallChatBox = ({
+  roomName,
+  onClose,
+  userId,
+  roomType,
+  userName,
+  onHandleChat,
+}: {
+  roomName: string;
+  onClose: () => void;
+  userId: string;
+  roomType: string;
+  userName: string;
+  onHandleChat: () => void;
+}) => {
+  const [inputValue, setInputValue] = useState<string>("");
+  const [messages, setMessages] = useState<any[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const [clientNames, setClientNames] = useState<Record<string, string>>({});
+  const nameRequestsCache = useRef<Set<string>>(new Set());
+
+  const { historyBeforeSubscribe, send } = useMessages({
+    listener: (event: ChatMessageEvent) => {
+      if (event.type === ChatMessageEventType.Created) {
+        const newMsg = event.message as unknown as any;
+        setMessages((prev) => [...prev, newMsg]);
+        fetchSenderName(newMsg.clientId);
+      }
+    },
+    onDiscontinuity: (error: Error) => {
+      console.warn("Chat discontinuity:", error);
+      setLoading(true);
+    },
+  });
+
+  const currentClientId = useMemo(() => {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).name : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }, []);
+
+  const fetchSenderName = useCallback(
+    async (clientId: string) => {
+      if (
+        !clientId ||
+        clientId === "Guest" ||
+        clientNames[clientId] ||
+        nameRequestsCache.current.has(clientId)
+      ) {
+        return;
+      }
+
+      nameRequestsCache.current.add(clientId);
+
+      try {
+        const res = await axios.get(`${API_BASE_URL_Latest}/human/${clientId}`);
+        if (res.data?.name) {
+          setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
+        } else {
+          setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
+        }
+      } catch (error) {
+        console.error("Error fetching sender name", error);
+        setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
+      } finally {
+        nameRequestsCache.current.delete(clientId);
+      }
+    },
+    [clientNames]
+  );
+
+  // Load only new messages since seenByTeamAt
+  useEffect(() => {
+    if (historyBeforeSubscribe && loading) {
+      historyBeforeSubscribe({ limit: 60 }).then(async (result) => {
+        const allMessages: any[] = result.items as unknown as any[];
+
+        // Get user's room data to find seenByTeamAt
+        try {
+          const userRes = await axios.get(
+            `https://play-os-backend.forgehub.in/human/human/${userId}`
+          );
+          const userRooms = userRes.data.rooms || userRes.data;
+          const currentRoom = userRooms.find(
+            (room: any) => room.roomType === roomType
+          );
+
+          if (currentRoom) {
+            const seenByTeamAtDate = new Date(currentRoom.seenByTeamAt * 1000);
+            // Filter messages newer than seenByTeamAt
+            const newMessages = allMessages.filter((msg) => {
+              const msgDate = new Date(msg.timestamp || msg.createdAt);
+              return msgDate > seenByTeamAtDate;
+            });
+
+            setMessages(newMessages);
+
+            // Fetch names for unique client IDs
+            const uniqueClientIds = [
+              ...new Set(newMessages.map((msg) => msg.clientId)),
+            ];
+            uniqueClientIds.forEach((clientId) => fetchSenderName(clientId));
+          } else {
+            setMessages(allMessages);
+          }
+        } catch (error) {
+          console.error("Error filtering messages:", error);
+          setMessages(allMessages);
+        }
+
+        setLoading(false);
+      });
+    }
+  }, [historyBeforeSubscribe, loading, userId, roomType, fetchSenderName]);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 100);
+    return () => clearTimeout(timeoutId);
+  }, [messages]);
+
+  const sendMessage = useCallback(async () => {
+    if (!inputValue.trim()) return;
+    try {
+      await send({ text: inputValue.trim() });
+      setInputValue("");
+    } catch (err) {
+      console.error("Send error", err);
+    }
+  }, [inputValue, send]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    },
+    [sendMessage]
+  );
+
+  const sortedMessages = useMemo(() => {
+    return [...messages].sort(
+      (a, b) =>
+        new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+    );
+  }, [messages]);
+
+  return (
+    <div className="fixed inset-0 backdrop-blur bg-black bg-opacity-30 flex items-center justify-center z-[60]">
+      <div className="bg-white rounded-lg w-96 h-96 flex flex-col shadow-xl">
+        {/* Header */}
+        <div className="bg-blue-500 text-white p-3 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="font-medium">{userName}</span>
+            <span className="text-xs bg-blue-600 px-2 py-1 rounded">
+              {roomType}
+            </span>
+          </div>
+          <button onClick={onClose} className="hover:bg-blue-600 rounded p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {loading ? (
+            <div className="text-center text-gray-500">Loading messages...</div>
+          ) : (
+            sortedMessages.map((msg, idx) => {
+              const isMine = msg.clientId === currentClientId;
+              const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
+              const displayName = clientNames[msg.clientId] || msg.clientId;
+
+              return (
+                <div
+                  key={`${msg.clientId}-${msg.timestamp}-${idx}`}
+                  className={`flex ${isMine ? "justify-end" : "justify-start"}`}
+                >
+                  <div
+                    className={`max-w-[75%] px-3 py-2 rounded-lg ${
+                      isMine
+                        ? "bg-blue-500 text-white rounded-br-none"
+                        : "bg-gray-200 text-gray-800 rounded-bl-none"
+                    }`}
+                  >
+                    {!isMine && (
+                      <div className="text-xs font-medium text-gray-600 mb-1">
+                        {displayName}
+                      </div>
+                    )}
+                    <div className="text-sm">{msg.text}</div>
+                    <div className="text-xs opacity-75 mt-1">{timestamp}</div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <div className="p-3 border-t flex space-x-2">
+          <input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Type a message..."
+          />
+          <button
+            onClick={sendMessage}
+            className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 flex items-center"
+          >
+            <Send className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Handle Chat Button */}
+        <div className="p-3 border-t">
+          <button
+            onClick={onHandleChat}
+            className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center space-x-2"
+          >
+            <Check className="w-4 h-4" />
+            <span>Handle Chat</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const HandleChatModal = ({
+  isOpen,
+  onClose,
+  onSave,
+  userName,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (comment: string) => void;
+  userName: string;
+}) => {
+  const handleSave = () => {
+    if (handleChatComment.trim() && handleChatComment.length >= 20) {
+      onSave(handleChatComment.trim());
+      setHandleChatComment("");
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 backdrop-blur bg-black bg-opacity-30 flex items-center justify-center z-[70]">
+      <div className="bg-white rounded-lg w-80 p-4 shadow-xl">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium">Handle Chat - {userName}</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <textarea
+          value={handleChatComment}
+          onChange={(e) => setHandleChatComment(e.target.value)}
+          className="w-full border rounded p-3 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Add your comment (minimum 20 characters)..."
+        />
+        
+        <div className="text-xs text-gray-500 mt-1">
+          {handleChatComment.length}/20 characters minimum
+        </div>
+
+        <div className="flex space-x-2 mt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={handleChatComment.length < 20}
+            className={`flex-1 py-2 rounded ${
+              handleChatComment.length >= 20
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const handleChatOpen = () => {
+  setHandleChatModalOpen(true);
+  setOpenSmallChatBox(false); // Close small chat box when handle chat opens
+};
+
+const handleChatSave = async (comment: string) => {
+  if (!smallChatBoxData) return;
+  
+  try {
+    await axios.patch(
+      "https://play-os-backend.forgehub.in/human/human/mark-seen",
+      {
+        userId: smallChatBoxData.userId,
+        roomType: smallChatBoxData.roomType,
+        userType: "team",
+        handled: comment,
+      }
+    );
+
+    setHandleChatModalOpen(false);
+    setOpenSmallChatBox(false);
+    setSmallChatBoxData(null);
+    
+    enqueueSnackbar("Chat handled successfully", { variant: "success" });
+  } catch (error) {
+    console.error("Failed to handle chat:", error);
+    enqueueSnackbar("Failed to handle chat", { variant: "error" });
+  }
+};
+
+
   if (!isOpen) return null;
 
   return (
@@ -816,7 +1165,20 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
                       <TbMessage
                         size={30}
                         style={{ color: "black", cursor: "pointer" }}
-                        onClick={() => handleOpenRoomChat(user.userId)}
+                        // onClick={() => handleOpenRoomChat(user.userId)}
+                        onClick={() => {
+  handleOpenRoomChat(user.userId).then(() => {
+    if (directGameChatRoomName && directGameChatDisplayName) {
+      setSmallChatBoxData({
+        userId: directChatUserId,
+        roomType: directChatRoomType,
+        userName: user.name,
+        roomName: directGameChatRoomName,
+      });
+      setOpenSmallChatBox(true);
+    }
+  });
+}}
                       />
                       {/* New messages indicator on chat icon */}
                       {getNewMessagesForUser(user.userId) > 0 && (
@@ -877,26 +1239,34 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
             </div>
           )}
 
-          {openDirectGameChat && (
-            <div
-              className="fixed inset-0 z-[100] bg-white flex flex-col"
-              style={{ minHeight: "100vh" }}
-            >
-              {/* Use your existing Ably provider setup here if needed */}
-              <AblyProvider client={realtimeClient}>
-                <ChatClientProvider client={chatClient}>
-                  <ChatRoomProvider name={directGameChatRoomName}>
-                    <GameChat
-                      roomName={directGameChatDisplayName}
-                      onClose={() => setOpenDirectGameChat(false)}
-                      userId={directChatUserId}
-                      roomType={directChatRoomType}
-                    />
-                  </ChatRoomProvider>
-                </ChatClientProvider>
-              </AblyProvider>
-            </div>
-          )}
+          
+
+          {openSmallChatBox && smallChatBoxData && (
+  <AblyProvider client={realtimeClient}>
+    <ChatClientProvider client={chatClient}>
+      <ChatRoomProvider name={smallChatBoxData.roomName}>
+        <SmallChatBox
+          roomName={smallChatBoxData.roomName}
+          onClose={() => {
+            setOpenSmallChatBox(false);
+            setSmallChatBoxData(null);
+          }}
+          userId={smallChatBoxData.userId}
+          roomType={smallChatBoxData.roomType}
+          userName={smallChatBoxData.userName}
+          onHandleChat={handleChatOpen}
+        />
+      </ChatRoomProvider>
+    </ChatClientProvider>
+  </AblyProvider>
+)}
+
+<HandleChatModal
+  isOpen={handleChatModalOpen}
+  onClose={() => setHandleChatModalOpen(false)}
+  onSave={handleChatSave}
+  userName={smallChatBoxData?.userName || ""}
+/>
         </div>
       </div>
     </div>
@@ -906,3 +1276,25 @@ const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
 export default CellModal;
 
 //comment
+
+// replaced from openSmallChatBox
+// {openDirectGameChat && (
+//   <div
+//     className="fixed inset-0 z-[100] bg-white flex flex-col"
+//     style={{ minHeight: "100vh" }}
+//   >
+//     {/* Use your existing Ably provider setup here if needed */}
+//     <AblyProvider client={realtimeClient}>
+//       <ChatClientProvider client={chatClient}>
+//         <ChatRoomProvider name={directGameChatRoomName}>
+//           <GameChat
+//             roomName={directGameChatDisplayName}
+//             onClose={() => setOpenDirectGameChat(false)}
+//             userId={directChatUserId}
+//             roomType={directChatRoomType}
+//           />
+//         </ChatRoomProvider>
+//       </ChatClientProvider>
+//     </AblyProvider>
+//   </div>
+// )}
