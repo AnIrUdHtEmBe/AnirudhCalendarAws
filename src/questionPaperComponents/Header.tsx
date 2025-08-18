@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
 import { Calendar, FileText } from "lucide-react";
 import { DataContext } from "../store/DataContext";
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 
 interface HeaderProps {}
 
@@ -24,8 +25,11 @@ const Header: React.FC<HeaderProps> = () => {
   return (
     <header className="bg-white z-10 w-full">
       {/* Top row with icon and title */}
-      
+        <div>
+           <Breadcrumb/>
+        </div>
       <div className="flex flex-row  justify-between items-center ">
+     
         <div className="flex flex-col sm:flex-row items-center gap-2  sm:gap-4 p-4 sm:px-10">
           <div>
             <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 512 512" className="back-icon" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M217.9 256L345 129c9.4-9.4 9.4-24.6 0-33.9-9.4-9.4-24.6-9.3-34 0L167 239c-9.1 9.1-9.3 23.7-.7 33.1L310.9 417c4.7 4.7 10.9 7 17 7s12.3-2.3 17-7c9.4-9.4 9.4-24.6 0-33.9L217.9 256z">

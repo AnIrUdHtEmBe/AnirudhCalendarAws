@@ -1,12 +1,31 @@
+html, body {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  box-sizing: border-box; /* It's good to add globally */
+}
+
+/* Global box-sizing for all elements is a good practice */
+*,
+*::before,
+*::after {
+  box-sizing: inherit;
+}
+
 .all-session-container {
   background-color: rgb(243 244 246);
   font-family: 'roboto', sans-serif;
   width: 100%;
-  padding: 1.25rem;
+  height: 85vh;              /* Full viewport height */
+  box-sizing: border-box;       /* Insert this line!! */
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  overflow: hidden;             /* Prevent page scroll */
+  padding: 1.25rem;             /* Padding included inside 100vh */
 }
+
 
 @media (min-width: 1024px) {
   .all-session-container {
@@ -19,12 +38,15 @@
   background-color: white;
   border-radius: 0.5rem;
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  display: flex;
+  flex-direction: column;
+  height: 100%;             /* 🔥 Stretch to full height */
+  overflow: hidden;         /* Prevent table overflow */
 }
 
 @media (min-width: 1024px) {
   .left-p {
     width: 40%;
-    /* padding: 1rem; */
   }
 }
 
@@ -80,7 +102,8 @@
 }
 
 .Alstable-container {
-  overflow-x: auto;
+  flex: 1;                  /* 🔥 Fill remaining height after header */
+  overflow-y: auto;         /* 🔥 Scroll only table */
 }
 
 .Alstable {
@@ -94,7 +117,12 @@
   color: rgb(3, 48, 104);
   /* font-size: 0.875rem; */
 /* } */
-
+.Alstable-header {
+  position: sticky;         /* 🔥 Keep headers fixed */
+  top: 0;
+  background: #f3f4f6;
+  z-index: 5;
+}
 .Alstable-header th {
   padding: 1rem;
   color: black;
@@ -118,12 +146,6 @@
   background-color:  rgb(150, 193, 236);
 }
 
-.Alstable-header{
-  /* color: #667085; */
-  /* color: rgb(97, 21, 183); */
-  /* font-weight: 800; */
-
-}
 
 .thtwo{
   text-align: left;
@@ -189,6 +211,8 @@
   box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   display: flex;
   flex-direction: column;
+  height: 100%;             /* 🔥 Fill viewport height */
+  overflow: hidden;         /* No scroll on parent */
 }
 
 @media (min-width: 1024px) {
@@ -198,6 +222,7 @@
 }
 
 .right-panel-header {
+  flex-shrink: 0;           /* 🔥 Keep header fixed */
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -284,20 +309,38 @@
   flex: 1;
 }
 
-.activities-table-header {
-  position: sticky;
-  top: 0;
-  background-color: white;
-  z-index: 10;
+/* Right panel scroll container: match left panel style exactly */
+.right-panell .Alstable-container {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;   /* keep stacking context */
+  padding-top: 0 !important; /* REMOVE any padding top */
+  box-sizing: border-box;
 }
 
-.activities-table-header th {
+
+/* Remove sticky from .activities-table-header */
+
+/* Apply sticky DIRECTLY to table header row (tr) and cells (th): */
+.activities-table thead tr {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 5;
+}
+/* Do not add height/line-height here, let table sizing be natural */
+
+/* Header cell style (optional, unchanged): */
+.activities-table th {
   text-align: center;
   color: rgb(55 65 81);
   font-size: 1rem;
   padding: 1rem;
   border-bottom: 1px solid #e5e7eb;
+  background-color: white; /* add, to prevent shadowing from below */
+  z-index: 6; /* a bit above row */
 }
+
 
 .activities-table-header td {
   text-align: center;
@@ -355,3 +398,4 @@
   padding: 2.5rem 0;
   color: rgb(107 114 128);
 } 
+

@@ -26,6 +26,9 @@ import {
   useMessages,
 } from "@ably/chat/react";
 
+import { TbMessage } from "react-icons/tb";
+import Breadcrumb from '../Breadcrumbs/Breadcrumb';
+
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
 
 interface RoomData {
@@ -540,9 +543,13 @@ const UserChats: React.FC = () => {
 
   return (
     <ChatClientProvider client={chatClient}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 relative">
+        <div className="absolute top-4 left-4 z-50">
+          <Breadcrumb />
+          </div>
         <div className="max-w-7xl mx-auto">
           {/* Header with customer name */}
+          
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
               {selectedUser

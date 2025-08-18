@@ -23,42 +23,40 @@ function ActivityTable() {
   if (!context) {
     return <div>Loading...</div>;
   }
-  const { getActivities, createActivity, getActivityById, createSession, getTags } =
+  const { getActivities, createActivity, getActivityById, createSession } =
     useApiCalls();
   useEffect(() => {
     getActivities();
   }, []);
 
   const { setSelectComponent, activities_api_call } = context;
-  const [tags, setTags] = useState([]);
   const [planName, setPlanName] = useState<string>("");
   const [category, setCategory] = useState<string>("Fitness");
   const [theme, setTheme] = useState("");
   const [goal, setGoal] = useState("");
-  const [themes, setThemes] = useState([]);
-  const [goals, setGoals] = useState([]);
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
+  const [literals, setLiterals] = useState({
+    themes: [],
+    goals: [],
+    category: [],
+  });
 
   useEffect(() => {});
-
   useEffect(() => {
-    const taggetter = async () => {
-      const res = await getTags();
-      if (res) {
-        setTags(res);
-        setThemes(res.filter((tag) => tag.type === "theme"));
-        setGoals(res.filter((tag) => tag.type === "goal"));
-      } else {
-        console.error("Failed to fetch tags");
+    const fetchLiterals = async () => {
+      try {
+        const response = await fetch(
+          "https://forge-play-backend.forgehub.in/session-template/getLiterlas"
+        );
+        const data = await response.json();
+        setLiterals(data);
+      } catch (error) {
+        console.error("Failed to fetch literals:", error);
       }
     };
-    taggetter();
+    fetchLiterals();
   }, []);
-
-  useEffect(() => {
-    console.log("Tags fetched:", tags);
-  }, [tags]);
 
   const [newActivities, setNewActivities] = useState<Activity_Api_call[]>([
     {
@@ -100,20 +98,22 @@ function ActivityTable() {
     setSelectComponent("AllSessions");
   };
 
-  const handleSessionCreation = async () => {
-    const activityIds: string[] = emptyArr
-      .map((item) => item.activityId)
-      .filter((id): id is string => typeof id === "string");
+const handleSessionCreation = async () => {
+  const activityIds: string[] = emptyArr
+    .map((item) => item.activityId)
+    .filter((id): id is string => typeof id === "string");
 
-    const sessionToBeCreated: Session_Api_call = {
-      title: planName,
-      description: "",
-      category: category,
-      activityIds: activityIds,
-    };
-    console.log(sessionToBeCreated);
-    await createSession(sessionToBeCreated);
+  const sessionToBeCreated: Session_Api_call = {
+    title: planName,
+    description: "",
+    category: category,
+    activityIds: activityIds,
+    themes: theme ? [theme] : [],
+    goals: goal ? [goal] : [],
   };
+  console.log(sessionToBeCreated);
+  await createSession(sessionToBeCreated);
+};
 
   const handleAddNewRow = () => {
     setNewActivities((prev) => [
@@ -154,12 +154,15 @@ function ActivityTable() {
   const handleModalSave = async () => {
     const validActivities = newActivities.filter(
       (activity) =>
-        activity.name && activity.name.trim() !== "" &&
-        activity.description && activity.description.trim() !== "" &&
+        activity.name &&
+        activity.name.trim() !== "" &&
+        activity.description &&
+        activity.description.trim() !== "" &&
         activity.target !== null &&
         activity.target !== "" &&
         activity.target !== "0" &&
-        activity.unit && activity.unit.trim() !== ""
+        activity.unit &&
+        activity.unit.trim() !== ""
     );
 
     if (validActivities.length === 0) {
@@ -277,21 +280,22 @@ function ActivityTable() {
     console.log(goal);
   }, [theme, goal]);
 
-  useEffect(() => {
-    if (theme && goal) {
-      getActivities(theme, goal);
-      return;
-    }
-    if (theme) {
-      getActivities(theme, "");
-      return;
-    }
-    if (goal) {
-      getActivities("", goal);
-      return;
-    }
-    getActivities();
-  }, [theme, goal]);
+  //controlling activities with themes and goals 
+  // useEffect(() => {
+  //   if (theme && goal) {
+  //     getActivities(theme, goal);
+  //     return;
+  //   }
+  //   if (theme) {
+  //     getActivities(theme, "");
+  //     return;
+  //   }
+  //   if (goal) {
+  //     getActivities("", goal);
+  //     return;
+  //   }
+  //   getActivities();
+  // }, [theme, goal]);
 
   useEffect(() => {
     console.log(emptyArr, "this is emort");
@@ -301,7 +305,7 @@ function ActivityTable() {
   return (
     // full JSX here (omitted for brevity — same as your existing code)
     // ...
-        <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
+    <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
       {/* Header */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 gap-4">
         <div className="flex flex-col lg:flex-row w-full lg:w-auto gap-4 lg:gap-8">
@@ -329,14 +333,15 @@ function ActivityTable() {
                 displayEmpty
                 sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
               >
-                <MenuItem value="FITNESS">Fitness</MenuItem>
-                <MenuItem value="SPORTS">Sports</MenuItem>
-                <MenuItem value="WELLNESS">Wellness</MenuItem>
-                <MenuItem value="OTHER">Other</MenuItem>
+                {literals.category.map((cat, i) => (
+                  <MenuItem key={i} value={cat}>
+                    {cat}
+                  </MenuItem>
+                ))}
               </Select>
             </FormControl>
           </div>
-          
+
           <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
               <InputLabel id="demo-select-label" shrink={true}>
@@ -349,7 +354,7 @@ function ActivityTable() {
                 displayEmpty
                 renderValue={(selected) => {
                   if (!selected) {
-                    return <span ></span>;
+                    return <span></span>;
                   }
                   return selected;
                 }}
@@ -358,9 +363,9 @@ function ActivityTable() {
                 <MenuItem value="">
                   <em>None</em>
                 </MenuItem>
-                {themes.map((tag, i) => (
-                  <MenuItem key={i} value={tag?.title}>
-                    {tag.title}
+                {literals.themes.map((theme, i) => (
+                  <MenuItem key={i} value={theme}>
+                    {theme}
                   </MenuItem>
                 ))}
               </Select>
@@ -369,7 +374,10 @@ function ActivityTable() {
 
           <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <InputLabel id="demo-select-label" shrink={true}> Goal</InputLabel>
+              <InputLabel id="demo-select-label" shrink={true}>
+                {" "}
+                Goal
+              </InputLabel>
               <Select
                 labelId="demo-select-label"
                 value={goal}
@@ -378,17 +386,15 @@ function ActivityTable() {
                 sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
                 renderValue={(selected) => {
                   if (!selected) {
-                    return <span ></span>;
+                    return <span></span>;
                   }
                   return selected;
                 }}
               >
-                <MenuItem value="">
-                  None
-                </MenuItem>
-                {goals.map((tag, i) => (
-                  <MenuItem key={i} value={tag?.title}>
-                    {tag.title}
+                <MenuItem value="">None</MenuItem>
+                {literals.goals.map((goal, i) => (
+                  <MenuItem key={i} value={goal}>
+                    {goal}
                   </MenuItem>
                 ))}
               </Select>
@@ -436,7 +442,8 @@ function ActivityTable() {
                     key={index}
                     className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
                     style={{
-                      minWidth: index === 1 ? '280px' : index === 2 ? '200px' : 'auto'
+                      minWidth:
+                        index === 1 ? "280px" : index === 2 ? "200px" : "auto",
                     }}
                   >
                     {item}
@@ -454,7 +461,10 @@ function ActivityTable() {
                     {index + 1}
                   </td>
 
-                  <td className="px-4 py-7 border-b border-b-gray-200 align-middle" style={{ minWidth: '280px' }}>
+                  <td
+                    className="px-4 py-7 border-b border-b-gray-200 align-middle"
+                    style={{ minWidth: "280px" }}
+                  >
                     <div className="flex justify-center">
                       <Autocomplete
                         options={activities_api_call}
@@ -490,10 +500,11 @@ function ActivityTable() {
                     </div>
                   </td>
 
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle" style={{ minWidth: '200px' }}>
-                    <div className="break-words">
-                      {activity.description}
-                    </div>
+                  <td
+                    className="px-4 py-7 border-b border-b-gray-200 text-center align-middle"
+                    style={{ minWidth: "200px" }}
+                  >
+                    <div className="break-words">{activity.description}</div>
                   </td>
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     {activity.target}
@@ -511,23 +522,28 @@ function ActivityTable() {
                     <div className="flex justify-center items-center">
                       {activity.videoLink && (
                         <button
-                          onClick={() => handleVideoLinkClick(activity.videoLink)}
+                          onClick={() =>
+                            handleVideoLinkClick(activity.videoLink)
+                          }
                           className="video-link-button"
                           title="Watch Video"
                           style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            height: '32px',
-                            width: '32px'
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: "8px",
+                            borderRadius: "4px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            height: "32px",
+                            width: "32px",
                           }}
                         >
-                          <Eye size={16} className="text-blue-500 hover:text-blue-700" />
+                          <Eye
+                            size={16}
+                            className="text-blue-500 hover:text-blue-700"
+                          />
                         </button>
                       )}
                     </div>

@@ -162,7 +162,7 @@ export const useApiCalls = () => {
       const res = await axios.get(`${API_BASE_URL}/session-templates/full`);
       const data = res.data;
       setSessions_api_call(data);
-      // console.log("✅ Sessions fetched successfully:", data);
+      console.log("✅ Sessions fetched successfully:", data);
     } catch (error) {
       console.error("❌ Error fetching sessions:", error);
     }

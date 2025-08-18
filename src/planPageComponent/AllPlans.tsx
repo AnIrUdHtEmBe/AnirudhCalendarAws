@@ -117,16 +117,14 @@ function AllPlans() {
     );
   };
 
-
   useEffect(() => {
-    if(sessions.length > 0) {
+    if (sessions.length > 0) {
       setRows(Math.max(...sessions.map((s) => s.scheduledDay)) + 1);
     } else {
       setRows(28);
     }
   }, [sessions]);
 
-  
   console.log(rows);
 
   // console.log("Sessions:", sessions);
