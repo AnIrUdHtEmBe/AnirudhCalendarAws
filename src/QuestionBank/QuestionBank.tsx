@@ -34,6 +34,7 @@ import { LowPriority } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import AssessmentPage from "../Pages/ViewAllAssessment";
 import { useLocation } from "react-router-dom";
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 
 
 const questionTypes = [
@@ -266,7 +267,7 @@ useEffect(() => {
 
   return (
     <div className="question-bank-container">
-      
+      <Breadcrumb/>
       {/* header */}
       <div className="question-bank-header-container">
         <div className="header-top">

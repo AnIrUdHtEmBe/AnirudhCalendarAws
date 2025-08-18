@@ -25,8 +25,12 @@ interface User {
   userId: string;
   name: string;
   status: 'present' | 'absent' | 'completed';
-  courtName?: string;
-  timeSlot?: string;
+  bookings: {
+    courtName: string;
+    timeSlot: string;
+    sportId?: string;
+    bookingId: string;
+  }[];
 }
 
 interface Court {
@@ -613,108 +617,134 @@ const fetchAttendanceData = async () => {
       })
     );
 
+    console.log("Active booking data:", activeBookingData);
+
     // Extract users and determine their status with court and time info (only from active bookings)
-    const userDetailsMap = new Map<string, { userId: string; status: 'present' | 'absent'; courtName: string; timeSlot: string }>();
-    
-    // Get current time in IST
+    const userBookingsMap = new Map<string, {
+      userId: string;
+      name?: string;
+      status: 'present' | 'absent' | 'pending';
+      bookings: {
+        courtName: string;
+        timeSlot: string;
+        sportId: string;
+        bookingId: string;
+      }[];
+    }>();
+
+    // Get current time in IST and check if day has ended
     const getCurrentISTTime = () => {
-      // Get current time directly in IST timezone
       return new Date(new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
     };
 
     const currentISTTime = getCurrentISTTime();
+
+    // Check if the selected date is today
+    const isToday = () => {
+      const today = new Date().toDateString();
+      const selectedDate = currentDate.toDateString();
+      return today === selectedDate;
+    };
+
+    // Check if the day has ended (past midnight)
+    const isDayEnded = () => {
+      if (!isToday()) {
+        return true; // Past dates are always "ended"
+      }
+      
+      // For today, check if it's past midnight (next day has started)
+      const now = getCurrentISTTime();
+      const selectedDateMidnight = new Date(currentDate);
+      selectedDateMidnight.setHours(23, 59, 59, 999);
+      
+      return now > selectedDateMidnight;
+    };
+
+    const shouldShowAbsentUsers = isDayEnded();
+
     console.log("Current IST Time:", currentISTTime);
-    
-    console.log("Active booking data:", activeBookingData);
-    console.log("Current IST Time:", currentISTTime);
+    console.log("Is Today:", isToday());
+    console.log("Should show absent users:", shouldShowAbsentUsers);
     
     activeBookingData.forEach(({ courtName, booking }) => {
-      const { joinedUsers, scheduledPlayers, startTime, endTime } = booking;
+      const { joinedUsers, scheduledPlayers, startTime, endTime, sportId, bookingId } = booking;
       const timeSlot = formatTimeSlot(startTime, endTime);
       
-      console.log(`Processing booking ${booking.bookingId}:`, {
+      console.log(`Processing booking ${bookingId}:`, {
         scheduledPlayers,
         joinedUsers,
         startTime,
-        endTime
-      });
-      
-      // Test different conversion methods
-      const endTimeOriginal = new Date(endTime);
-      const endTimeWithZ = new Date(endTime + 'Z');
-      const endTimeConvertToIST = convertToIST(endTime);
-      
-      console.log(`Booking ${booking.bookingId} - Testing different conversions:`, {
-        endTimeFromAPI: endTime,
-        endTimeOriginal: endTimeOriginal.toLocaleString('en-IN'),
-        endTimeWithZ: endTimeWithZ.toLocaleString('en-IN'),  
-        endTimeConvertToIST: endTimeConvertToIST.toLocaleString('en-IN'),
-        currentTimeIST: currentISTTime.toLocaleString('en-IN')
-      });
-      
-      // Use the convertToIST function since it works for display
-      const bookingEndTimeIST = convertToIST(endTime);
-      
-      console.log(`Final comparison:`, {
-        bookingEndTime: bookingEndTimeIST.toLocaleString('en-IN'),
-        currentTime: currentISTTime.toLocaleString('en-IN'),
-        hasEndTimePassed: currentISTTime > bookingEndTimeIST,
-        timeDifference: (currentISTTime.getTime() - bookingEndTimeIST.getTime()) / (1000 * 60)
+        endTime,
+        sportId
       });
       
       scheduledPlayers.forEach(userId => {
-        // Create unique key for each user-court-timeslot combination
-        const uniqueKey = `${userId}-${courtName}-${timeSlot}`;
+        console.log(`Processing user ${userId} for booking ${bookingId}`);
         
-        console.log(`Processing user ${userId}:`, {
-          isInJoinedUsers: joinedUsers.includes(userId),
-          hasEndTimePassed: currentISTTime > bookingEndTimeIST,
-          willBeMarkedAs: joinedUsers.includes(userId) ? 'present' : (currentISTTime > bookingEndTimeIST ? 'absent' : 'not shown')
+        // Initialize user if not exists
+        if (!userBookingsMap.has(userId)) {
+          userBookingsMap.set(userId, {
+            userId,
+            status: 'pending', // Default status - will be filtered out if day hasn't ended
+            bookings: []
+          });
+          console.log(`Initialized new user entry for ${userId}`);
+        }
+        
+        const userEntry = userBookingsMap.get(userId)!;
+        
+        // Add booking info
+        userEntry.bookings.push({
+          courtName,
+          timeSlot,
+          sportId: sportId || 'Unknown Sport',
+          bookingId
         });
+        console.log(`Added booking to user ${userId}:`, { courtName, timeSlot, sportId });
         
+        // Determine user status
         if (joinedUsers.includes(userId)) {
-          // User is in both joined and scheduled - Present (regardless of time)
-          userDetailsMap.set(uniqueKey, { userId, status: 'present', courtName, timeSlot });
-          console.log(`Added ${userId} as present`);
+          // User joined at least one booking - mark as present
+          userEntry.status = 'present';
+          console.log(`Marked ${userId} as present`);
+        } else if (shouldShowAbsentUsers) {
+          // Only show as absent if the whole day has ended and user didn't join any booking
+          userEntry.status = 'absent';
+          console.log(`Marked ${userId} as absent (day ended)`);
         } else {
-          // User is only in scheduled, not in joined
-          // Only mark as absent if booking end time has passed
-          if (currentISTTime > bookingEndTimeIST) {
-            userDetailsMap.set(uniqueKey, { userId, status: 'absent', courtName, timeSlot });
-            console.log(`Added ${userId} as absent`);
-          } else {
-            console.log(`${userId} not added - booking still active (ends at ${bookingEndTimeIST.toLocaleString('en-IN')})`);
-          }
-          // If booking end time hasn't passed yet, don't include the user in any status
-          // (they still have time to join)
+          // Day is still ongoing, keep as pending (will be filtered out)
+          console.log(`${userId} - day still ongoing, keeping as pending`);
         }
       });
     });
-    
-    console.log("Final userDetailsMap:", Array.from(userDetailsMap.entries()));
 
-    // API 3: Get user names (only for active bookings)
+    console.log("Final userBookingsMap:", Array.from(userBookingsMap.entries()));
+
+    // Filter users to only show those with appropriate status (exclude 'pending')
+    const filteredUsers = Array.from(userBookingsMap.values()).filter(user => {
+      return user.status === 'present' || user.status === 'absent';
+    });
+
+    // API 3: Get user names (only for filtered users)
     const usersWithNames = await Promise.all(
-      Array.from(userDetailsMap.entries()).map(async ([uniqueKey, details]) => {
+      filteredUsers.map(async (userEntry) => {
         try {
-          const userResponse = await fetch(`https://play-os-backend.forgehub.in/human/${details.userId}`);
+          const userResponse = await fetch(`https://play-os-backend.forgehub.in/human/${userEntry.userId}`);
           const userData = await userResponse.json();
           
           return {
-            userId: details.userId,
+            userId: userEntry.userId,
             name: userData.name || 'Unknown User',
-            status: details.status,
-            courtName: details.courtName,
-            timeSlot: details.timeSlot
+            status: userEntry.status,
+            bookings: userEntry.bookings
           };
         } catch (error) {
-          console.error(`Error fetching user data for ${details.userId}:`, error);
+          console.error(`Error fetching user data for ${userEntry.userId}:`, error);
           return {
-            userId: details.userId,
+            userId: userEntry.userId,
             name: 'Unknown User',
-            status: details.status,
-            courtName: details.courtName,
-            timeSlot: details.timeSlot
+            status: userEntry.status,
+            bookings: userEntry.bookings
           };
         }
       })
@@ -1082,16 +1112,22 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
   return (
     <div className="flex items-center p-3 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
       <div className="flex items-center space-x-3 flex-1">
-        {/* Removed the duplicate handled icon here */}
         {user.status === 'absent' && !isHandled && (
           <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
             <AlertCircle className="w-4 h-4 text-red-500" />
           </div>
         )}
-        <div className="flex flex-col">
-          <span className="font-medium text-gray-800">{user.name}</span>
-          <span className="text-xs text-gray-500">{user.courtName}</span>
-          <span className="text-xs text-gray-500">{user.timeSlot}</span>
+        <div className="flex flex-col flex-1">
+          <span className="font-medium text-gray-800 mb-1">{user.name}</span>
+          {/* Display all bookings for this user */}
+          <div className="space-y-1">
+            {user.bookings.map((booking, index) => (
+              <div key={`${booking.bookingId}-${index}`} className="text-xs text-gray-500">
+                <div className="font-medium">{booking.courtName}</div>
+                <div>{booking.timeSlot}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
       <div className="flex items-center space-x-3 ml-8">
@@ -1223,7 +1259,7 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
                   {column.users.length > 0 ? (
                     column.users.map((user, index) => (
                       <UserItem
-                        key={`${user.userId}-${user.courtName}-${user.timeSlot}-${index}`}
+                        key={`${user.userId}-${index}`}
                         user={user}
                         showCheckButton={column.showCheckButton}
                       />

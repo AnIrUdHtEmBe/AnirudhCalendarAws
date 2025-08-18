@@ -1,341 +1,279 @@
-  /* General Layout */
-  .dashboard-container {
-    display: flex;
-    flex-direction: column;
-    font-family: 'roboto', sans-serif;
-    height: 100vh;
-    overflow: hidden;
-  }
+/* Updated CSS to fix the bottom cutoff issue */
 
-  .header-container {
-    width: 100%;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-  }
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  font-family: 'roboto', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
 
-  /* Body Section */
-  .body-container {
-    padding: 1rem;
-    /* height: calc(100vh - 130px); */
-    overflow-y: hidden;
-  }
+.body-container {
+  padding: 1rem;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.paper-det {
+  background-color: white;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Info - Fixed height */
+.top-info {
+  display: flex;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 2px solid #ccc;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Main container takes remaining space */
+.main-container {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0; /* Important for flexbox scrolling */
+}
+
+/* Left Questions List */
+.questions-list {
+  width: 50%;
+  padding: 1rem;
+  overflow-y: auto;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+}
+
+.questions-title {
+  color: #2563EB;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 2rem;
+  flex-shrink: 0;
+}
+
+.questions-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-bottom: 2rem; /* Add bottom padding for last question */
+}
+
+/* Right Questions Display */
+.questions-display {
+  width: 50%;
+  padding: 1rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Add padding to the last question in right panel */
+.questions-display > .question-header:last-child {
+  margin-bottom: 3rem;
+}
+
+/* Ensure options container has proper bottom spacing */
+.options-container {
+  display: flex;
+  flex-direction: column;
+  border-bottom: #CCCCCC 1px solid;
+  padding-bottom: 30px;
+  margin-bottom: 30px;
+}
+
+/* For the last question, remove border and add extra padding */
+.question-header:last-child .options-container {
+  border-bottom: none;
+  padding-bottom: 3rem;
+}
+
+/* Rest of your existing styles remain the same */
+.paper-titless {
+  font-size: 36px;
+  height: 44px; 
+  color:#2B3C4E;
+  font-weight: 300;
+  margin-bottom: 10px;
+}
+
+.paper-subtitle{
+  font-size: 20px;
+  color: #101011;
+  font-weight: 400;
+}
+
+.user-det {
+  display: flex;
+  gap: 30px;
+  align-items: center;
+}
+
+.label-bhav {
+  font-weight: 600;
+}
+
+.submit-btn {
+  padding: 0.5rem 1.5rem;
+  border-radius: 0.375rem;
+  color: white;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.submit-btn.active {
+  background-color: #48bb78;
+  cursor: pointer;
+}
+
+.submit-btn.disabled {
+  background-color: #e2e8f0;
+  cursor: not-allowed;
+}
+
+.question-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+}
+
+.question-item.selected {
+  background-color: #e0e7ff;
+}
+
+.question-item.hover:hover {
+  background-color: #f3f4f6;
+}
+
+.answered-icon {
+  color: #38a169;
+}
+
+.unanswered-icon {
+  color: #cbd5e0;
+}
+
+.question-text {
+  display: flex;
+  gap: .75rem;
+  color: #101011;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.question-header {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  width: 100%;
+}
+
+.question-subheader{
+  display: flex;
+  width: 100%;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.question-number{
+  color: #2563EB;
+  font-weight: 700;
+  font-size: 20px;
+}
+
+.question-count{
+  font-weight: 400;
+  color: #101011;
+  font-size: 20px;
+}
+
+.option-text {
+  font-size: 18px;
+  font-weight: 400;
+  margin-left: 15px;
+  color: #6A6A6A;
+}
 
 .has-note{
   background-color: #2563EB;
 }
 
+.stick-comment{
+  border: rgba(0, 0, 0, 0.2) 1px solid;
+  color: rgba(0, 0, 0, 0.8);
+}
 
-  /* CHANGES IN OVERFLOW AND HEIGHT  */
+.comment-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
 
-/*  */
+.comment-modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 0.5rem;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
 
-  .paper-det {
-    background-color: white;
-    padding: 1rem;
-    border-radius: 0.75rem;
-    height: calc(100vh - 165px);
-    overflow-y: hidden;
-  }
+.comment-modal-title {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
 
-  /* Top Info */
-  .top-info {
-    display: flex;
-    /* height: 10%; */
-    justify-content: space-between;
-    padding: 1rem;
-    border-bottom: 2px solid #ccc;
-  }
+.comment-modal-textarea {
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 0.375rem;
+  font-size: 1rem;
+  resize: none;
+  margin-bottom: 1rem;
+}
 
-  .paper-titless {
-    font-size: 36px;
-    /* width: 250px; */
-    height: 44px; 
-    color:#2B3C4E;
-    font-weight: 300;
-    margin-bottom: 10px;
-  }
+.comment-modal-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+}
 
-  .paper-subtitle{
-    font-size: 20px;
-    color: #101011;
-    font-weight: 400;
-  }
+.comment-modal-button {
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
 
-  .user-det {
-    display: flex;
-    gap: 30px;
-    align-items: center;
-  }
+.comment-modal-button.cancel {
+  background-color: #e2e8f0;
+  color: #1a202c;
+}
 
-  .label-bhav {
-    font-weight: 600;
-  }
-
-  .submit-btn {
-    padding: 0.5rem 1.5rem;
-    border-radius: 0.375rem;
-    color: white;
-    font-weight: 600;
-    transition: background-color 0.3s ease;
-  }
-
-  .submit-btn.active {
-    background-color: #48bb78;
-    cursor: pointer;
-  }
-
-  .submit-btn.disabled {
-    background-color: #e2e8f0;
-    cursor: not-allowed;
-  }
-
-  /* Main Scrollable Panels */
-  .main-container {
-    /* height: 90%; */
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  /* Left Questions List */
-  .questions-list {
-    width: 50%;
-    padding: 1rem;
-    overflow-y: auto;
-    height: calc(100vh - 150px);
-    border-right: 1px solid #ccc;
-    gap: 2rem;
-  }
-
-  .questions-title {
-    color: #2563EB;
-    height: 22px;
-    width: 100px;
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 2rem;
-  }
-
-  .questions-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .question-item {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    cursor: pointer;
-  }
-
-  .question-item.selected {
-    background-color: #e0e7ff;
-  }
-
-  .question-item.hover:hover {
-    background-color: #f3f4f6;
-  }
-
-  .answered-icon {
-    color: #38a169;
-  }
-
-  .unanswered-icon {
-    color: #cbd5e0;
-  }
-
-  .question-text {
-    display: flex;
-    gap: .75rem;
-    color: #101011;
-    font-size: 18px;
-    font-weight: 400;
-  }
-
-  /* Right Questions Display */
-  .questions-display {
-    width: 50%;
-    padding: 16px 16px 200px 16px;
-    overflow-y: auto;
-    height: calc(100vh - 150px);
-  }
-
-  .question-header {
-    font-size: 1.125rem;
-    font-weight: 600;
-    margin-bottom: 0.5rem;
-    width: 100%;
-  }
-
-  .question-subheader{
-    display: flex;
-    width: 100%;
-    justify-content:  space-between;
-    align-items: center;
-  }
-
-  .question-number{
-    color: #2563EB;
-    font-weight: 700;
-    font-size: 20px;
-  }
-
-  .question-count{
-    font-weight: 400;
-    color: #101011;
-    font-size: 20px;
-  }
-
-  .options-container {
-    display: flex;
-    flex-direction: column;
-    border-bottom: #CCCCCC 1px solid;
-    padding-bottom: 30px;
-    margin-bottom: 30px;
-    /* gap: 1rem; */
-  }
-
-  .option-item {
-    display: flex;
-    align-items: center;
-    /* padding: .5rem; */
-    border-radius: 0.375rem;
-    cursor: pointer;
-  }
-
-  .option-item.default-option:hover {
-    background-color: #f3f4f6;
-  }
-
-  .option-text {
-    font-size: 18px;
-    font-weight: 400;
-    margin-left: 15px;
-    color: #6A6A6A;
-  }
-
-  /* RESPONSIVE DESIGN */
-  @media (max-width: 768px) {
-    .main-container {
-      flex-direction: column;
-    }
-
-    .questions-list,
-    .questions-display {
-      width: 100%;
-      height: auto;
-      max-height: 50vh;
-      border-right: none;
-      border-bottom: 1px solid #ccc;
-    }
-
-    .questions-display {
-      border-bottom: none;
-    }
-
-    .top-info {
-      flex-direction: column;
-      gap: 1rem;
-      align-items: flex-start;
-    }
-
-    .user-details {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .submit-btn {
-      width: 100%;
-      text-align: center;
-    }
-  }
-
-  @media (max-width: 480px) {
-    .paper-title {
-      font-size: 1.5rem;
-    }
-
-    .question-text,
-    .option-text {
-      font-size: 0.75rem;
-    }
-
-    .question-item,
-    .option-item {
-      padding: 0.5rem;
-    }
-  }
-
-  .stick-comment{
-    border: rgba(0, 0, 0, 0.2) 1px solid;
-    color: rgba(0, 0, 0, 0.8);
-    
-  }
-
-  .comment-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5); /* semi-transparent black */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 999; /* ensure it's on top of everything */
-  }
-  
-  .comment-modal-content {
-    background-color: white;
-    padding: 2rem;
-    border-radius: 0.5rem;
-    width: 90%;
-    max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-  }
-  
-  .comment-modal-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin-bottom: 1rem;
-  }
-  
-  .comment-textarea {
-    width: 100%;
-    padding: 1rem;
-    border: 1px solid #ccc;
-    border-radius: 0.375rem;
-    font-size: 1rem;
-    resize: none;
-    margin-bottom: 1rem;
-  }
-  
-  .comment-modal-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 1rem;
-  }
-  
-  .comment-modal-button {
-    padding: 0.5rem 1rem;
-    border-radius: 0.375rem;
-    font-weight: 600;
-    border: none;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .comment-modal-button.cancel {
-    background-color: #e2e8f0;
-    color: #1a202c;
-  }
-  
-  .comment-modal-button.save {
-    background-color: #2563EB;
-    color: white;
-  }
-  
+.comment-modal-button.save {
+  background-color: #2563EB;
+  color: white;
+}

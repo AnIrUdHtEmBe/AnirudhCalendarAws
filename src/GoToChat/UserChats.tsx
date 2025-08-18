@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Dumbbell, Heart, Trophy, Utensils, Calendar } from 'lucide-react';
 import { TbMessage } from "react-icons/tb";
+import Breadcrumb from '../Breadcrumbs/Breadcrumb';
 
 const UserChats = () => {
   const [selectedUser, setSelectedUser] = useState(null);
@@ -72,7 +73,12 @@ const UserChats = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 relative">
+      {/* Floating Breadcrumb - top left */}
+      <div className="absolute top-4 left-4 z-50">
+        <Breadcrumb />
+      </div>
+
       <div className="max-w-7xl mx-auto">
         {/* Header with customer name */}
         <div className="text-center mb-8">
@@ -101,8 +107,8 @@ const UserChats = () => {
                     <span className="text-gray-800 font-medium">
                       {loggedInUser}
                     </span>
-                    <button className='cursor-pointer'>
-                      <TbMessage className='size-6' />
+                    <button className="cursor-pointer">
+                      <TbMessage className="size-6" />
                     </button>
                   </div>
                 </div>

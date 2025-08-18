@@ -1,11 +1,14 @@
 import React from 'react';
 import './Header.css';
+import Breadcrumb from '../Breadcrumbs/Breadcrumb';
 
-interface HeaderProps {}
-
-const Header: React.FC<HeaderProps> = () => {
+const Header: React.FC = () => {
   return (
     <header className="header">
+      {/* Floating Breadcrumb */}
+      <div className="breadcrumb-floating">
+        <Breadcrumb />
+      </div>
       <div className="header-content">
         <h1 className="header-title">
           Customer Assessment

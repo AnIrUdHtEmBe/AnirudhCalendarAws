@@ -23,43 +23,45 @@ function NutritionActivityTable() {
   if (!context) {
     return <div>Loading...</div>;
   }
-  const { getActivities, createNutritionActivity, getActivityById, createSession, getTags } =
-    useApiCalls();
-  
+  const {
+    getActivities,
+    createNutritionActivity,
+    getActivityById,
+    createSession,
+  } = useApiCalls();
+
   useEffect(() => {
     getActivities("", "", "NUTRITION");
   }, []);
 
   const { setSelectComponent, activities_api_call } = context;
-  const [tags, setTags] = useState([]);
+
   const [planName, setPlanName] = useState<string>("");
-  const [category, setCategory] = useState<string>("Nutrition");
+  const [category, setCategory] = useState<string>("NUTRITION");
   const [theme, setTheme] = useState("");
   const [goal, setGoal] = useState("");
-  const [themes, setThemes] = useState([]);
-  const [goals, setGoals] = useState([]);
+
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
-
-  useEffect(() => {}, [])
-
+  const [literals, setLiterals] = useState({
+    themes: [],
+    goals: [],
+  });
+  useEffect(() => {}, []);
   useEffect(() => {
-    const taggetter = async () => {
-      const res = await getTags();
-      if (res) {
-        setTags(res);
-        setThemes(res.filter((tag) => tag.type === "theme"));
-        setGoals(res.filter((tag) => tag.type === "goal"));
-      } else {
-        console.error("Failed to fetch tags");
+    const fetchLiterals = async () => {
+      try {
+        const response = await fetch(
+          "https://forge-play-backend.forgehub.in/session-template/getLiterlas"
+        );
+        const data = await response.json();
+        setLiterals(data);
+      } catch (error) {
+        console.error("Failed to fetch literals:", error);
       }
     };
-    taggetter();
+    fetchLiterals();
   }, []);
-
-  useEffect(() => {
-    console.log("Tags fetched:", tags);
-  }, [tags]);
 
   const [newActivities, setNewActivities] = useState<Activity_Api_call[]>([
     {
@@ -102,20 +104,22 @@ function NutritionActivityTable() {
     setSelectComponent("AllSessions");
   };
 
-  const handleSessionCreation = async () => {
-    const activityIds: string[] = emptyArr
-      .map((item) => item.activityId)
-      .filter((id): id is string => typeof id === "string");
+ const handleSessionCreation = async () => {
+  const activityIds: string[] = emptyArr
+    .map((item) => item.activityId)
+    .filter((id): id is string => typeof id === "string");
 
-    const sessionToBeCreated: Session_Api_call = {
-      title: planName,
-      description: "",
-      category: "NUTRITION",
-      activityIds: activityIds,
-    };
-    console.log(sessionToBeCreated);
-    await createSession(sessionToBeCreated);
+  const sessionToBeCreated: Session_Api_call = {
+    title: planName,
+    description: "",
+    category: category,
+    activityIds: activityIds,
+    themes: theme ? [theme] : [],
+    goals: goal ? [goal] : [],
   };
+  console.log(sessionToBeCreated);
+  await createSession(sessionToBeCreated);
+};
 
   const handleAddNewRow = () => {
     setNewActivities((prev) => [
@@ -156,14 +160,22 @@ function NutritionActivityTable() {
   const handleModalSave = async () => {
     const validActivities = newActivities.filter(
       (activity) =>
-        activity.name && activity.name.trim() !== "" &&
-        activity.description && activity.description.trim() !== "" &&
-        activity.target && activity.target !== "" && activity.target !== null && activity.target !== "0" &&
-        activity.unit && activity.unit.trim() !== ""
+        activity.name &&
+        activity.name.trim() !== "" &&
+        activity.description &&
+        activity.description.trim() !== "" &&
+        activity.target &&
+        activity.target !== "" &&
+        activity.target !== null &&
+        activity.target !== "0" &&
+        activity.unit &&
+        activity.unit.trim() !== ""
     );
 
     if (validActivities.length === 0) {
-      alert("Please fill in all required fields (Name, Description, Target, Unit)");
+      alert(
+        "Please fill in all required fields (Name, Description, Target, Unit)"
+      );
       setShowModal(false);
       return;
     }
@@ -180,10 +192,14 @@ function NutritionActivityTable() {
       };
 
       // Only include target2 and unit2 if they have values
-      if (activity.target2 && activity.target2 !== "" && activity.target2 !== null) {
+      if (
+        activity.target2 &&
+        activity.target2 !== "" &&
+        activity.target2 !== null
+      ) {
         item.target2 = Number(activity.target2); // Convert to number
       }
-      
+
       if (activity.unit2 && activity.unit2 !== "" && activity.unit2 !== null) {
         item.unit2 = activity.unit2;
       }
@@ -202,7 +218,9 @@ function NutritionActivityTable() {
         console.error("Error posting activities:", error);
         console.error("Failed item data:", newItems);
         // Still show user feedback but don't break the flow
-        alert("Some activities could not be saved. Please check the console for details.");
+        alert(
+          "Some activities could not be saved. Please check the console for details."
+        );
         throw error; // Re-throw to prevent continuing
       }
     };
@@ -247,7 +265,7 @@ function NutritionActivityTable() {
 
   const updateTheActivitityById = async (activityId: string, index: number) => {
     const activity = await getActivityById(activityId);
-    console.log(activity, "['pilkujhgfd")
+    console.log(activity, "['pilkujhgfd");
     if (activity) {
       emptyArr[index] = activity;
       setEmptyArr([...emptyArr]);
@@ -296,6 +314,7 @@ function NutritionActivityTable() {
     console.log(goal);
   }, [theme, goal]);
 
+  //controlling acitivites with theme adn goal
   useEffect(() => {
     if (theme && goal) {
       console.log("Theme and Goal are set:", theme, goal);
@@ -316,8 +335,8 @@ function NutritionActivityTable() {
   }, [theme, goal]);
 
   useEffect(() => {
-    console.log(emptyArr, "this is emort")
-  }, [emptyArr])
+    console.log(emptyArr, "this is emort");
+  }, [emptyArr]);
 
   return (
     <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
@@ -350,7 +369,7 @@ function NutritionActivityTable() {
               />
             </FormControl>
           </div>
-          
+
           <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
               <InputLabel id="demo-select-label" shrink={true}>
@@ -363,7 +382,7 @@ function NutritionActivityTable() {
                 displayEmpty
                 renderValue={(selected) => {
                   if (!selected) {
-                    return <span ></span>;
+                    return <span></span>;
                   }
                   return selected;
                 }}
@@ -372,9 +391,9 @@ function NutritionActivityTable() {
                 <MenuItem value="">
                   <em>None</em>
                 </MenuItem>
-                {themes.map((tag, i) => (
-                  <MenuItem key={i} value={tag?.title}>
-                    {tag.title}
+                {literals.themes.map((theme, i) => (
+                  <MenuItem key={i} value={theme}>
+                    {theme}
                   </MenuItem>
                 ))}
               </Select>
@@ -383,7 +402,10 @@ function NutritionActivityTable() {
 
           <div className="flex flex-col w-full lg:w-auto min-w-0">
             <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <InputLabel id="demo-select-label" shrink={true}> Goal</InputLabel>
+              <InputLabel id="demo-select-label" shrink={true}>
+                {" "}
+                Goal
+              </InputLabel>
               <Select
                 labelId="demo-select-label"
                 value={goal}
@@ -392,17 +414,15 @@ function NutritionActivityTable() {
                 sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
                 renderValue={(selected) => {
                   if (!selected) {
-                    return <span ></span>;
+                    return <span></span>;
                   }
                   return selected;
                 }}
               >
-                <MenuItem value="">
-                  None
-                </MenuItem>
-                {goals.map((tag, i) => (
-                  <MenuItem key={i} value={tag?.title}>
-                    {tag.title}
+                <MenuItem value="">None</MenuItem>
+                {literals.goals.map((goal, i) => (
+                  <MenuItem key={i} value={goal}>
+                    {goal}
                   </MenuItem>
                 ))}
               </Select>
@@ -450,7 +470,8 @@ function NutritionActivityTable() {
                     key={index}
                     className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
                     style={{
-                      minWidth: index === 1 ? '280px' : index === 2 ? '200px' : 'auto'
+                      minWidth:
+                        index === 1 ? "280px" : index === 2 ? "200px" : "auto",
                     }}
                   >
                     {item}
@@ -468,7 +489,10 @@ function NutritionActivityTable() {
                     {index + 1}
                   </td>
 
-                  <td className="px-4 py-7 border-b border-b-gray-200 align-middle" style={{ minWidth: '280px' }}>
+                  <td
+                    className="px-4 py-7 border-b border-b-gray-200 align-middle"
+                    style={{ minWidth: "280px" }}
+                  >
                     <div className="flex justify-center">
                       <Autocomplete
                         options={activities_api_call}
@@ -504,10 +528,11 @@ function NutritionActivityTable() {
                     </div>
                   </td>
 
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle" style={{ minWidth: '200px' }}>
-                    <div className="break-words">
-                      {activity.description}
-                    </div>
+                  <td
+                    className="px-4 py-7 border-b border-b-gray-200 text-center align-middle"
+                    style={{ minWidth: "200px" }}
+                  >
+                    <div className="break-words">{activity.description}</div>
                   </td>
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     {activity.target}
