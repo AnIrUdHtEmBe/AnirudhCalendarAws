@@ -10,29 +10,7 @@ import LoadingScreen from "./LoadingScreen";
 import "./CellGridLatest.css";
 import { useLocation } from "react-router-dom";
 import React from "react";
-// Add after existing imports
-import * as Ably from "ably";
-import { ChatClient, LogLevel } from "@ably/chat";
-import UserModalNew from "./UserModalNew";
 import UserModal2 from "./UserModal2";
-
-// Add before CellGridLatest component definition
-const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
-const ablyRealtimeClient = new Ably.Realtime({
-  key: API_KEY,
-  clientId: (() => {
-    try {
-      const t = sessionStorage.getItem("token");
-      return t ? JSON.parse(atob(t.split(".")[1])).name : "Guest";
-    } catch {
-      return "Guest";
-    }
-  })(),
-});
-
-const cellChatClient = new ChatClient(ablyRealtimeClient, {
-  logLevel: LogLevel.Info,
-});
 
 export type CellState =
   | "available"
@@ -53,11 +31,6 @@ interface CellProps {
   onClick?: (row: number, col: number) => void;
   onDropAction?: (from: [number, number], to: [number, number]) => void;
   isSelected?: any;
-  cellMessageCounts?: { [bookingId: string]: number };
-  getBookingIdForOccupiedCell?: (
-    row: number,
-    col: number
-  ) => Promise<string | null>;
 }
 
 type Court = { courtId: string; name: string };
@@ -120,39 +93,6 @@ function toLocalISOString(date: Date): string {
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
 }
 
-// Add this component before CellGridLatest component
-// ✅ Outside of CellGridLatest, before Cell definition
-// const RedDotIndicator: React.FC<{
-//   row: number;
-//   col: number;
-//   cellMessageCounts: { [bookingId: string]: number };
-//   getBookingIdForOccupiedCell: (
-//     row: number,
-//     col: number
-//   ) => Promise<string | null>;
-// }> = ({ row, col, cellMessageCounts, getBookingIdForOccupiedCell }) => {
-//   const [hasNewMessages, setHasNewMessages] = useState(false);
-
-//   useEffect(() => {
-//     const checkForNewMessages = async () => {
-//       const bookingId = await getBookingIdForOccupiedCell(row, col);
-//       if (bookingId && cellMessageCounts[bookingId] > 0) {
-//         setHasNewMessages(true);
-//       } else {
-//         setHasNewMessages(false);
-//       }
-//     };
-
-//     checkForNewMessages();
-//   }, [row, col, cellMessageCounts, getBookingIdForOccupiedCell]);
-
-//   if (!hasNewMessages) return null;
-
-//   return (
-//     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full z-10"></div>
-//   );
-// };
-
 const Cell = ({
   row,
   col,
@@ -163,8 +103,6 @@ const Cell = ({
   onClick,
   onDropAction,
   isSelected,
-  cellMessageCounts,
-  getBookingIdForOccupiedCell,
 }: CellProps) => {
   const colorMap: Record<CellState, string> = {
     available:
@@ -198,12 +136,11 @@ const Cell = ({
       state === "unblock" ||
       state === "unbook");
 
-  // In the Cell component definition, replace the return statement with:
   return (
     <div
       className={clsx(
         classNames,
-        "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors relative",
+        "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors",
         state && colorMap[state],
         showRing &&
           isSelected &&
@@ -215,6 +152,7 @@ const Cell = ({
           onClick(row, col);
         }
       }}
+      // style={style}
       draggable={state === "occupied" || state === "blocked"}
       onDragStart={(e) => {
         if (row !== undefined && col !== undefined) {
@@ -236,21 +174,11 @@ const Cell = ({
           onDropAction([fromRow, fromCol], [row, col]);
         }
       }}
-    >
-      {/* Add red dot for occupied cells with new messages */}
-      {/* {state === "occupied" && row !== undefined && col !== undefined && (
-        <RedDotIndicator
-          row={row}
-          col={col}
-          cellMessageCounts={cellMessageCounts!}
-          getBookingIdForOccupiedCell={getBookingIdForOccupiedCell!}
-        />
-      )} */}
-    </div>
+    />
   );
 };
 
-const CellGridLatest = () => {
+const CellGridLatest2 = () => {
   const [courtId, setCourtId] = useState<Court[]>([]);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
@@ -277,21 +205,6 @@ const CellGridLatest = () => {
     gameName: string;
     bookingId: string;
   } | null>(null);
-
-  // Message polling states - add after existing state declarations
-  const [cellMessageCounts, setCellMessageCounts] = useState<{
-    [bookingId: string]: number;
-  }>({});
-  const [cellUserChatRooms, setCellUserChatRooms] = useState<{
-    [bookingId: string]: { [userId: string]: any[] };
-  }>({});
-  const [cellAblyConnections, setCellAblyConnections] = useState<{
-    [roomKey: string]: any;
-  }>({});
-  const [cellPollingIntervals, setCellPollingIntervals] = useState<{
-    [roomKey: string]: NodeJS.Timeout;
-  }>({});
-  const [isMessagePollingActive, setIsMessagePollingActive] = useState(false);
 
   // Add this filtering function
   // const getCourtType = (courtName: string): string => {
@@ -529,29 +442,29 @@ const CellGridLatest = () => {
   };
 
   // Generate time labels for 24 hours (12 AM to 12 AM)
-  const timeLabels = useMemo(() => {
-    return Array.from({ length: cols }, (_, i) => {
-      const hour = Math.floor(i / 2);
-      const minute = i % 2 === 0 ? "00" : "30";
-      const nextHour = Math.floor((i + 1) / 2);
-      const nextMinute = (i + 1) % 2 === 0 ? "00" : "30";
+  const timeLabels = useMemo(() => { 
+  return Array.from({ length: cols }, (_, i) => {
+    const hour = Math.floor(i / 2);
+    const minute = i % 2 === 0 ? "00" : "30";
+    const nextHour = Math.floor((i + 1) / 2);
+    const nextMinute = (i + 1) % 2 === 0 ? "00" : "30";
 
-      const formatHour = (h: number) => {
-        if (h === 0) return "12 AM";
-        if (h < 12) return `${h} AM`;
-        if (h === 12) return "12 PM";
-        return `${h - 12} PM`;
-      };
+    const formatHour = (h: number) => {
+      if (h === 0) return "12 AM";
+      if (h < 12) return `${h} AM`;
+      if (h === 12) return "12 PM";
+      return `${h - 12} PM`;
+    };
 
-      const formatHourShort = (h: number) => {
-        if (h === 0) return "12";
-        if (h <= 12) return h.toString();
-        return (h - 12).toString();
-      };
+    const formatHourShort = (h: number) => {
+      if (h === 0) return "12";
+      if (h <= 12) return h.toString();
+      return (h - 12).toString();
+    };
 
-      return `${formatHourShort(hour)}:${minute}  `;
-    });
-  }, [cols]);
+    return `${formatHourShort(hour)}:${minute}  `;
+  });
+}, [cols]);
 
   const [courtSlots, setCourtSlots] = useState<Record<string, any[]>>({});
   const [courtBookIds, setCourtBookids] = useState<Record<string, any[]>>({});
@@ -672,56 +585,53 @@ const CellGridLatest = () => {
     fetchArenaDetails();
   }, []);
 
-  const fetchAllCourtDetails = useCallback(
-    async (filteredCourtId: Court[]) => {
-      const detailsMap: Record<string, CourtDetails> = {};
-      const allowedSportsMap: Record<string, Sport[]> = {};
+  const fetchAllCourtDetails =  useCallback(async(filteredCourtId: Court[]) => {
+    const detailsMap: Record<string, CourtDetails> = {};
+    const allowedSportsMap: Record<string, Sport[]> = {};
 
-      await Promise.all(
-        filteredCourtId.map(async (court) => {
-          try {
-            const res = await axios.get(
-              `${API_BASE_URL_Latest}/court/${court.courtId}`
-            );
-            const courtDetails = res.data;
-            // console.log("court details ", courtDetails);
+    await Promise.all(
+      filteredCourtId.map(async (court) => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL_Latest}/court/${court.courtId}`
+          );
+          const courtDetails = res.data;
+          // console.log("court details ", courtDetails);
 
-            detailsMap[court.courtId] = courtDetails;
+          detailsMap[court.courtId] = courtDetails;
 
-            // Fetch allowed sports for this court
-            const sports = await Promise.all(
-              courtDetails.allowedSports.map(async (sportId: any) => {
-                try {
-                  const sportRes = await axios.get(
-                    `${API_BASE_URL_Latest}/sports/id/${sportId}`
-                  );
-                  // console.log("sport res data", sportRes);
+          // Fetch allowed sports for this court
+          const sports = await Promise.all(
+            courtDetails.allowedSports.map(async (sportId: any) => {
+              try {
+                const sportRes = await axios.get(
+                  `${API_BASE_URL_Latest}/sports/id/${sportId}`
+                );
+                // console.log("sport res data", sportRes);
 
-                  return sportRes.data;
-                } catch {
-                  return null;
-                }
-              })
-            );
+                return sportRes.data;
+              } catch {
+                return null;
+              }
+            })
+          );
 
-            allowedSportsMap[court.courtId] = sports.filter(
-              (s) => s !== null
-            ) as Sport[];
-          } catch (error) {
-            // console.error(
-            //   `Failed to fetch court details or sports for ${court.courtId}`,
-            //   error
-            // );
-          }
-        })
-      );
-      // console.log("allowedSportsMap", allowedSportsMap);
+          allowedSportsMap[court.courtId] = sports.filter(
+            (s) => s !== null
+          ) as Sport[];
+        } catch (error) {
+          // console.error(
+          //   `Failed to fetch court details or sports for ${court.courtId}`,
+          //   error
+          // );
+        }
+      })
+    );
+    // console.log("allowedSportsMap", allowedSportsMap);
 
-      setCourtDetailsMap(detailsMap);
-      setCourtAllowedSportsMap(allowedSportsMap);
-    },
-    [courtDetailsMap, courtAllowedSportsMap]
-  );
+    setCourtDetailsMap(detailsMap);
+    setCourtAllowedSportsMap(allowedSportsMap);
+  }, [courtDetailsMap, courtAllowedSportsMap])
 
   const fetchSlotsForCourts = useCallback(async () => {
     const dateStr = currentDate.toISOString().split("T")[0];
@@ -817,105 +727,102 @@ const CellGridLatest = () => {
   };
 
   // Updated grid generation function
-  const updateGridWithBookings = useCallback(
-    (
-      courtsData: Court[],
-      bookingsData: Record<string, { start: Date; end: Date }[]>,
-      blockedData: Record<string, { start: Date; end: Date }[]>, // new param for blocked slots
-      cancelledData: Record<string, { start: Date; end: Date }[]>,
-      date: Date
-    ) => {
-      const newGrid: CellState[][] = Array.from(
-        { length: courtsData.length },
-        () => Array(cols).fill("available")
-      );
+  const updateGridWithBookings = useCallback((
+    courtsData: Court[],
+    bookingsData: Record<string, { start: Date; end: Date }[]>,
+    blockedData: Record<string, { start: Date; end: Date }[]>, // new param for blocked slots
+    cancelledData: Record<string, { start: Date; end: Date }[]>,
+    date: Date
+  ) => {
+    const newGrid: CellState[][] = Array.from(
+      { length: courtsData.length },
+      () => Array(cols).fill("available")
+    );
 
-      for (let r = 0; r < courtsData.length; r++) {
-        const court = courtsData[r];
-        const courtBookings = bookingsData[court.courtId] || [];
-        const courtBlocked = blockedData[court.courtId] || [];
-        const courtCancelled = cancelledData[court.courtId] || [];
+    for (let r = 0; r < courtsData.length; r++) {
+      const court = courtsData[r];
+      const courtBookings = bookingsData[court.courtId] || [];
+      const courtBlocked = blockedData[court.courtId] || [];
+      const courtCancelled = cancelledData[court.courtId] || [];
 
-        // Mark blocked cells first
-        for (const block of courtBlocked) {
-          const startTime = block.start.getTime();
-          const endTime = block.end.getTime();
+      // Mark blocked cells first
+      for (const block of courtBlocked) {
+        const startTime = block.start.getTime();
+        const endTime = block.end.getTime();
 
-          for (let i = 0; i < timeLabels.length; i++) {
-            const hour = Math.floor(i / 2);
-            const minute = i % 2 === 0 ? 0 : 30;
+        for (let i = 0; i < timeLabels.length; i++) {
+          const hour = Math.floor(i / 2);
+          const minute = i % 2 === 0 ? 0 : 30;
 
-            const slotTime = new Date(date);
-            slotTime.setHours(hour, minute, 0, 0);
-            const slotStartMillis = slotTime.getTime();
-            const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+          const slotTime = new Date(date);
+          slotTime.setHours(hour, minute, 0, 0);
+          const slotStartMillis = slotTime.getTime();
+          const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
 
-            if (slotStartMillis < endTime && slotEndMillis > startTime) {
-              newGrid[r][i] = "blocked";
-            }
-          }
-        }
-
-        // Mark occupied cells, but do not override blocked
-        for (const booking of courtBookings) {
-          const startTime = booking.start.getTime();
-          const endTime = booking.end.getTime();
-
-          for (let i = 0; i < timeLabels.length; i++) {
-            const hour = Math.floor(i / 2);
-            const minute = i % 2 === 0 ? 0 : 30;
-
-            const slotTime = new Date(date);
-            slotTime.setHours(hour, minute, 0, 0);
-            const slotStartMillis = slotTime.getTime();
-            const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
-
-            // Only set to occupied if not blocked
-            if (
-              slotStartMillis < endTime &&
-              slotEndMillis > startTime &&
-              newGrid[r][i] !== "blocked" &&
-              newGrid[r][i] !== "cancelled" &&
-              newGrid[r][i] !== "unbook"
-            ) {
-              newGrid[r][i] = "occupied";
-            }
-          }
-        }
-
-        for (const cancelled of courtCancelled) {
-          const startTime = cancelled.start.getTime();
-          const endTime = cancelled.end.getTime();
-
-          for (let i = 0; i < timeLabels.length; i++) {
-            const hour = Math.floor(i / 2);
-            const minute = i % 2 === 0 ? 0 : 30;
-
-            const slotTime = new Date(date);
-            slotTime.setHours(hour, minute, 0, 0);
-            const slotStartMillis = slotTime.getTime();
-            const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
-
-            // Only set to occupied if not blocked
-            if (
-              slotStartMillis < endTime &&
-              slotEndMillis > startTime &&
-              newGrid[r][i] !== "blocked" &&
-              newGrid[r][i] !== "occupied"
-            ) {
-              // console.log(
-              //   `Marking available (cancelled): court ${court.courtId}, row ${r}, col ${i}`
-              // );
-              newGrid[r][i] = "available";
-            }
+          if (slotStartMillis < endTime && slotEndMillis > startTime) {
+            newGrid[r][i] = "blocked";
           }
         }
       }
 
-      setGrid(newGrid);
-    },
-    [cols]
-  );
+      // Mark occupied cells, but do not override blocked
+      for (const booking of courtBookings) {
+        const startTime = booking.start.getTime();
+        const endTime = booking.end.getTime();
+
+        for (let i = 0; i < timeLabels.length; i++) {
+          const hour = Math.floor(i / 2);
+          const minute = i % 2 === 0 ? 0 : 30;
+
+          const slotTime = new Date(date);
+          slotTime.setHours(hour, minute, 0, 0);
+          const slotStartMillis = slotTime.getTime();
+          const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+
+          // Only set to occupied if not blocked
+          if (
+            slotStartMillis < endTime &&
+            slotEndMillis > startTime &&
+            newGrid[r][i] !== "blocked" &&
+            newGrid[r][i] !== "cancelled" &&
+            newGrid[r][i] !== "unbook"
+          ) {
+            newGrid[r][i] = "occupied";
+          }
+        }
+      }
+
+      for (const cancelled of courtCancelled) {
+        const startTime = cancelled.start.getTime();
+        const endTime = cancelled.end.getTime();
+
+        for (let i = 0; i < timeLabels.length; i++) {
+          const hour = Math.floor(i / 2);
+          const minute = i % 2 === 0 ? 0 : 30;
+
+          const slotTime = new Date(date);
+          slotTime.setHours(hour, minute, 0, 0);
+          const slotStartMillis = slotTime.getTime();
+          const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+
+          // Only set to occupied if not blocked
+          if (
+            slotStartMillis < endTime &&
+            slotEndMillis > startTime &&
+            newGrid[r][i] !== "blocked" &&
+            newGrid[r][i] !== "occupied"
+          ) {
+            // console.log(
+            //   `Marking available (cancelled): court ${court.courtId}, row ${r}, col ${i}`
+            // );
+            newGrid[r][i] = "available";
+          }
+        }
+      }
+    }
+
+    setGrid(newGrid);
+  }, [cols]);
 
   const fetchBukings = async (dateStr: string) => {
     const bookingsMap: Record<string, { start: Date; end: Date }[]> = {};
@@ -1084,15 +991,11 @@ const CellGridLatest = () => {
     if (filteredCourtId.length === 0) return;
 
     const cacheKey = `${row}-${col}-${currentDate.toISOString().split("T")[0]}`;
-
-    // Check if we already have fresh data for this cell
-    if (
-      selectedCellDetails.courtDetails &&
-      selectedCell?.row === row &&
-      selectedCell?.col === col
-    ) {
-      return;
-    }
+  
+  // Check if we already have fresh data for this cell
+  if (selectedCellDetails.courtDetails && selectedCell?.row === row && selectedCell?.col === col) {
+    return;
+  }
 
     setIsLoadingCellDetails(true);
     const court = getFilteredCourtByIndex(row);
@@ -2158,268 +2061,6 @@ const CellGridLatest = () => {
     }
   }, [firstSelected, selectedCellDetails.courtDetails?.courtId]);
 
-// useEffect(() => {
-//     if (filteredCourtId.length > 0) {
-//       // ✅ Stop old polling when date changes
-//       cleanupMessagePolling();
-
-//       // ✅ Start fresh polling for the new date
-//       setIsMessagePollingActive(false);
-//       startPollingForAllOccupiedCells();
-//     }
-// }, [filteredCourtId.length, currentDate]);
-
-
-  // Cleanup on unmount
-  // useEffect(() => {
-  //   return () => {
-  //     cleanupMessagePolling();
-  //   };
-  // }, []);
-
-  // Add these functions after existing helper functions
-
-  const fetchScheduledUsersForBooking = async (bookingId: string) => {
-    try {
-      const bookingRes = await axios.get(
-        `${API_BASE_URL_Latest}/booking/${bookingId}`
-      );
-      return bookingRes.data.scheduledPlayers || [];
-    } catch (error) {
-      console.error(
-        `Failed to fetch scheduled users for booking ${bookingId}:`,
-        error
-      );
-      return [];
-    }
-  };
-
-  const fetchChatRoomsForUser = async (userId: string) => {
-    try {
-      const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
-      );
-      const rooms = Array.isArray(response.data)
-        ? response.data
-        : response.data.rooms || [];
-      return rooms;
-    } catch (error) {
-      console.error(`Failed to fetch chat rooms for user ${userId}:`, error);
-      return [];
-    }
-  };
-
-  const startMessagePollingForRoom = async (
-    bookingId: string,
-    userId: string,
-    roomType: string,
-    chatId: string,
-    roomName: string,
-    seenByTeamAtUnix: number
-  ) => {
-    const roomKey = `${roomType}-${roomName}-${chatId}-${userId}`;
-    const ablyRoomName = roomKey;
-
-    try {
-      const room = await cellChatClient.rooms.get(ablyRoomName);
-
-      setCellAblyConnections((prev) => ({
-        ...prev,
-        [roomKey]: room,
-      }));
-
-      if (cellPollingIntervals[roomKey]) {
-        clearInterval(cellPollingIntervals[roomKey]);
-      }
-
-      const pollMessages = async () => {
-        try {
-          const messageHistory = await room.messages.history({ limit: 1000 });
-          const messages = messageHistory.items;
-          const seenByTeamAtIST = new Date(seenByTeamAtUnix * 1000);
-
-          let newMessageCount = 0;
-          messages.forEach((message: any) => {
-            const messageTimestamp = message.createdAt || message.timestamp;
-            if (
-              messageTimestamp &&
-              new Date(messageTimestamp) > seenByTeamAtIST
-            ) {
-              newMessageCount++;
-            }
-          });
-
-          // Update message count for this booking
-          setCellMessageCounts((prev) => {
-            const currentCount = prev[bookingId] || 0;
-            return {
-              ...prev,
-              [bookingId]: currentCount + newMessageCount,
-            };
-          });
-        } catch (error) {
-          console.error(`Failed to poll messages for ${roomKey}:`, error);
-        }
-      };
-
-      await pollMessages();
-      const interval = setInterval(pollMessages, 50000);
-
-      setCellPollingIntervals((prev) => ({
-        ...prev,
-        [roomKey]: interval,
-      }));
-    } catch (error) {
-      console.error(`Failed to create room connection for ${roomKey}:`, error);
-    }
-  };
-
-  const initializeMessagePollingForCell = async (bookingId: string) => {
-    const scheduledUsers = await fetchScheduledUsersForBooking(bookingId);
-    if (scheduledUsers.length === 0) return;
-
-    // Reset count for this booking
-    setCellMessageCounts((prev) => ({ ...prev, [bookingId]: 0 }));
-
-    const userRoomsMap: { [userId: string]: any[] } = {};
-
-    // Fetch chat rooms for all users
-    await Promise.all(
-      scheduledUsers.map(async (userId: string) => {
-        const rooms = await fetchChatRoomsForUser(userId);
-        userRoomsMap[userId] = rooms;
-      })
-    );
-
-    setCellUserChatRooms((prev) => ({
-      ...prev,
-      [bookingId]: userRoomsMap,
-    }));
-
-    // Start polling for all user rooms
-    const pollingPromises: Promise<void>[] = [];
-
-    Object.entries(userRoomsMap).forEach(([userId, rooms]) => {
-      rooms.forEach((room) => {
-        pollingPromises.push(
-          startMessagePollingForRoom(
-            bookingId,
-            userId,
-            room.roomType,
-            room.chatId,
-            room.roomName,
-            room.seenByTeamAt || 0
-          )
-        );
-      });
-    });
-
-    await Promise.allSettled(pollingPromises);
-  };
-
-  const startPollingForAllOccupiedCells = async () => {
-    if (isMessagePollingActive) return;
-
-    setIsMessagePollingActive(true);
-    const dateStr = currentDate.toISOString().split("T")[0];
-
-    // Get all occupied cells with bookings
-    const occupiedCellPromises: Promise<void>[] = [];
-
-    for (let row = 0; row < filteredCourtId.length; row++) {
-      const court = filteredCourtId[row];
-
-      try {
-        const bookingsRes = await axios.get(
-          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
-        );
-        const bookings = bookingsRes?.data?.bookings || [];
-
-        const activeBookings = bookings.filter(
-          (b: any) => b.status === "active" || b.status === "rescheduled"
-        );
-
-        activeBookings.forEach((booking: any) => {
-          if (booking.bookingId) {
-            occupiedCellPromises.push(
-              initializeMessagePollingForCell(booking.bookingId)
-            );
-          }
-        });
-      } catch (error) {
-        console.error(
-          `Failed to fetch bookings for court ${court.courtId}:`,
-          error
-        );
-      }
-    }
-
-    await Promise.allSettled(occupiedCellPromises);
-  };
-
-  const cleanupMessagePolling = () => {
-    Object.values(cellPollingIntervals).forEach((interval) => {
-      if (interval) clearInterval(interval);
-    });
-
-    Object.values(cellAblyConnections).forEach((room) => {
-      try {
-        if (room && typeof room.release === "function") {
-          room.release();
-        }
-      } catch (error) {
-        console.error("Error releasing room connection:", error);
-      }
-    });
-
-    setCellPollingIntervals({});
-    setCellMessageCounts({});
-    setCellUserChatRooms({});
-    setCellAblyConnections({});
-    setIsMessagePollingActive(false);
-  };
-
-  const getBookingIdForOccupiedCell = async (
-    row: number,
-    col: number
-  ): Promise<string | null> => {
-    try {
-      const court = getFilteredCourtByIndex(row);
-      const dateStr = currentDate.toISOString().split("T")[0];
-
-      const hour = Math.floor(col / 2);
-      const minute = col % 2 === 0 ? 0 : 30;
-      const cellTime = new Date(currentDate);
-      cellTime.setHours(hour, minute, 0, 0);
-      const cellStartMillis = cellTime.getTime();
-      const cellEndMillis = cellStartMillis + 30 * 60 * 1000;
-
-      const bookingsRes = await axios.get(
-        `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
-      );
-      const bookings = bookingsRes?.data?.bookings || [];
-
-      const matchingBooking = bookings.find((booking: any) => {
-        const startTime = toIST(booking.startTime).getTime();
-        const endTime = toIST(booking.endTime).getTime();
-        const isActiveBooking =
-          booking.status === "active" || booking.status === "rescheduled";
-        return (
-          cellStartMillis < endTime &&
-          cellEndMillis > startTime &&
-          isActiveBooking
-        );
-      });
-
-      return matchingBooking?.bookingId || null;
-    } catch (error) {
-      console.error("Error getting bookingId for cell:", error);
-      return null;
-    }
-  };
-
-  // Add this useEffect after existing ones
-
   // if (loadingScreen) {
   //   return <LoadingScreen />;
   // }
@@ -2453,6 +2094,7 @@ const CellGridLatest = () => {
           })}
           {isLoadingBookings && (
             <span className="ml-2 text-blue-500">Loading...</span>
+            
           )}
         </span>
         <div className="flex items-center gap-4">
@@ -2708,10 +2350,6 @@ const CellGridLatest = () => {
                           // Tailwind's red-500 hex
                         }}
                         classNames={hoverClass}
-                        cellMessageCounts={cellMessageCounts}
-                        getBookingIdForOccupiedCell={
-                          getBookingIdForOccupiedCell
-                        }
                       />
                     );
                   })
@@ -2728,9 +2366,9 @@ const CellGridLatest = () => {
         <div className="flex flex-wrap items-center justify-between gap-4">
           {/* Left Side: Court Id and Host */}
           {firstSelected && (
-            <div className="flex flex-col min-w-[200px] flex-1">
-              <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
-                {/* <p>
+          <div className="flex flex-col min-w-[200px] flex-1">
+            <div className="bg-white border border-gray-300 rounded-md shadow-sm p-2">
+              {/* <p>
                 <strong>Court Name:</strong>{" "}
                 {getCellData()?.courtName ??
                   (firstSelected
@@ -2738,64 +2376,66 @@ const CellGridLatest = () => {
                     : "N/A")}
               </p> */}
 
-                <p>
-                  <strong>Court Name:</strong>{" "}
-                  {firstSelected
-                    ? (resolvedNames[
-                        filteredCourtId[firstSelected[0]]?.courtId
-                      ] ||
-                        filteredCourtId[firstSelected[0]]?.name) ??
-                      "Unknown"
-                    : "N/A"}
-                </p>
+              <p>
+                <strong>Court Name:</strong>{" "}
+                {firstSelected
+                  ? (resolvedNames[
+                      filteredCourtId[firstSelected[0]]?.courtId
+                    ] ||
+                      filteredCourtId[firstSelected[0]]?.name) ??
+                    "Unknown"
+                  : "N/A"}
+              </p>
 
-                <p>
-                  <strong>Host:</strong>{" "}
-                  {firstSelected &&
-                    ["occupied", "blocled"].includes(
-                      grid[firstSelected[0]][firstSelected[1]]
-                    ) &&
-                    sessionStorage.getItem("newHostClick")}
-                  {firstSelected &&
-                    [
-                      "available",
-                      "selected",
-
-                      "unbook",
-                      "unblock",
-                      "cancelled",
-                    ].includes(grid[firstSelected[0]][firstSelected[1]]) &&
-                    sessionStorage.getItem("hostName")}
-                </p>
-
-                {/* Bottom row: Sport Select dropdown - aligned left */}
+              <p>
+                <strong>Host:</strong>{" "}
+                {firstSelected &&
+                  ["occupied", "blocled"].includes(
+                    grid[firstSelected[0]][firstSelected[1]]
+                  ) &&
+                  sessionStorage.getItem("newHostClick")}
                 {firstSelected &&
                   [
-                    "available",
-                    "selected",
+                  "available",
+                  "selected",
 
-                    "unbook",
-                    "unblock",
-                    "cancelled",
-                  ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
-                    <div className="flex items-center gap-2 justify-start w-full">
-                      <label className="font-semibold">Sport:</label>
-                      <select
-                        value={selectedSportId}
-                        onChange={(e) => setSelectedSportId(e.target.value)}
-                        className="px-2 py-1 border border-gray-300 rounded text-sm"
-                      >
-                        <option value="">Select a sport</option>
-                        {selectedCellDetails.availableSports.map((sport) => (
-                          <option key={sport.sportId} value={sport.sportId}>
-                            {sport.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-              </div>
+                  "unbook",
+                  "unblock",
+                  "cancelled",
+                ].includes(
+                    grid[firstSelected[0]][firstSelected[1]]
+                  ) &&
+                  sessionStorage.getItem("hostName")}
+              </p>
+
+              {/* Bottom row: Sport Select dropdown - aligned left */}
+              {firstSelected &&
+                [
+                  "available",
+                  "selected",
+
+                  "unbook",
+                  "unblock",
+                  "cancelled",
+                ].includes(grid[firstSelected[0]][firstSelected[1]]) && (
+                  <div className="flex items-center gap-2 justify-start w-full">
+                    <label className="font-semibold">Sport:</label>
+                    <select
+                      value={selectedSportId}
+                      onChange={(e) => setSelectedSportId(e.target.value)}
+                      className="px-2 py-1 border border-gray-300 rounded text-sm"
+                    >
+                      <option value="">Select a sport</option>
+                      {selectedCellDetails.availableSports.map((sport) => (
+                        <option key={sport.sportId} value={sport.sportId}>
+                          {sport.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
             </div>
+          </div>
           )}
 
           {/* Center: Difficulty, Max Players, Slots, Price, and Sport dropdown */}
@@ -2994,7 +2634,7 @@ const CellGridLatest = () => {
         </div>
 
         {/* Current Date - Full Width */}
-        {/* <div className="text-xs text-gray-500 text-center mt-1 w-full"></div> */}
+        <div className="text-xs text-gray-500 text-center mt-1 w-full"></div>
       </div>
       <UserModal2
         isOpen={isModalOpen}
@@ -3015,4 +2655,4 @@ const CellGridLatest = () => {
   );
 };
 
-export default CellGridLatest;
+export default CellGridLatest2;

@@ -71,6 +71,8 @@ import Attendance from "./BookingCalendarComponent/Attendance";
 import RmDash from "./RmDashboard/RmDash";
 import RmDashNew from "./RmDashboard/RmDashNew";
 import PasswordChange from "./PasswordChange/PasswordChange";
+import RmDashNew3 from "./RmDashboard/RmDash3";
+import CellNewArena from "./BookingCalendarComponent/CellNewArena";
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
@@ -142,7 +144,7 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route
                 path="/bookingCalendar"
-                element={<CellGridArena />}
+                element={<CellNewArena />}
               />
             </Route>
 
@@ -269,7 +271,7 @@ function App() {
             </Route>
 
             <Route element={<PrivateRoute/>} >
-              <Route path="/rmdashboard" element={<RmDashNew/>}/>
+              <Route path="/rmdashboard" element={<RmDashNew3/>}/>
             </Route>
 
             <Route element={<PrivateRoute />}>

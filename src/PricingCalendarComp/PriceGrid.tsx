@@ -73,34 +73,66 @@ export default function WeeklyPricingGrid() {
     Record<string, Record<string, { minPrice: number; maxPrice: number }>>
   >({});
 
-  const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
-    // Simulate GET API call delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+// Replace the fetchPricesForWeek function in WeeklyPricingGrid with this:
 
-    // Dummy data generation: For demo, random min and max prices or same price
-    const data: Record<
-      string,
-      Record<string, { minPrice: number; maxPrice: number }>
-    > = {};
+const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
+  const data: Record<
+    string,
+    Record<string, { minPrice: number; maxPrice: number }>
+  > = {};
 
-    weekDays.forEach((day) => {
+  // Fetch prices for each day in the week
+  await Promise.all(
+    weekDays.map(async (day) => {
+      // Don't add +1 here - use the actual day for API call
       const dayKey = formatDateForInput(day);
-      data[dayKey] = {};
-      courts.forEach((court) => {
-        // Randomly decide if minPrice === maxPrice or different
-        const basePrice = Math.floor(Math.random() * 500) + 100; // 100 to 600
-        const isRange = Math.random() < 0.3; // 30% chance to be range
-        data[dayKey][court.courtId] = isRange
-          ? {
-              minPrice: basePrice,
-              maxPrice: basePrice + Math.floor(Math.random() * 300),
-            }
-          : { minPrice: basePrice, maxPrice: basePrice };
-      });
-    });
+      try {
+        const response = await axios.get(
+          `${API_BASE_URL_Latest}/arena/pricing-ranges/AREN_JZSW15?date=${dayKey}`
+        );
 
-    return data;
-  };
+        data[dayKey] = {};
+
+        // Process the API response
+        Object.entries(response.data).forEach(([courtId, priceRange]) => {
+          if (priceRange === "Not Set") {
+            // Set default values when not set
+            data[dayKey][courtId] = { minPrice: 0, maxPrice: 0 };
+          } else {
+            // Parse price range like "₹500 - ₹1000" or "₹500"
+            const priceString = priceRange as string;
+            const cleanPrice = priceString.replace(/₹/g, "").trim();
+
+            if (cleanPrice.includes(" - ")) {
+              // Range format: "500 - 1000"
+              const [minStr, maxStr] = cleanPrice.split(" - ");
+              data[dayKey][courtId] = {
+                minPrice: parseInt(minStr.trim()) || 0,
+                maxPrice: parseInt(maxStr.trim()) || 0,
+              };
+            } else {
+              // Single price format: "500"
+              const price = parseInt(cleanPrice) || 0;
+              data[dayKey][courtId] = {
+                minPrice: price,
+                maxPrice: price,
+              };
+            }
+          }
+        });
+      } catch (error) {
+        console.error(`Failed to fetch prices for ${dayKey}:`, error);
+        // Fallback: set empty data for this day
+        data[dayKey] = {};
+        courts.forEach((court) => {
+          data[dayKey][court.courtId] = { minPrice: 0, maxPrice: 0 };
+        });
+      }
+    })
+  );
+
+  return data;
+};
 
   useEffect(() => {
     setWeekStart(getWeekStart(selectedDate));
@@ -215,7 +247,7 @@ export default function WeeklyPricingGrid() {
   };
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const gridScrollRef = useRef<HTMLDivElement>(null);
-//abcd
+  //abcd
   return (
     <div className="flex flex-col h-screen">
       {/* Top Bar - Fixed */}
@@ -281,8 +313,9 @@ export default function WeeklyPricingGrid() {
                   className="min-w-0 h-10 flex flex-col items-center justify-center text-xs font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 rounded-md"
                   style={{ userSelect: "none" }}
                   onClick={() => {
-                    navigate(`/pricingCalendarDaily?${formatDateForInput(day)}`);
-                  }}
+  const adjustedDay = addDays(day, 1); // Add 1 day to fix timezone issue
+  navigate(`/pricingCalendarDaily?date=${formatDateForInput(adjustedDay)}`);
+}}
                 >
                   <div>{dayNames[index]}</div>
                   <div>{day.getDate()}</div>
@@ -322,7 +355,14 @@ export default function WeeklyPricingGrid() {
                   if (editedPrice !== undefined) {
                     displayValue = editedPrice;
                   } else if (fetchedPrice) {
-                    if (fetchedPrice.minPrice === fetchedPrice.maxPrice) {
+                    if (
+                      fetchedPrice.minPrice === 0 &&
+                      fetchedPrice.maxPrice === 0
+                    ) {
+                      displayValue = "Not Set";
+                    } else if (
+                      fetchedPrice.minPrice === fetchedPrice.maxPrice
+                    ) {
                       displayValue = fetchedPrice.minPrice.toString();
                     } else {
                       displayValue = `${fetchedPrice.minPrice} - ${fetchedPrice.maxPrice}`;
@@ -366,7 +406,13 @@ export default function WeeklyPricingGrid() {
                       ) : (
                         <span
                           className={`text-sm font-medium ${
-                            fetchedPrice ? "text-gray-800" : "text-gray-400"
+                            fetchedPrice &&
+                            fetchedPrice.minPrice === 0 &&
+                            fetchedPrice.maxPrice === 0
+                              ? "text-gray-400 italic"
+                              : fetchedPrice
+                              ? "text-gray-800"
+                              : "text-gray-400"
                           }`}
                         >
                           {displayValue || ""}

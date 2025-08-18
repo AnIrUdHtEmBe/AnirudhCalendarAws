@@ -478,7 +478,7 @@ const HandleChatModal = ({
   );
 };
 
-const RmDashNew = () => {
+const RmDashNew3 = () => {
   const [loggedInUser, setLoggedInUser] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersWithRooms, setUsersWithRooms] = useState<UserWithRooms[]>([]);
@@ -742,41 +742,62 @@ const RmDashNew = () => {
             };
 
             // Set up always-on message listener
-            const messageListener = (messageEvent: any) => {
-              const message = messageEvent.message || messageEvent;
-              const messageTimestamp = message.createdAt || message.timestamp;
-              const seenByTeamAtDate = new Date(room.handledAt * 1000);
+            // In RmDashNew, find the always-on connection setup useEffect and replace the messageListener with this:
+const messageListener = (messageEvent: { message: any; }) => {
+  const message = messageEvent.message || messageEvent;
+  const messageTimestamp = message.createdAt || message.timestamp;
+  
+  // Get fresh handledAt from current state instead of stale closure
+  setUsersWithRooms((prevUsersWithRooms) => {
+    const currentUserWithRooms = prevUsersWithRooms.find(
+      uwr => uwr.user.userId === userWithRooms.user.userId
+    );
+    
+    if (!currentUserWithRooms) return prevUsersWithRooms;
+    
+    const currentRoom = currentUserWithRooms.rooms.find(r => r.roomType === room.roomType);
+    if (!currentRoom) return prevUsersWithRooms;
+    
+    const currentSeenByTeamAtDate = new Date(currentRoom.handledAt * 1000);
 
-              if (
-                messageTimestamp &&
-                new Date(messageTimestamp) > seenByTeamAtDate
-              ) {
-                const msgTime = new Date(messageTimestamp).getTime();
+    console.log("📨 RmDash - New message received:", {
+      roomKey,
+      messageTimestamp: new Date(messageTimestamp),
+      currentHandledAt: currentSeenByTeamAtDate,
+      isNewer: messageTimestamp
+        ? new Date(messageTimestamp).getTime() > currentSeenByTeamAtDate.getTime()
+        : false,
+    });
 
-                // Update state immediately when new message arrives
-                setUsersWithRooms((prev) =>
-                  prev.map((uwr) => {
-                    if (uwr.user.userId === userWithRooms.user.userId) {
-                      return {
-                        ...uwr,
-                        hasNewMessages: {
-                          ...uwr.hasNewMessages,
-                          [room.roomType]: true,
-                        },
-                        lastMessageTime: {
-                          ...uwr.lastMessageTime,
-                          [room.roomType]: Math.max(
-                            uwr.lastMessageTime[room.roomType] || 0,
-                            msgTime
-                          ),
-                        },
-                      };
-                    }
-                    return uwr;
-                  })
-                );
-              }
-            };
+    if (messageTimestamp && new Date(messageTimestamp) > currentSeenByTeamAtDate) {
+      const msgTime = new Date(messageTimestamp).getTime();
+
+      console.log(`🔴 RmDash - Message is newer, updating state for ${roomKey}`);
+
+      return prevUsersWithRooms.map((uwr) => {
+        if (uwr.user.userId === userWithRooms.user.userId) {
+          return {
+            ...uwr,
+            hasNewMessages: {
+              ...uwr.hasNewMessages,
+              [room.roomType]: true,
+            },
+            lastMessageTime: {
+              ...uwr.lastMessageTime,
+              [room.roomType]: Math.max(
+                uwr.lastMessageTime[room.roomType] || 0,
+                msgTime
+              ),
+            },
+          };
+        }
+        return uwr;
+      });
+    }
+
+    return prevUsersWithRooms;
+  });
+};
 
             // Subscribe to real-time message events
             ablyRoom.messages.subscribe(messageListener);
@@ -880,76 +901,164 @@ const RmDashNew = () => {
     }
   };
 
-  const handleChatSave = async (comment: string) => {
-    try {
-      // Call the patch API to mark chat as handled
-      await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
-        {
-          userId: handleChatModal.userId,
-          roomType: handleChatModal.roomType,
-          handled: comment,
-          userType: "team",
-        }
-      );
+// Replace the existing handleChatSave function in RmDashNew with this:
+const handleChatSave = async (comment: any) => {
+    console.log("save is being called!");
+    setHandleChatModal({
+      isOpen: false,
+      userId: "",
+      roomType: "",
+      userName: "",
+    });
+    setOpenChat(null)
+  try {
+    // Call the patch API to mark chat as handled
+    await axios.patch(
+      "https://play-os-backend.forgehub.in/human/human/mark-seen",
+      {
+        userId: handleChatModal.userId,
+        roomType: handleChatModal.roomType,
+        userType: "team",
+        handledMsg: comment,
+      }
+    );
 
-      // Close the handle chat modal
-      setHandleChatModal({
-        isOpen: false,
-        userId: "",
-        roomType: "",
-        userName: "",
-      });
+    // Close the handle chat modal
+    setHandleChatModal({
+      isOpen: false,
+      userId: "",
+      roomType: "",
+      userName: "",
+    });
 
-      // Refresh the user's room data to get updated seenByTeamAt
-      await refreshUserRoomData(
-        handleChatModal.userId,
-        handleChatModal.roomType
-      );
-    } catch (error) {
-      console.error("Failed to handle chat:", error);
-      // You might want to show an error message here
-    }
+    // Keep the working setInterval logic
+    setInterval(async () => {
+        await refreshUserRoomDataAndRecalculate(
+      handleChatModal.userId,
+      handleChatModal.roomType
+    );
+    }, 10000)
+    
+  } catch (error) {
+    console.error("Failed to handle chat:", error);
+  }
+};
+
+// Add debounced refresh for handled chats
+const debouncedRefresh = useRef<{ [key: string]: NodeJS.Timeout }>({});
+
+const scheduleRefresh = useCallback((userId: string, roomType: string) => {
+  const key = `${userId}-${roomType}`;
+  
+  // Clear existing timeout
+  if (debouncedRefresh.current[key]) {
+    clearTimeout(debouncedRefresh.current[key]);
+  }
+  
+  // Schedule refresh after 5 seconds
+  debouncedRefresh.current[key] = setTimeout(() => {
+    refreshUserRoomDataAndRecalculate(userId, roomType);
+    delete debouncedRefresh.current[key];
+  }, 3000);
+}, []);
+
+// Cleanup timeouts on unmount
+useEffect(() => {
+  return () => {
+    Object.values(debouncedRefresh.current).forEach(clearTimeout);
   };
+}, []);
 
-  const refreshUserRoomData = async (userId: string, roomType: string) => {
-    try {
-      // Fetch updated room data for the specific user
-      const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
-      );
-      const updatedRooms = Array.isArray(response.data)
-        ? response.data
-        : response.data.rooms || [];
+// Replace the existing refreshUserRoomData function with this enhanced version:
+const refreshUserRoomDataAndRecalculate = async (userId: string, roomType: string) => {
+  try {
+    // Fetch updated room data for the specific user
+    const response = await axios.get(
+      `https://play-os-backend.forgehub.in/human/human/${userId}`
+    );
+    const updatedRooms = Array.isArray(response.data)
+      ? response.data
+      : response.data.rooms || [];
 
-      // Update the specific user's room data and reset message indicators
-      setUsersWithRooms((prev) =>
-        prev.map((uwr) => {
-          if (uwr.user.userId === userId) {
-            return {
-              ...uwr,
-              rooms: updatedRooms,
-              hasNewMessages: {
-                ...uwr.hasNewMessages,
-                [roomType]: false, // Reset new message flag for this room type
-              },
-              lastMessageTime: {
-                ...uwr.lastMessageTime,
-                [roomType]: 0, // Reset timestamp
-              },
-            };
+    // Find the updated room with new handledAt
+    const updatedRoom = updatedRooms.find((room: { roomType: any; }) => room.roomType === roomType);
+    if (!updatedRoom) {
+      console.warn(`Room type ${roomType} not found for user ${userId}`);
+      return;
+    }
+
+    // Recalculate messages with updated handledAt
+    const roomKey = `${updatedRoom.roomType}-${updatedRoom.roomName}-${updatedRoom.chatId}-${userId}`;
+    const roomConnection = roomConnections.current[roomKey];
+    
+    if (roomConnection) {
+      try {
+        const messageHistory = await roomConnection.messages.history({ limit: 60 });
+        const messages = messageHistory.items;
+        const newSeenByTeamAtDate = new Date(updatedRoom.handledAt * 1000);
+        
+        let hasNew = false;
+        let latestTimestamp = 0;
+
+        messages.forEach((message: { createdAt: any; timestamp: any; }) => {
+          const messageTimestamp = message.createdAt || message.timestamp;
+          if (messageTimestamp && new Date(messageTimestamp) > newSeenByTeamAtDate) {
+            hasNew = true;
+            const msgTime = new Date(messageTimestamp).getTime();
+            if (msgTime > latestTimestamp) {
+              latestTimestamp = msgTime;
+            }
           }
-          return uwr;
-        })
-      );
+        });
 
-      console.log(
-        `✅ Refreshed room data for user ${userId}, room type ${roomType}`
-      );
-    } catch (error) {
-      console.error(`Failed to refresh room data for user ${userId}:`, error);
+        console.log(`🔄 Recalculated for ${roomKey}: hasNew=${hasNew}, count=${messages.length}`);
+
+        // Use functional update with a stable key to prevent re-rendering flicker
+        setUsersWithRooms((prev) => {
+          const userIndex = prev.findIndex(uwr => uwr.user.userId === userId);
+          if (userIndex === -1) return prev;
+          
+          const currentUser = prev[userIndex];
+          const updatedUser = {
+            ...currentUser,
+            rooms: updatedRooms,
+            hasNewMessages: {
+              ...currentUser.hasNewMessages,
+              [roomType]: hasNew,
+            },
+            lastMessageTime: {
+              ...currentUser.lastMessageTime,
+              [roomType]: latestTimestamp,
+            },
+          };
+          
+          // Only update if there's actually a change to prevent unnecessary re-renders
+          const hasMessagesChanged = currentUser.hasNewMessages[roomType] !== hasNew;
+          const hasTimeChanged = currentUser.lastMessageTime[roomType] !== latestTimestamp;
+          
+          if (!hasMessagesChanged && !hasTimeChanged) {
+            return prev; // No change, return same reference
+          }
+          
+          // Create new array with updated user at same position
+          const newArray = [...prev];
+          newArray[userIndex] = updatedUser;
+          return newArray;
+        });
+
+        console.log(`✅ Successfully recalculated messages for user ${userId}, room ${roomType}, hasNew: ${hasNew}`);
+        
+      } catch (error) {
+        console.error(`Failed to recalculate messages for ${roomKey}:`, error);
+      }
+    } else {
+      console.warn(`No room connection found for ${roomKey}`);
     }
-  };
+
+  } catch (error) {
+    console.error(`Failed to refresh room data for user ${userId}:`, error);
+  }
+};
 
   if (loading) {
     return (
@@ -1075,13 +1184,16 @@ const RmDashNew = () => {
             {/* Handle Chat Modal */}
             <HandleChatModal
               isOpen={handleChatModal.isOpen}
-              onClose={() =>
+              onClose={() =>{
+                
                 setHandleChatModal({
                   isOpen: false,
                   userId: "",
                   roomType: "",
                   userName: "",
                 })
+                
+            }
               }
               onSave={handleChatSave}
               userName={handleChatModal.userName}
@@ -1093,4 +1205,4 @@ const RmDashNew = () => {
   );
 };
 
-export default RmDashNew;
+export default RmDashNew3;

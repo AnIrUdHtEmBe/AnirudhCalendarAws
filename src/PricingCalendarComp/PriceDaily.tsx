@@ -45,7 +45,11 @@ function addDays(date: Date, days: number) {
 }
 
 function formatDateForInput(date: Date) {
-  return date.toISOString().split("T")[0];
+  // Use local timezone instead of UTC to avoid date shifting
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
 function formatWeekLabel(startDate: Date) {
@@ -101,14 +105,17 @@ export default function PriceDaily() {
   );
     const location = useLocation();
 
-  const getDateFromUrl = (): Date => {
-    const params = new URLSearchParams(location.search);
-    const dateStr = params.get("date");
-    if (dateStr && !isNaN(new Date(dateStr).getTime())) {
-      return new Date(dateStr);
-    }
-    return new Date();
-  };
+const getDateFromUrl = (): Date => {
+  const params = new URLSearchParams(location.search);
+  const dateStr = params.get("date");
+  console.log("Date from URL:", dateStr); // Debug log
+  if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+    // Parse as local date, not UTC
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // month is 0-indexed
+  }
+  return new Date();
+};
 
   const [selectedDate, setSelectedDate] = useState(getDateFromUrl());
   const [selectedCell, setSelectedCell] = useState<{
@@ -127,15 +134,17 @@ export default function PriceDaily() {
 
 
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const dateStr = params.get("date");
-    if (dateStr && !isNaN(new Date(dateStr).getTime())) {
-      setSelectedDate(new Date(dateStr));
-    } else {
-      setSelectedDate(new Date());
-    }
-  }, [location.search]);
+useEffect(() => {
+  const params = new URLSearchParams(location.search);
+  const dateStr = params.get("date");
+  console.log("URL changed, date param:", dateStr); // Debug log
+  if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+    const [year, month, day] = dateStr.split('-').map(Number);
+    const newDate = new Date(year, month - 1, day);
+    console.log("Setting new date:", newDate); // Debug log
+    setSelectedDate(newDate);
+  }
+}, [location.search]);
 
   const toggleCellSelection = (courtId: string, slotId: string) => {
     const day = formatDateForInput(selectedDate);
@@ -308,37 +317,40 @@ export default function PriceDaily() {
   };
 
   // Save updated prices for all changed slots
-  const handleSave = async () => {
-    try {
-      const allUpdates = [];
+const handleSave = async () => {
+  try {
+    const allUpdates = [];
 
-      for (const courtIdKey in changedSlots) {
-        for (const slotIdKey of changedSlots[courtIdKey]) {
-          const priceStr = prices[courtIdKey]?.[slotIdKey];
-          if (!priceStr) continue;
+    for (const courtIdKey in changedSlots) {
+      for (const slotIdKey of changedSlots[courtIdKey]) {
+        const priceStr = prices[courtIdKey]?.[slotIdKey];
+        if (!priceStr) continue;
 
-          const priceNum = parseInt(priceStr);
-          if (isNaN(priceNum)) continue;
+        const priceNum = parseInt(priceStr);
+        if (isNaN(priceNum)) continue;
 
-          allUpdates.push(
-            axios.patch(`${API_BASE_URL_Latest}/timeslot/${slotIdKey}`, {
-              price: priceNum,
-              status: "available",
-              bookingInfo: "active",
-            })
-          );
-        }
+        allUpdates.push(
+          axios.patch(`${API_BASE_URL_Latest}/timeslot/${slotIdKey}`, {
+            price: priceNum,
+            status: "available",
+            bookingInfo: "active",
+          })
+        );
       }
-
-      await Promise.all(allUpdates);
-      showToast("Prices saved successfully!");
-
-      // Clear changed slots after successful save
-      setChangedSlots({});
-    } catch (e) {
-      console.warn("Failed to save prices", e);
     }
-  };
+
+    await Promise.all(allUpdates);
+    showToast("Prices saved successfully!");
+
+    // Clear changed slots after successful save
+    setChangedSlots({});
+    setSelectedCells([]);
+    
+  } catch (e) {
+    console.error("Failed to save prices", e);
+    showToast("Failed to save prices. Please try again.");
+  }
+};
 
   // Synchronize sidebar vertical scroll with grid vertical scroll
   const onGridScroll = () => {
@@ -601,6 +613,12 @@ export default function PriceDaily() {
           Save
         </button>
       </div>
+      {toastMsg && (
+  <Toast
+    message={toastMsg}
+    onClose={() => setToastMsg(null)}
+  />
+)}
     </div>
   );
 }

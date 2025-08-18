@@ -41,13 +41,11 @@ interface CellModalProps {
 }
 
 interface UserAttendance {
-  userId: any;
-
+  userId: string;
   name: string;
   status: "present" | "absent" | "pending" | "";
 }
-
-const CellModal: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
+const CellModal2: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const navigate = useNavigate();
   // Hard-coded users for now - later replace with API call
   const [modalUsers, setModalUsers] = useState<UserAttendance[]>([]);
@@ -775,18 +773,18 @@ const handleModalClose = () => {
   //   };
   // }, [stableModalUsers, isOpen]); // Removed chatClient from dependencies
 
-  useEffect(() => {
+// Replace the existing useEffect (around line 300-500) with this:
+useEffect(() => {
   if (stableModalUsers.length === 0 || !isOpen || !directChatRoomType) return;
 
   let isEffectActive = true;
 
-  const setupSelectiveConnections = async () => {
-    // Only proceed if effect is still active
+  const setupAlwaysOnNotificationConnections = async () => {
     if (!isEffectActive) return;
 
-    console.log(`🔄 Setting up connections for roomType: ${directChatRoomType}...`);
+    console.log(`🔄 Setting up notification connections for roomType: ${directChatRoomType}...`);
 
-    // Cleanup existing connections first
+    // Cleanup existing connections
     for (const [roomKey, room] of Object.entries(roomConnections.current)) {
       try {
         if (room) {
@@ -795,13 +793,8 @@ const handleModalClose = () => {
           } else if (room.messages?.unsubscribe) {
             room.messages.unsubscribe();
           }
-
-          if (room.detach) {
-            await room.detach();
-          }
-          if (room.release) {
-            await room.release();
-          }
+          if (room.detach) await room.detach();
+          if (room.release) await room.release();
         }
       } catch (error) {
         console.error(`Error cleaning up room ${roomKey}:`, error);
@@ -809,20 +802,14 @@ const handleModalClose = () => {
     }
     roomConnections.current = {};
 
-    // Check if effect is still active after cleanup
     if (!isEffectActive) return;
-
-    // Add delay to ensure cleanup is complete
     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Check again after delay
     if (!isEffectActive) return;
 
-    // Fetch room data for all users and setup connections ONLY for matching rooms
+    // Setup notification-only connections
     const usersWithRoomsData = [];
 
     for (const user of stableModalUsers) {
-      // Check if effect is still active during loop
       if (!isEffectActive) break;
 
       try {
@@ -833,7 +820,6 @@ const handleModalClose = () => {
           ? response.data
           : response.data.rooms || [];
 
-        // Filter to only the matching room
         const matchingRoom = rooms.find(
           (room: { roomType: string; }) =>
             room.roomType &&
@@ -841,7 +827,7 @@ const handleModalClose = () => {
         );
 
         const filteredRooms = matchingRoom ? [matchingRoom] : [];
-
+        
         const userWithRooms = {
           user: { userId: user.userId, name: user.name },
           rooms: filteredRooms,
@@ -851,13 +837,12 @@ const handleModalClose = () => {
 
         usersWithRoomsData.push(userWithRooms);
 
-        // Set up connections ONLY for the matching room
+        // Setup notification connection for matching room only
         for (const room of filteredRooms) {
           if (!isEffectActive) break;
 
           const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${user.userId}`;
 
-          // Skip if room already exists and is connected
           if (roomConnections.current[roomKey]) {
             console.log(`⏭️ Skipping ${roomKey} - already connected`);
             continue;
@@ -872,35 +857,28 @@ const handleModalClose = () => {
 
             roomConnections.current[roomKey] = ablyRoom;
 
-            // Initial message check
+            // Initial message count check
             const checkInitialMessages = async () => {
               if (!isEffectActive) return;
 
               try {
-                const messageHistory = await ablyRoom.messages.history({
-                  limit: 60,
-                });
+                const messageHistory = await ablyRoom.messages.history({ limit: 60 });
                 const messages = messageHistory.items;
                 const seenByTeamAtDate = new Date(room.handledAt * 1000);
                 let messageCount = 0;
 
                 messages.forEach((message) => {
-                  const messageTimestamp =
-                    message.createdAt || message.timestamp;
+                  const messageTimestamp = message.createdAt || message.timestamp;
                   if (messageTimestamp) {
                     const msgDate = new Date(messageTimestamp);
-                    // Use the same strict comparison as SmallChatBox
                     if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
                       messageCount++;
                     }
                   }
                 });
 
-                console.log(
-                  `📊 Initial message count for ${roomKey}: ${messageCount}`
-                );
+                console.log(`📊 Initial notification count for ${roomKey}: ${messageCount}`);
 
-                // Update newMessagesCount for this specific room
                 if (isEffectActive) {
                   setNewMessagesCount((prev) => ({
                     ...prev,
@@ -908,11 +886,7 @@ const handleModalClose = () => {
                   }));
                 }
               } catch (error) {
-                console.error(
-                  `Initial message check error for ${roomKey}:`,
-                  error
-                );
-                // Set to 0 on error
+                console.error(`Initial message check error for ${roomKey}:`, error);
                 if (isEffectActive) {
                   setNewMessagesCount((prev) => ({
                     ...prev,
@@ -922,34 +896,34 @@ const handleModalClose = () => {
               }
             };
 
-            // Set up real-time message listener
-            const messageListener = (messageEvent: { message: any }) => {
+            // Always-alive notification listener
+            const notificationListener = (messageEvent: { message: any; }) => {
               if (!isEffectActive) return;
 
               const message = messageEvent.message || messageEvent;
               const messageTimestamp = message.createdAt || message.timestamp;
-              const seenByTeamAtDate = new Date(room.handledAt * 1000);
+              
+              // Get current room data for fresh handledAt comparison
+              const currentUserWithRooms = usersWithRooms.find(uwr => uwr.user.userId === user.userId);
+              const currentRoom = currentUserWithRooms?.rooms.find(r => r.roomType === room.roomType);
+              const currentHandledAt = currentRoom?.handledAt || room.handledAt;
+              const seenByTeamAtDate = new Date(currentHandledAt * 1000);
 
-              console.log("📨 New message received:", {
+              console.log("📨 Notification listener - New message:", {
                 roomKey,
                 messageTimestamp: new Date(messageTimestamp),
                 seenByTeamAtDate,
                 isNewer: messageTimestamp
-                  ? new Date(messageTimestamp).getTime() >
-                    seenByTeamAtDate.getTime()
+                  ? new Date(messageTimestamp).getTime() > seenByTeamAtDate.getTime()
                   : false,
               });
 
               if (messageTimestamp) {
                 const msgDate = new Date(messageTimestamp);
-                // Use the same strict comparison as SmallChatBox and checkInitialMessages
                 if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
-                  // Update message count immediately
                   setNewMessagesCount((prev) => {
                     const newCount = (prev[roomKey] || 0) + 1;
-                    console.log(
-                      `🔴 Updated count for ${roomKey}: ${newCount}`
-                    );
+                    console.log(`🔴 Notification count updated for ${roomKey}: ${newCount}`);
                     return {
                       ...prev,
                       [roomKey]: newCount,
@@ -959,26 +933,16 @@ const handleModalClose = () => {
               }
             };
 
-            // Subscribe to real-time messages
-            ablyRoom.messages.subscribe(messageListener);
-
-            // Perform initial check
+            ablyRoom.messages.subscribe(notificationListener);
             await checkInitialMessages();
 
-            console.log(`✅ Connection established for matching room ${roomKey}`);
+            console.log(`✅ Notification connection established for ${roomKey}`);
           } catch (error) {
-            console.error(
-              `Failed to create connection for ${roomKey}:`,
-              error
-            );
+            console.error(`Failed to create notification connection for ${roomKey}:`, error);
           }
         }
       } catch (error) {
-        console.error(
-          `Failed to fetch rooms for user ${user.userId}:`,
-          error
-        );
-        // Add user with empty rooms to maintain consistency
+        console.error(`Failed to fetch rooms for user ${user.userId}:`, error);
         usersWithRoomsData.push({
           user: { userId: user.userId, name: user.name },
           rooms: [],
@@ -991,18 +955,17 @@ const handleModalClose = () => {
     if (isEffectActive) {
       setUsersWithRooms(usersWithRoomsData);
       setIsMessageTrackingActive(true);
-      console.log("✅ All matching room connections established successfully");
+      console.log("✅ All notification connections established successfully");
     }
   };
 
-  setupSelectiveConnections();
+  setupAlwaysOnNotificationConnections();
 
-  // Cleanup function
   return () => {
     isEffectActive = false;
 
     const cleanup = async () => {
-      console.log("🧹 Cleaning up selective connections...");
+      console.log("🧹 Cleaning up notification connections...");
 
       for (const [roomKey, room] of Object.entries(roomConnections.current)) {
         try {
@@ -1012,14 +975,10 @@ const handleModalClose = () => {
             } else if (room.messages?.unsubscribe) {
               room.messages.unsubscribe();
             }
-
             if (room.detach && room.status === "attached") {
               await room.detach();
             }
-
-            if (room.release) {
-              await room.release();
-            }
+            if (room.release) await room.release();
           }
         } catch (error) {
           console.error(`Error cleaning up room ${roomKey}:`, error);
@@ -1031,7 +990,7 @@ const handleModalClose = () => {
       setUserChatRooms({});
       setUsersWithRooms([]);
       setIsMessageTrackingActive(false);
-      console.log("Selective connections cleanup completed");
+      console.log("Notification connections cleanup completed");
     };
 
     cleanup();
@@ -1040,6 +999,8 @@ const handleModalClose = () => {
 
   // Replace the existing handleOpenRoomChat function with this updated version
 
+// Replace the existing handleOpenRoomChat function with this simplified version:
+// Replace the existing handleOpenRoomChat function with this simplified version:
 const handleOpenRoomChat = async (userId: string) => {
   if (!userId || !cellData.bookingId) {
     console.warn("❌ Missing userId or bookingId");
@@ -1049,54 +1010,6 @@ const handleOpenRoomChat = async (userId: string) => {
   try {
     console.log("🚀 Opening room chat for user:", userId);
     
-    // Prevent multiple rapid clicks
-    if (directGameChatRoomName.includes('loading-')) {
-      console.log("⏳ Already loading, ignoring click");
-      
-    }
-    
-    // Set loading state immediately with timestamp to make it unique
-    const loadingTimestamp = Date.now();
-    const loadingRoomName = `loading-${userId}-${loadingTimestamp}`;
-    setDirectGameChatRoomName(loadingRoomName);
-    setDirectGameChatDisplayName("Preparing chat...");
-    setDirectChatUserId(userId);
-
-    // Clean up previous room connection if exists
-    const currentRoomKey = Object.keys(roomConnections.current).find(key => 
-      key.includes(userId) && !key.includes('loading-')
-    );
-    
-    if (currentRoomKey && roomConnections.current[currentRoomKey]) {
-      try {
-        const oldRoom = roomConnections.current[currentRoomKey];
-        console.log(`🧹 Cleaning up old room: ${currentRoomKey}`);
-
-        if (oldRoom.messages?.unsubscribeAll) {
-          await oldRoom.messages.unsubscribeAll();
-        } else if (oldRoom.messages?.unsubscribe) {
-          oldRoom.messages.unsubscribe();
-        }
-
-        if (oldRoom.status === "attached" && oldRoom.detach) {
-          await oldRoom.detach();
-        }
-        if (oldRoom.release) {
-          await oldRoom.release();
-        }
-        
-        delete roomConnections.current[currentRoomKey];
-      } catch (err) {
-        console.error("❌ Error cleaning up old room:", err);
-      }
-    }
-
-    // Update loading message
-    setDirectGameChatDisplayName("Finding user rooms...");
-    
-    // Small delay to ensure cleanup completes
-    await new Promise(resolve => setTimeout(resolve, 200));
-
     // Find user in usersWithRooms - we already have the matching room
     const userWithRooms = usersWithRooms.find(
       (uwr) => uwr.user.userId === userId
@@ -1104,8 +1017,6 @@ const handleOpenRoomChat = async (userId: string) => {
 
     if (!userWithRooms || !userWithRooms.rooms.length) {
       console.warn("❌ No rooms found for user:", userId);
-      setDirectGameChatDisplayName("No matching room available");
-      setDirectGameChatRoomName(""); // Clear loading state
       return;
     }
 
@@ -1116,51 +1027,15 @@ const handleOpenRoomChat = async (userId: string) => {
 
     console.log("🔍 Found matching room:", { finalRoomName, roomNameDisplay });
     
-    // Update loading message
-    setDirectGameChatDisplayName("Connecting to room...");
-
-    // Wait for room to be ready before updating state
-    const roomConnection = roomConnections.current[finalRoomName];
-    if (roomConnection) {
-      console.log("⏳ Waiting for room connection to be ready...");
-      
-      let attempts = 0;
-      const maxAttempts = 90; // 2 seconds total
-      
-      while (roomConnection.status !== "attached" && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-        
-        // Update loading message to show progress
-        if (attempts % 5 === 0) {
-          setDirectGameChatDisplayName(`Connecting... (${attempts/5}/4)`);
-        }
-      }
-      
-      if (roomConnection.status !== "attached") {
-        console.warn("⚠️ Room connection not ready after waiting, proceeding anyway");
-        setDirectGameChatDisplayName("Connection ready (may be slow)");
-      } else {
-        console.log("✅ Room connection ready");
-        setDirectGameChatDisplayName("Chat ready!");
-      }
-    } else {
-      console.log("ℹ️ No existing room connection, will be created on demand");
-      setDirectGameChatDisplayName("Ready to chat");
-    }
-
-    // Final delay to ensure state is stable
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Update state with final room info
-    console.log("✅ Setting final room info:", { finalRoomName, roomNameDisplay });
+    // Set room info for SmallChatBox (no connection management here)
     setDirectGameChatRoomName(finalRoomName);
     setDirectGameChatDisplayName(roomNameDisplay);
+    setDirectChatUserId(userId);
+    
+    console.log("✅ Room info set for SmallChatBox");
     
   } catch (error) {
     console.error("❌ Error opening room chat:", error);
-    setDirectGameChatDisplayName("Error loading chat");
-    setDirectGameChatRoomName(""); // Clear loading state
   }
 };
 
@@ -1474,83 +1349,54 @@ const handleOpenRoomChat = async (userId: string) => {
   //     console.log("Ably message polling cleanup completed");
   //   };
 
-const SmallChatBox = ({
-  roomName,
-  onClose,
-  userId,
-  roomType,
-  userName,
-  onHandleChat,
-}: {
+// Replace the existing SmallChatBox component with this simplified version:
+
+// At the top of the SmallChatBox file/component
+interface SmallChatBoxProps {
   roomName: string;
   onClose: () => void;
   userId: string;
   roomType: string;
   userName: string;
   onHandleChat: () => void;
+}
+
+interface ChatMessage {
+  clientId: string;
+  text: string;
+  timestamp?: string | number | Date;
+  createdAt?: string | number | Date;
+  // add other fields if your chat message object requires
+}
+
+
+const SmallChatBox: React.FC<SmallChatBoxProps> = ({
+  roomName,
+  onClose,
+  userId,
+  roomType,
+  userName,
+  onHandleChat,
 }) => {
-  const [inputValue, setInputValue] = useState<string>("");
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [messages, setMessages] = useState<any[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+
+  const [inputValue, setInputValue] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [loading, setLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const [clientNames, setClientNames] = useState<Record<string, string>>({});
-  const nameRequestsCache = useRef<Set<string>>(new Set());
-  const isComponentMounted = useRef(true);
-  const abortController = useRef<AbortController | null>(null);
+  const [clientNames, setClientNames] = useState<{[key: string]: string}>({});
+  const nameRequestsCache = useRef(new Set());
 
-  // Force complete reset when key props change (unmount/remount behavior)
-  const componentKey = useMemo(() => `${roomName}-${userId}-${roomType}`, [roomName, userId, roomType]);
-  
-  useEffect(() => {
-    console.log("🔄 SmallChatBox: Complete reset for new session", { componentKey });
-    
-    // Abort any ongoing requests
-    if (abortController.current) {
-      abortController.current.abort();
-    }
-    abortController.current = new AbortController();
-    
-    // Reset all state
-    setMessages([]);
-    setLoading(true);
-    setClientNames({});
-    setInputValue("");
-    nameRequestsCache.current.clear();
-    isComponentMounted.current = true;
-    
-    return () => {
-      console.log("🧹 SmallChatBox: Component cleanup initiated");
-      isComponentMounted.current = false;
-      
-      if (abortController.current) {
-        abortController.current.abort();
-      }
-      
-      // Clear all state
-      setMessages([]);
-      setClientNames({});
-      setInputValue("");
-      nameRequestsCache.current.clear();
-    };
-  }, [componentKey]); // This will cause complete reset when room/user changes
-
+  // Independent connection via useMessages hook
   const { historyBeforeSubscribe, send } = useMessages({
-    listener: (event: ChatMessageEvent) => {
-      if (!isComponentMounted.current) {
-        console.log("⚠️ Message received but component unmounted, ignoring");
-        return;
-      }
-      
+    listener: (event) => {
       if (event.type === ChatMessageEventType.Created) {
-        const newMsg = event.message as unknown as any;
-        console.log("📨 New message received:", newMsg.text);
+        const newMsg = event.message;
+        console.log("📨 New message in chat:", newMsg.text);
         setMessages((prev) => [...prev, newMsg]);
         fetchSenderName(newMsg.clientId);
       }
     },
-    onDiscontinuity: (error: Error) => {
-      if (!isComponentMounted.current) return;
+    onDiscontinuity: (error) => {
       console.error("📡 Chat discontinuity:", error);
       setLoading(true);
     },
@@ -1565,122 +1411,90 @@ const SmallChatBox = ({
     }
   }, []);
 
-  const fetchSenderName = useCallback(
-    async (clientId: string) => {
-      if (
-        !isComponentMounted.current ||
-        !clientId ||
-        clientId === "Guest" ||
-        clientNames[clientId] ||
-        nameRequestsCache.current.has(clientId)
-      ) {
-        return;
-      }
-
-      nameRequestsCache.current.add(clientId);
-
-      try {
-        const res = await axios.get(
-          `${API_BASE_URL_Latest}/human/${clientId}`,
-          { signal: abortController.current?.signal }
-        );
-        
-        if (isComponentMounted.current) {
-          if (res.data?.name) {
-            setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
-          } else {
-            setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
-          }
-        }
-      } catch (error) {
-        if (!axios.isCancel(error)) {
-          console.error("Error fetching sender name:", error);
-          if (isComponentMounted.current) {
-            setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
-          }
-        }
-      } finally {
-        nameRequestsCache.current.delete(clientId);
-      }
-    },
-    [clientNames]
-  );
-
-  // Enhanced message loading with proper abort handling
-  useEffect(() => {
-    if (!historyBeforeSubscribe || !loading || !isComponentMounted.current) {
+const fetchSenderName = useCallback(
+  async (clientId: unknown) => {
+    if (
+      typeof clientId !== "string" ||
+      !clientId ||
+      clientId === "Guest" ||
+      clientNames[clientId] ||
+      nameRequestsCache.current.has(clientId)
+    ) {
       return;
     }
+
+    nameRequestsCache.current.add(clientId);
+
+    try {
+      const res = await axios.get(`${API_BASE_URL_Latest}/human/${clientId}`);
+      if (res.data?.name) {
+        setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
+      } else {
+        setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
+      }
+    } catch (error) {
+      console.error("Error fetching sender name:", error);
+      setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
+    } finally {
+      nameRequestsCache.current.delete(clientId);
+    }
+  },
+  [clientNames]
+);
+
+
+  // Load messages - show only new messages since handledAt
+  useEffect(() => {
+    if (!historyBeforeSubscribe || !loading) return;
     
     const loadMessages = async () => {
       try {
-        console.log("📥 Loading messages for room:", roomName);
+        console.log("📥 Loading chat messages for room:", roomName);
         
         const result = await historyBeforeSubscribe({ limit: 60 });
-        
-        if (!isComponentMounted.current) {
-          console.log("⚠️ Component unmounted during message load, aborting");
-          return;
-        }
-        
-        const allMessages: any[] = result.items as unknown as any[];
-        console.log("📥 All messages fetched:", allMessages.length);
+        const allMessages = result.items;
+        console.log("📥 All chat messages fetched:", allMessages.length);
 
-        // Get user's room data to find seenByTeamAt
+        // Get user's room data to find handledAt
         const userRes = await axios.get(
-          `https://play-os-backend.forgehub.in/human/human/${userId}`,
-          { signal: abortController.current?.signal }
+          `https://play-os-backend.forgehub.in/human/human/${userId}`
         );
-        
-        if (!isComponentMounted.current) return;
         
         const userRooms = Array.isArray(userRes.data)
           ? userRes.data
           : userRes.data.rooms || [];
         const currentRoom = userRooms.find(
-          (room: any) => room.roomType === roomType
+          (room: { roomType: string; }) => room.roomType === roomType
         );
 
         if (currentRoom && currentRoom.handledAt) {
           const seenByTeamAtDate = new Date(currentRoom.handledAt * 1000);
-          console.log("🕐 SeenByTeamAt:", seenByTeamAtDate);
+          console.log("🕐 Chat handledAt:", seenByTeamAtDate);
 
           const newMessages = allMessages.filter((msg) => {
             const msgDate = new Date(msg.timestamp || msg.createdAt);
             return msgDate.getTime() > seenByTeamAtDate.getTime();
           });
 
-          console.log(`📊 Filtered ${newMessages.length} new messages out of ${allMessages.length} total`);
+          console.log(`📊 Showing ${newMessages.length} new chat messages out of ${allMessages.length} total`);
 
-          if (isComponentMounted.current) {
-            if (newMessages.length > 0) {
-              setMessages(newMessages);
-              setNewNotifDot(true);
-              // Fetch names for unique client IDs
-              const uniqueClientIds = [...new Set(newMessages.map((msg) => msg.clientId))];
-              uniqueClientIds.forEach((clientId) => fetchSenderName(clientId));
-            } else {
-              console.log("🔍 No new messages found since last seen");
-              setMessages([]);
-            }
+          if (newMessages.length > 0) {
+            setMessages(newMessages);
+            const uniqueClientIds = [...new Set(newMessages.map((msg) => msg.clientId))];
+            uniqueClientIds.forEach((clientId) => fetchSenderName(clientId));
+          } else {
+            console.log("🔍 No new chat messages found since last handled");
+            setMessages([]);
           }
         } else {
-          console.log("⚠️ No seenByTeamAt found, showing empty chat");
-          if (isComponentMounted.current) {
-            setMessages([]);
-          }
+          console.log("⚠️ No handledAt found, showing empty chat");
+          setMessages([]);
         }
       } catch (error) {
-        if (!axios.isCancel(error)) {
-          console.error("❌ Error loading messages:", error);
-          if (isComponentMounted.current) {
-            setMessages([]);
-          }
-        }
+        console.error("❌ Error loading chat messages:", error);
+        setMessages([]);
       } finally {
-        if (isComponentMounted.current) {
-          setLoading(false);
-        }
+        setLoading(false);
       }
     };
     
@@ -1688,84 +1502,56 @@ const SmallChatBox = ({
   }, [historyBeforeSubscribe, loading, userId, roomType, roomName, fetchSenderName]);
 
   useEffect(() => {
-    if (!isComponentMounted.current) return;
-    
     const timeoutId = setTimeout(() => {
-      if (bottomRef.current && isComponentMounted.current) {
-        bottomRef.current.scrollIntoView({ behavior: "smooth" });
-      }
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
     }, 100);
-    
     return () => clearTimeout(timeoutId);
   }, [messages]);
 
   const sendMessage = useCallback(async () => {
-    if (!inputValue.trim() || !isComponentMounted.current) return;
+    if (!inputValue.trim()) return;
     
     try {
       await send({ text: inputValue.trim() });
-      if (isComponentMounted.current) {
-        setInputValue("");
-      }
+      setInputValue("");
       
-      const teamSaw = await axios.patch(
+      // Mark as seen by team after sending
+      await axios.patch(
         `https://play-os-backend.forgehub.in/human/human/mark-seen`,
         {
           userId: userId,
           roomType: roomType,
           userType: "team",
           handledMsg: "",
-        },
-        { signal: abortController.current?.signal }
+        }
       );
-      console.log("✅ Team saw message:", teamSaw.data);
+      console.log("✅ Team message sent and marked as seen");
     } catch (err) {
-      if (!axios.isCancel(err)) {
-        console.error("❌ Send error:", err);
-      }
+      console.error("❌ Send error:", err);
     }
   }, [inputValue, send, userId, roomType]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter" && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-      }
-    },
-    [sendMessage]
-  );
-
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort(
-      (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-    );
-  }, [messages]);
-
-  // Enhanced close handler with thorough cleanup
-  const handleClose = useCallback(() => {
-    console.log("🔒 SmallChatBox: Close initiated");
-    
-    // Mark component as unmounted
-    isComponentMounted.current = false;
-    
-    // Abort any ongoing requests
-    if (abortController.current) {
-      abortController.current.abort();
+const handleKeyDown = useCallback(
+  (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
-    
-    // Clear all state immediately
-    setMessages([]);
-    setClientNames({});
-    setInputValue("");
-    setLoading(true);
-    nameRequestsCache.current.clear();
-    
-    // Call parent close handler
-    onClose();
-  }, [onClose]);
+  },
+  [sendMessage]
+);
 
-  // Rest of the JSX remains the same, just use handleClose
+
+const sortedMessages = useMemo(() => {
+  return [...messages].sort((a, b) => {
+    return (
+      new Date(a.timestamp || a.createdAt || 0).getTime() -
+      new Date(b.timestamp || b.createdAt || 0).getTime()
+    );
+  });
+}, [messages]);
+
+
   return (
     <div className="fixed inset-0 backdrop-blur bg-opacity-30 flex items-center justify-center z-[60]">
       <div className="bg-white rounded-lg w-96 h-96 flex flex-col shadow-xl">
@@ -1777,7 +1563,7 @@ const SmallChatBox = ({
               {roomType}
             </span>
           </div>
-          <button onClick={handleClose} className="hover:bg-blue-600 rounded p-1">
+          <button onClick={onClose} className="hover:bg-blue-600 rounded p-1">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -1790,12 +1576,12 @@ const SmallChatBox = ({
             </div>
           ) : (
             sortedMessages.map((msg, idx) => {
-              const isMine = msg.clientId === currentClientId;
-              const timestamp = new Date(msg.timestamp).toLocaleTimeString(
-                [],
-                { hour: "2-digit", minute: "2-digit" }
-              );
-              const displayName = clientNames[msg.clientId] || msg.clientId;
+  const isMine = msg.clientId === currentClientId;
+  const timestamp = new Date(msg.timestamp || msg.createdAt || 0).toLocaleTimeString(
+    [],
+    { hour: "2-digit", minute: "2-digit" }
+  );
+  const displayName = clientNames[msg.clientId] || msg.clientId;
 
               return (
                 <div
@@ -1827,7 +1613,6 @@ const SmallChatBox = ({
         {/* Input */}
         <div className="p-3 border-t flex space-x-2">
           <input
-            ref={inputRef}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -1943,36 +1728,93 @@ const SmallChatBox = ({
     setOpenSmallChatBox(false); // Close small chat box when handle chat opens
   };
 
-  const handleChatSave = async (comment: string) => {
-    if (!smallChatBoxData) return;
+// Replace the existing handleChatSave function with this:
+// Replace the existing handleChatSave function with this:
+const handleChatSave = async (comment: string) => {
+  if (!smallChatBoxData) return;
 
-    try {
-      await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
-        {
-          userId: smallChatBoxData.userId,
-          roomType: smallChatBoxData.roomType,
-          userType: "team",
-          handledMsg: comment,
+  try {
+    // Mark chat as handled with comment
+    await axios.patch(
+      "https://play-os-backend.forgehub.in/human/human/mark-seen",
+      {
+        userId: smallChatBoxData.userId,
+        roomType: smallChatBoxData.roomType,
+        userType: "team",
+        handledMsg: comment,
+      }
+    );
+
+    // Refresh user room data to get updated handledAt
+    const response = await axios.get(
+      `https://play-os-backend.forgehub.in/human/human/${smallChatBoxData.userId}`
+    );
+    const updatedRooms = Array.isArray(response.data)
+      ? response.data
+      : response.data.rooms || [];
+
+    // Update usersWithRooms with fresh data
+    setUsersWithRooms(prev => 
+      prev.map(uwr => {
+        if (uwr.user.userId === smallChatBoxData.userId) {
+          return {
+            ...uwr,
+            rooms: updatedRooms.filter((room: { roomType: string; }) => 
+              room.roomType &&
+              room.roomType.trim().toUpperCase() === directChatRoomType.trim().toUpperCase()
+            ),
+          };
         }
-      );
+        return uwr;
+      })
+    );
 
-      const roomKey = `${smallChatBoxData.roomType}-${smallChatBoxData.roomName.split("-")[1]}-${smallChatBoxData.roomName.split("-")[2]}-${smallChatBoxData.userId}`;
-    setNewMessagesCount(prev => ({
-      ...prev,
-      [roomKey]: 0
-    }));
-
-      setHandleChatModalOpen(false);
-      setOpenSmallChatBox(false);
-      setSmallChatBoxData(null);
-
-      enqueueSnackbar("Chat handled successfully", { variant: "success" });
-    } catch (error) {
-      console.error("Failed to handle chat:", error);
-      enqueueSnackbar("Failed to handle chat", { variant: "error" });
+    // Recalculate message count with new handledAt using existing always-on connection
+    const roomKey = `${smallChatBoxData.roomType}-${smallChatBoxData.roomName.split("-")[1]}-${smallChatBoxData.roomName.split("-")[2]}-${smallChatBoxData.userId}`;
+    
+    // Get the room connection and recheck messages
+    const roomConnection = roomConnections.current[roomKey];
+    if (roomConnection) {
+      try {
+        const messageHistory = await roomConnection.messages.history({ limit: 60 });
+        const messages = messageHistory.items;
+        
+        const updatedRoom = updatedRooms.find((room: { roomType: string; }) => room.roomType === smallChatBoxData.roomType);
+        const newHandledAt = updatedRoom ? updatedRoom.handledAt : Date.now() / 1000;
+        const seenByTeamAtDate = new Date(newHandledAt * 1000);
+        
+        let messageCount = 0;
+        messages.forEach((message: { createdAt: any; timestamp: any; }) => {
+          const messageTimestamp = message.createdAt || message.timestamp;
+          if (messageTimestamp) {
+            const msgDate = new Date(messageTimestamp);
+            if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
+              messageCount++;
+            }
+          }
+        });
+        
+        console.log(`🔄 Recalculated message count after handle: ${messageCount}`);
+        
+        setNewMessagesCount(prev => ({
+          ...prev,
+          [roomKey]: messageCount
+        }));
+      } catch (error) {
+        console.error("Error recalculating messages after handle:", error);
+      }
     }
-  };
+
+    setHandleChatModalOpen(false);
+    setOpenSmallChatBox(false);
+    setSmallChatBoxData(null);
+
+    enqueueSnackbar("Chat handled successfully", { variant: "success" });
+  } catch (error) {
+    console.error("Failed to handle chat:", error);
+    enqueueSnackbar("Failed to handle chat", { variant: "error" });
+  }
+};
 
   if (!isOpen) return null;
 
@@ -2091,85 +1933,98 @@ const SmallChatBox = ({
                         className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                       />
                     </td>
-                    <td 
-  onClick={async (e) => {
-    e.preventDefault();
-    e.stopPropagation();
+
+<td 
+className="flex justify-center border border-gray-300 px-4 py-2 text-center relative cursor-pointer hover:bg-gray-50 transition-colors"
+onClick={async (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  
+  // If this is the automatic second click, skip the auto-trigger
+  if (e.isTrusted === false) {
+    console.log("🔄 Processing automatic second click for user:", user.userId);
+  } else {
+    console.log("👆 Processing first click for user:", user.userId);
     
-    const clickId = `click-${user.userId}`;
-    
-    // Clear any existing timeout for this user
-    if (clickTimeouts.current[user.userId]) {
-      clearTimeout(clickTimeouts.current[user.userId]);
-    }
-    
-    // Prevent multiple rapid clicks
-    if (sessionStorage.getItem(clickId)) {
-      console.log("⏳ Ignoring rapid click for user:", user.userId);
-      return;
-    }
-    
-    // Set click lock for 3 seconds
-    sessionStorage.setItem(clickId, 'true');
-    clickTimeouts.current[user.userId] = setTimeout(() => {
-      sessionStorage.removeItem(clickId);
-      delete clickTimeouts.current[user.userId];
-    }, 3000);
-    
-    try {
-      console.log("💬 TbMessage clicked for user:", user.userId);
-      
-      // Close any existing SmallChatBox first
-      if (openSmallChatBox) {
-        console.log("🔒 Closing existing chat before opening new one");
-        setOpenSmallChatBox(false);
-        setSmallChatBoxData(null);
-        
-        // Wait for cleanup
-        await new Promise(resolve => setTimeout(resolve, 200));
-      }
-      
-      await handleOpenRoomChat(user.userId);
-      
-      // Wait for room to be ready
-      let attempts = 0;
-      const maxAttempts = 30; // 3 seconds
-      
-      while ((!directGameChatRoomName || directGameChatRoomName.includes('loading-')) && attempts < maxAttempts) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-        attempts++;
-      }
-      
-      if (directGameChatRoomName && !directGameChatRoomName.includes('loading-')) {
-        console.log("✅ Opening SmallChatBox with room:", directGameChatRoomName);
-        
-        setSmallChatBoxData({
-          userId: user.userId,
-          roomType: directChatRoomType,
-          userName: user.name,
-          roomName: directGameChatRoomName,
-        });
-        setOpenSmallChatBox(true);
-      } else {
-        console.error("❌ Room not ready after waiting, cannot open chat");
-        enqueueSnackbar("Chat is taking longer than expected. Please try again.", { 
-          variant: "warning" 
-        });
-      }
-    } catch (error) {
-      console.error("❌ Error in TbMessage click:", error);
-      enqueueSnackbar("Failed to open chat. Please try again.", { 
-        variant: "error" 
+    // For the first (real) click, trigger a second click after 50ms
+    setTimeout(() => {
+      console.log("🤖 Triggering automatic second click for user:", user.userId);
+      const clickEvent = new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
       });
+      e.target.dispatchEvent(clickEvent);
+    }, 50);
+  }
+  
+  try {
+    console.log("💬 TbMessage clicked for user:", user.userId);
+    
+    // Close any existing SmallChatBox first
+    if (openSmallChatBox) {
+      console.log("🔒 Closing existing chat before opening new one");
+      setOpenSmallChatBox(false);
+      setSmallChatBoxData(null);
+      
+      // Wait for cleanup
+      await new Promise(resolve => setTimeout(resolve, 200));
     }
-  }} 
-  className="flex justify-center border border-gray-300 px-4 py-2 text-center relative cursor-pointer hover:bg-gray-50 transition-colors"
+    
+    await handleOpenRoomChat(user.userId);
+    
+    // Wait for room to be ready with proper polling
+    let attempts = 0;
+    const maxAttempts = 50; // 5 seconds total (50 * 100ms)
+    
+    const waitForRoom = () => {
+      return new Promise((resolve, reject) => {
+        const checkRoom = () => {
+          attempts++;
+          
+          if (directGameChatRoomName && directChatUserId && !directGameChatRoomName.includes('loading-')) {
+            console.log(`✅ Room ready after ${attempts * 100}ms:`, directGameChatRoomName);
+            resolve(true);
+          } else if (attempts >= maxAttempts) {
+            console.error(`❌ Room not ready after ${maxAttempts * 100}ms`);
+            reject(new Error('Room setup timeout'));
+          } else {
+            console.log(`⏳ Waiting for room... attempt ${attempts}/${maxAttempts}`);
+            setTimeout(checkRoom, 100);
+          }
+        };
+        
+        checkRoom();
+      });
+    };
+    
+    await waitForRoom();
+    
+    // Room is ready, open the chat
+    console.log("✅ Opening SmallChatBox with room:", directGameChatRoomName);
+    
+    setSmallChatBoxData({
+      userId: user.userId,
+      roomType: directChatRoomType,
+      userName: user.name,
+      roomName: directGameChatRoomName,
+    });
+    setOpenSmallChatBox(true);
+    
+  } catch (error) {
+    console.error("❌ Error in TbMessage click:", error);
+    // enqueueSnackbar("Failed to open chat. Please try again.", { 
+    //   variant: "error" 
+    // });
+  }
+}
+}
 >
   <TbMessage
     size={30}
     style={{ color: "black", cursor: "pointer" }}
   />
-  {/* Message indicator logic remains the same */}
+  {/* Keep existing message indicator logic */}
   {(() => {
     const userWithRooms = usersWithRooms.find(
       (uwr) => uwr.user.userId === user.userId
@@ -2255,23 +2110,14 @@ const SmallChatBox = ({
           onClose={() => {
             console.log("🔒 Closing SmallChatBox with cleanup");
             
-            
-            if (smallChatBoxData) {
-              const roomKey = `${smallChatBoxData.roomType}-${smallChatBoxData.roomName.split('-')[1]}-${smallChatBoxData.roomName.split('-')[2]}-${smallChatBoxData.userId}`;
-              setNewMessagesCount(prev => ({
-                ...prev,
-                [roomKey]: 0
-              }));
-            }
-            
-
+            // Only reset chat-specific state, keep always-on connections alive
             setOpenSmallChatBox(false);
             setSmallChatBoxData(null);
             setDirectGameChatRoomName("");
             setDirectGameChatDisplayName("");
             setDirectChatUserId("");
             
-
+            // Clear click timeouts but don't touch always-on connections
             Object.values(clickTimeouts.current).forEach(timeout => clearTimeout(timeout));
             clickTimeouts.current = {};
           }}
@@ -2299,7 +2145,7 @@ const SmallChatBox = ({
   );
 };
 
-export default CellModal;
+export default CellModal2;
 
 //comment
 
