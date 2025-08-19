@@ -36,7 +36,6 @@ import AssessmentPage from "../Pages/ViewAllAssessment";
 import { useLocation } from "react-router-dom";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 
-
 const questionTypes = [
   { label: "Text Input", value: "text", icon: <ShortTextIcon /> },
   {
@@ -63,27 +62,27 @@ const QuestionBank = () => {
       console.error("Failed to fetch questions:", error);
     }
   };
-  const { selectComponent, questionsForAPICall ,setSelectComponent} = useContext(DataContext);
-  const [headingText,setheadingText]=useState("Questionnaire Creation")
-  const navigate=useNavigate();
-  const handleSelection=async(dataString:string)=>{
+  const { selectComponent, questionsForAPICall, setSelectComponent } =
+    useContext(DataContext);
+  const [headingText, setheadingText] = useState("Questionnaire Creation");
+  const navigate = useNavigate();
+  const handleSelection = async (dataString: string) => {
     // if(dataString=='question'){
     //   // navigate('/question-bank')
     //   setSelectComponent('/question-bank')
     //   setheadingText("Questionnaire Creation")
-    // }else 
-    if(dataString=='assignment'){
+    // }else
+    if (dataString == "assignment") {
       // navigate('/assignment')
-      console.log("reached assignme")
-      setSelectComponent('/assignment')
-      setheadingText("Assignmentsnnnnnnn")
+      console.log("reached assignme");
+      setSelectComponent("/assignment");
+      setheadingText("Assignmentsnnnnnnn");
     }
-  }
+  };
   // used to fetch question
   useEffect(() => {
     fetchQuestions();
   }, []);
-
 
   // used to stored editted copy of questions
   const [shouldEdit, setShouldEdit] = useState(false);
@@ -257,17 +256,19 @@ const QuestionBank = () => {
   console.log("selectComponent:", selectComponent);
   const location = useLocation();
 
-useEffect(() => {
-  // If current path is '/question-bank' and selectComponent isn't '/question-bank', set it
-  if (location.pathname === "/question-bank" && selectComponent !== "/question-bank") {
-    setSelectComponent("/question-bank");
-    setheadingText("Questionnaire Creation"); // Optional: update heading text here on load too
-  }
-}, [location.pathname, selectComponent, setSelectComponent]);
+  useEffect(() => {
+    // If current path is '/question-bank' and selectComponent isn't '/question-bank', set it
+    if (
+      location.pathname === "/question-bank" &&
+      selectComponent !== "/question-bank"
+    ) {
+      setSelectComponent("/question-bank");
+      setheadingText("Questionnaire Creation"); // Optional: update heading text here on load too
+    }
+  }, [location.pathname, selectComponent, setSelectComponent]);
 
   return (
     <div className="question-bank-container">
-      <Breadcrumb/>
       {/* header */}
       <div className="question-bank-header-container">
         <div className="header-top">
@@ -275,53 +276,56 @@ useEffect(() => {
           <span className="header-title">{headingText}</span>
         </div>
         <div className="header-tabs">
-          <button
-          onClick={()=>handleSelection("assignment")}
-          className={`header-tab ${
-              selectComponent === "/assignment" 
-                ? "border-b-4 active-tab"
-                : ""
-            }`}
-
-          >
-            Assessments
-          </button>
-          <button
-            onClick={()=>handleSelection("question")}
-            className={`header-tab ${
-              selectComponent === "/question-bank"
-                ? "border-b-4 active-tab"
-                : ""
-            }`}
-          >
-            Questions
-          </button>
-          <button className="header-tab border-b-4 border-transparent pb-2"
-          onClick={()=>handleSelection("settings")}
-          >
-            Settings
-          </button>
+          <div className="header-breadcrumb-left">
+            <Breadcrumb />
+          </div>
+          <div className="header-tabs-center">
+            <button
+              onClick={() => handleSelection("assignment")}
+              className={`header-tab ${
+                selectComponent === "/assignment" ? "border-b-4 active-tab" : ""
+              }`}
+            >
+              Assessments
+            </button>
+            <button
+              onClick={() => handleSelection("question")}
+              className={`header-tab ${
+                selectComponent === "/question-bank"
+                  ? "border-b-4 active-tab"
+                  : ""
+              }`}
+            >
+              Questions
+            </button>
+            <button
+              className="header-tab border-b-4 border-transparent pb-2"
+              onClick={() => handleSelection("settings")}
+            >
+              Settings
+            </button>
+          </div>
         </div>
       </div>
-    
+
       {/* main body */}
-      { selectComponent==="/question-bank" &&(
+      {selectComponent === "/question-bank" && (
         <div className="question-bank-body-container">
           <div className="question-bank-main-container">
             {/* main conatiner header */}
-              <div className="question-bank-main-header">
-                <span className="question-bank-main-header-title">
-                  Question Bank
-                </span>
-                {/* <button
+            <div className="question-bank-main-header">
+              <span className="question-bank-main-header-title">
+                Question Bank
+              </span>
+              {/* <button
                   className="question-bank-main-header-button"
                   onClick={handleApiCall}
                 >
                   <Save></Save>
                   <span>Save</span>
                 </button> */}
-              </div>
-              {/* <div className="question-bank-main-body-left-header">
+            </div>
+            {/* <div className="question-bank-main-body-left-header">
                   <span className="question-bank-main-body-left-header-title">
                     Questions
                   </span>
@@ -629,7 +633,8 @@ useEffect(() => {
               </div>
             </div>
           </div>
-      </div>)}
+        </div>
+      )}
     </div>
   );
 };

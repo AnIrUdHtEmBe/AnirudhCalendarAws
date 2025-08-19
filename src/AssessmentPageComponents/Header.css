@@ -27,11 +27,29 @@
 
 .header-tabs-ass {
   display: flex;
+  align-items: center;
+  width: 100%;
+  /* Remove justify-content here! Leave it blank, default is flex-start */
+  margin-top: 20px;
+  /* gap removed; we’ll apply it in the center class */
+}
+
+.header-breadcrumb-left {
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  min-width: 0; /* prevent overflow issues */
+  margin-left: 0.5rem;
+}
+
+.header-tabs-center {
+  flex: 1 1 0%;
+  display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: 20px;
-  gap: 3rem; /* equivalent to space-x-15 */
+  gap: 3rem; /* This keeps your center buttons spaced */
 }
+
 
 .header-taab {
   font-size: 20px; /* text-xl */

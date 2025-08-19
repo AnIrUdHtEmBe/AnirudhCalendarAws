@@ -6,6 +6,7 @@ import AssignmentCreationModal from "../AssessmentPageComponents/AssignmentCreat
 import "./QuestionPaper.css";
 import "./Assessment.css";
 import { DataContext } from "../store/DataContext";
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 
 function ViewAllAssessment() {
   const context = useContext(DataContext);
@@ -53,30 +54,37 @@ function ViewAllAssessment() {
             <span className="header-title">{headingText}</span>
           </div>
           <div className="header-tabs">
-            <button
-              onClick={() => handleSelection("assignment")}
-              className={`header-tab ${
-                selectComponent === "/assignment" ? "border-b-4 active-tab" : ""
-              }`}
-            >
-              Assessments
-            </button>
-            <button
-              onClick={() => handleSelection("question")}
-              className={`header-tab ${
-                selectComponent === "/question-bank"
-                  ? "border-b-4 active-tab"
-                  : ""
-              }`}
-            >
-              Questions
-            </button>
-            <button
-              className="header-tab border-b-4 border-transparent pb-2"
-              onClick={() => handleSelection("settings")}
-            >
-              Settings
-            </button>
+            <div className="header-breadcrumb-left">
+              <Breadcrumb />
+            </div>
+            <div className="header-tabs-center" style={{marginRight : '18rem'}}>
+              <button
+                onClick={() => handleSelection("assignment")}
+                className={`header-tab ${
+                  selectComponent === "/assignment"
+                    ? "border-b-4 active-tab"
+                    : ""
+                }`}
+              >
+                Assessments
+              </button>
+              <button
+                onClick={() => handleSelection("question")}
+                className={`header-tab ${
+                  selectComponent === "/question-bank"
+                    ? "border-b-4 active-tab"
+                    : ""
+                }`}
+              >
+                Questions
+              </button>
+              <button
+                className="header-tab border-b-4 border-transparent pb-2"
+                onClick={() => handleSelection("settings")}
+              >
+                Settings
+              </button>
+            </div>
           </div>
         </div>
 
@@ -147,12 +155,12 @@ function ViewAllAssessment() {
             {/* Single table with sticky header & scrollable body */}
             <div className="flex-1 overflow-y-auto">
               <table className="w-full table-fixed border-collapse">
-<colgroup>
-  <col className="w-[12%]" /> {/* Sl.No */}
-  <col className="w-[50%] max-w-[400px]" /> {/* Assessment */}
-  <col className="w-[20%]" /> {/* No of Questions */}
-  <col className="w-[18%]" /> {/* Preview */}
-</colgroup>
+                <colgroup>
+                  <col className="w-[12%]" /> {/* Sl.No */}
+                  <col className="w-[50%] max-w-[400px]" /> {/* Assessment */}
+                  <col className="w-[20%]" /> {/* No of Questions */}
+                  <col className="w-[18%]" /> {/* Preview */}
+                </colgroup>
 
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
@@ -171,41 +179,43 @@ function ViewAllAssessment() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {assessments_Api_call.map((assessment: any, index: number) => (
-                    <tr
-                      key={assessment.tempelateId}
-                      onClick={() => setSelectedRow(assessment)}
-                      className={`cursor-pointer transition-colors duration-150 ${
-                        selectedRow === assessment
-                          ? "selected-row bg-blue-50"
-                          : "hover-row hover:bg-gray-50"
-                      }`}
-                    >
-                      <td className="p-3 text-base text-center text-gray-900">
-                        {index + 1}
-                      </td>
-                      <td className="p-3 text-base text-left text-gray-900">
-                        {assessment.name}
-                      </td>
-                      <td className="p-3 text-base text-center text-gray-900">
-                        {assessment.questions.length}
-                      </td>
-                      <td className="p-3 text-base text-center">
-                        {assessment.questions.length !== 0 && (
-                          <button
-                            className="preview-button inline-flex items-center justify-center p-1 rounded-md hover:bg-gray-100 transition-colors duration-150"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowModal(true);
-                              setSelectedAssessment(assessment);
-                            }}
-                          >
-                            <Eye size={20} className="text-gray-600" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                  {assessments_Api_call.map(
+                    (assessment: any, index: number) => (
+                      <tr
+                        key={assessment.tempelateId}
+                        onClick={() => setSelectedRow(assessment)}
+                        className={`cursor-pointer transition-colors duration-150 ${
+                          selectedRow === assessment
+                            ? "selected-row bg-blue-50"
+                            : "hover-row hover:bg-gray-50"
+                        }`}
+                      >
+                        <td className="p-3 text-base text-center text-gray-900">
+                          {index + 1}
+                        </td>
+                        <td className="p-3 text-base text-left text-gray-900">
+                          {assessment.name}
+                        </td>
+                        <td className="p-3 text-base text-center text-gray-900">
+                          {assessment.questions.length}
+                        </td>
+                        <td className="p-3 text-base text-center">
+                          {assessment.questions.length !== 0 && (
+                            <button
+                              className="preview-button inline-flex items-center justify-center p-1 rounded-md hover:bg-gray-100 transition-colors duration-150"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setShowModal(true);
+                                setSelectedAssessment(assessment);
+                              }}
+                            >
+                              <Eye size={20} className="text-gray-600" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  )}
                 </tbody>
               </table>
             </div>
