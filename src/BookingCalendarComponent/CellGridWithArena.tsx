@@ -122,36 +122,36 @@ function toLocalISOString(date: Date): string {
 
 // Add this component before CellGridLatest component
 // ✅ Outside of CellGridLatest, before Cell definition
-// const RedDotIndicator: React.FC<{
-//   row: number;
-//   col: number;
-//   cellMessageCounts: { [bookingId: string]: number };
-//   getBookingIdForOccupiedCell: (
-//     row: number,
-//     col: number
-//   ) => Promise<string | null>;
-// }> = ({ row, col, cellMessageCounts, getBookingIdForOccupiedCell }) => {
-//   const [hasNewMessages, setHasNewMessages] = useState(false);
+const RedDotIndicator: React.FC<{
+  row: number;
+  col: number;
+  cellMessageCounts: { [bookingId: string]: number };
+  getBookingIdForOccupiedCell: (
+    row: number,
+    col: number
+  ) => Promise<string | null>;
+}> = ({ row, col, cellMessageCounts, getBookingIdForOccupiedCell }) => {
+  const [hasNewMessages, setHasNewMessages] = useState(false);
 
-//   useEffect(() => {
-//     const checkForNewMessages = async () => {
-//       const bookingId = await getBookingIdForOccupiedCell(row, col);
-//       if (bookingId && cellMessageCounts[bookingId] > 0) {
-//         setHasNewMessages(true);
-//       } else {
-//         setHasNewMessages(false);
-//       }
-//     };
+  useEffect(() => {
+    const checkForNewMessages = async () => {
+      const bookingId = await getBookingIdForOccupiedCell(row, col);
+      if (bookingId && cellMessageCounts[bookingId] > 0) {
+        setHasNewMessages(true);
+      } else {
+        setHasNewMessages(false);
+      }
+    };
 
-//     checkForNewMessages();
-//   }, [row, col, cellMessageCounts, getBookingIdForOccupiedCell]);
+    checkForNewMessages();
+  }, [row, col, cellMessageCounts, getBookingIdForOccupiedCell]);
 
-//   if (!hasNewMessages) return null;
+  if (!hasNewMessages) return null;
 
-//   return (
-//     <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full z-10"></div>
-//   );
-// };
+  return (
+    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full z-10"></div>
+  );
+};
 
 const Cell = ({
   row,
@@ -238,14 +238,14 @@ const Cell = ({
       }}
     >
       {/* Add red dot for occupied cells with new messages */}
-      {/* {state === "occupied" && row !== undefined && col !== undefined && (
+      {state === "occupied" && row !== undefined && col !== undefined && (
         <RedDotIndicator
           row={row}
           col={col}
           cellMessageCounts={cellMessageCounts!}
           getBookingIdForOccupiedCell={getBookingIdForOccupiedCell!}
         />
-      )} */}
+      )}
     </div>
   );
 };
@@ -2158,24 +2158,24 @@ const CellGridLatest = () => {
     }
   }, [firstSelected, selectedCellDetails.courtDetails?.courtId]);
 
-// useEffect(() => {
-//     if (filteredCourtId.length > 0) {
-//       // ✅ Stop old polling when date changes
-//       cleanupMessagePolling();
+useEffect(() => {
+    if (filteredCourtId.length > 0) {
+      // ✅ Stop old polling when date changes
+      cleanupMessagePolling();
 
-//       // ✅ Start fresh polling for the new date
-//       setIsMessagePollingActive(false);
-//       startPollingForAllOccupiedCells();
-//     }
-// }, [filteredCourtId.length, currentDate]);
+      // ✅ Start fresh polling for the new date
+      setIsMessagePollingActive(false);
+      startPollingForAllOccupiedCells();
+    }
+}, [filteredCourtId.length, currentDate]);
 
 
   // Cleanup on unmount
-  // useEffect(() => {
-  //   return () => {
-  //     cleanupMessagePolling();
-  //   };
-  // }, []);
+  useEffect(() => {
+    return () => {
+      cleanupMessagePolling();
+    };
+  }, []);
 
   // Add these functions after existing helper functions
 
@@ -2234,7 +2234,7 @@ const CellGridLatest = () => {
 
       const pollMessages = async () => {
         try {
-          const messageHistory = await room.messages.history({ limit: 1000 });
+          const messageHistory = await room.messages.history({ limit: 30 });
           const messages = messageHistory.items;
           const seenByTeamAtIST = new Date(seenByTeamAtUnix * 1000);
 
@@ -2263,7 +2263,7 @@ const CellGridLatest = () => {
       };
 
       await pollMessages();
-      const interval = setInterval(pollMessages, 50000);
+      const interval = setInterval(pollMessages, 30000);
 
       setCellPollingIntervals((prev) => ({
         ...prev,

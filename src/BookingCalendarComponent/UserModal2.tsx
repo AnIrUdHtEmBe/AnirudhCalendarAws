@@ -68,6 +68,9 @@ const CellModal2: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => 
   const [directChatUserId, setDirectChatUserId] = useState<string>("");
   const [directChatRoomType, setDirectChatRoomType] = useState<string>("");
   const clickTimeouts = useRef<{[userId: string]: NodeJS.Timeout}>({});
+  const [openReplyToAllBox, setOpenReplyToAllBox] = useState(false);
+const [replyToAllInput, setReplyToAllInput] = useState("");
+const [sendingToAll, setSendingToAll] = useState(false);
   // Add these state variables after existing useState declarations
 
   // Replace existing message tracking state variables with these
@@ -393,38 +396,7 @@ const handleModalClose = () => {
     }
   }
 
-  //   // Fetch slot string when component mounts or when bookingId changes
-  // useEffect(() => {
-  //   async function fetchSlots() {
-  //     if (!cellData.bookingId) return;
 
-  //     try {
-  //       const apiRes = await axios.get(`https://play-os-backendv2.forgehub.in/booking/${cellData.bookingId}`);
-  //       const startTimeUTC = apiRes.data.startTime;
-  //       const endTimeUTC = apiRes.data.endTime;
-
-  //       const startDate = new Date(startTimeUTC);
-  //       const endDate = new Date(endTimeUTC);
-
-  //       const options: Intl.DateTimeFormatOptions = {
-  //         hour: "2-digit",
-  //         minute: "2-digit",
-  //         hour12: true,
-  //         timeZone: "Asia/Kolkata"
-  //       };
-
-  //       const startTimeIST = startDate.toLocaleTimeString("en-IN", options);
-  //       const endTimeIST = endDate.toLocaleTimeString("en-IN", options);
-
-  //       setSlotString(`${startTimeIST}  - ${endTimeIST} `);
-  //     } catch (error) {
-  //       console.error("Failed to fetch slot times", error);
-  //       setSlotString("Unavailable");
-  //     }
-  //   }
-
-  //   fetchSlots();
-  // }, [cellData.bookingId]);
 
   const fetchTimeSlot = async () => {
     const res = await axios.get(
@@ -477,10 +449,15 @@ const handleModalClose = () => {
 
   const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`;
 
-  const realtimeClient = new Ably.Realtime({ key: API_KEY, clientId });
-  const chatClient = new ChatClient(realtimeClient, {
+const realtimeClient = useMemo(() => {
+  return new Ably.Realtime({ key: API_KEY, clientId });
+}, [API_KEY, clientId]);
+
+const chatClient = useMemo(() => {
+  return new ChatClient(realtimeClient, {
     logLevel: LogLevel.Info,
   });
+}, [realtimeClient]);
 
   const stableModalUsers = useMemo(() => {
     return modalUsers.map((user) => ({
@@ -492,286 +469,11 @@ const handleModalClose = () => {
     modalUsers.map((u) => u.name).join(","),
   ]);
 
-  //   useEffect(() => {
-  //     if (modalUsers.length > 0 && !isMessageTrackingActive) {
-  //       initializeAllUserChatRooms();
-  //     }
-  //   }, [modalUsers]);
 
-  //   // Start polling when chat rooms are initialized
-  //   useEffect(() => {
-  //     if (Object.keys(userChatRooms).length > 0 && isMessageTrackingActive) {
-  //       startAllMessagePolling();
-  //     }
-  //   }, [userChatRooms, isMessageTrackingActive]);
 
-  //   // Cleanup on component unmount or modal close
-  //   useEffect(() => {
-  //     if (!isOpen) {
-  //       cleanupMessagePolling();
-  //     }
+ const stableChatClient = useMemo(() => chatClient, [chatClient]); // Remove API_KEY, clientId deps
 
-  //     return () => {
-  //       cleanupMessagePolling();
-  //     };
-  //   }, [isOpen]);
 
-  // Replace the existing useEffect with this:
-
-  const stableChatClient = useMemo(() => chatClient, [API_KEY, clientId]);
-
-  // useEffect(() => {
-  //   if (stableModalUsers.length === 0 || !isOpen) return;
-
-  //   let isEffectActive = true;
-
-  //   const setupAlwaysOnConnections = async () => {
-  //     // Only proceed if effect is still active
-  //     if (!isEffectActive) return;
-
-  //     console.log("🔄 Setting up always-on connections...");
-
-  //     // Cleanup existing connections first
-  //     for (const [roomKey, room] of Object.entries(roomConnections.current)) {
-  //       try {
-  //         if (room) {
-  //           if (room.messages?.unsubscribeAll) {
-  //             await room.messages.unsubscribeAll();
-  //           } else if (room.messages?.unsubscribe) {
-  //             room.messages.unsubscribe();
-  //           }
-
-  //           if (room.detach) {
-  //             await room.detach();
-  //           }
-  //           if (room.release) {
-  //             await room.release();
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error(`Error cleaning up room ${roomKey}:`, error);
-  //       }
-  //     }
-  //     roomConnections.current = {};
-
-  //     // Check if effect is still active after cleanup
-  //     if (!isEffectActive) return;
-
-  //     // Add delay to ensure cleanup is complete
-  //     await new Promise((resolve) => setTimeout(resolve, 1000));
-
-  //     // Check again after delay
-  //     if (!isEffectActive) return;
-
-  //     // Fetch room data for all users and setup connections
-  //     const usersWithRoomsData = [];
-
-  //     for (const user of stableModalUsers) {
-  //       // Check if effect is still active during loop
-  //       if (!isEffectActive) break;
-
-  //       try {
-  //         const response = await axios.get(
-  //           `https://play-os-backend.forgehub.in/human/human/${user.userId}`
-  //         );
-  //         const rooms = Array.isArray(response.data)
-  //           ? response.data
-  //           : response.data.rooms || [];
-
-  //         const userWithRooms = {
-  //           user: { userId: user.userId, name: user.name },
-  //           rooms,
-  //           hasNewMessages: {},
-  //           lastMessageTime: {},
-  //         };
-
-  //         usersWithRoomsData.push(userWithRooms);
-
-  //         // Set up connections for each room
-  //         for (const room of rooms) {
-  //           if (!isEffectActive) break;
-
-  //           const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${user.userId}`;
-
-  //           // Skip if room already exists and is connected
-  //           if (roomConnections.current[roomKey]) {
-  //             console.log(`⏭️ Skipping ${roomKey} - already connected`);
-  //             continue;
-  //           }
-
-  //           try {
-  //             const ablyRoom = await chatClient.rooms.get(roomKey);
-
-  //             if (ablyRoom.status !== "attached") {
-  //               await ablyRoom.attach();
-  //             }
-
-  //             roomConnections.current[roomKey] = ablyRoom;
-
-  //             // Initial message check
-  //             const checkInitialMessages = async () => {
-  //               if (!isEffectActive) return;
-
-  //               try {
-  //                 const messageHistory = await ablyRoom.messages.history({
-  //                   limit: 60,
-  //                 });
-  //                 const messages = messageHistory.items;
-  //                 const seenByTeamAtDate = new Date(room.handledAt * 1000);
-  //                 let messageCount = 0;
-
-  //                 messages.forEach((message) => {
-  //                   const messageTimestamp =
-  //                     message.createdAt || message.timestamp;
-  //                   if (messageTimestamp) {
-  //                     const msgDate = new Date(messageTimestamp);
-  //                     // Use the same strict comparison as SmallChatBox
-  //                     if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
-  //                       messageCount++;
-  //                     }
-  //                   }
-  //                 });
-
-  //                 console.log(
-  //                   `📊 Initial message count for ${roomKey}: ${messageCount}`
-  //                 );
-
-  //                 // Update newMessagesCount for this specific room
-  //                 if (isEffectActive) {
-  //                   setNewMessagesCount((prev) => ({
-  //                     ...prev,
-  //                     [roomKey]: messageCount,
-  //                   }));
-  //                 }
-  //               } catch (error) {
-  //                 console.error(
-  //                   `Initial message check error for ${roomKey}:`,
-  //                   error
-  //                 );
-  //                 // Set to 0 on error
-  //                 if (isEffectActive) {
-  //                   setNewMessagesCount((prev) => ({
-  //                     ...prev,
-  //                     [roomKey]: 0,
-  //                   }));
-  //                 }
-  //               }
-  //             };
-
-  //             // Set up real-time message listener
-  //             const messageListener = (messageEvent: { message: any }) => {
-  //               if (!isEffectActive) return;
-
-  //               const message = messageEvent.message || messageEvent;
-  //               const messageTimestamp = message.createdAt || message.timestamp;
-  //               const seenByTeamAtDate = new Date(room.handledAt * 1000);
-
-  //               console.log("📨 New message received:", {
-  //                 roomKey,
-  //                 messageTimestamp: new Date(messageTimestamp),
-  //                 seenByTeamAtDate,
-  //                 isNewer: messageTimestamp
-  //                   ? new Date(messageTimestamp).getTime() >
-  //                     seenByTeamAtDate.getTime()
-  //                   : false,
-  //               });
-
-  //               if (messageTimestamp) {
-  //                 const msgDate = new Date(messageTimestamp);
-  //                 // Use the same strict comparison as SmallChatBox and checkInitialMessages
-  //                 if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
-  //                   // Update message count immediately
-  //                   setNewMessagesCount((prev) => {
-  //                     const newCount = (prev[roomKey] || 0) + 1;
-  //                     console.log(
-  //                       `🔴 Updated count for ${roomKey}: ${newCount}`
-  //                     );
-  //                     return {
-  //                       ...prev,
-  //                       [roomKey]: newCount,
-  //                     };
-  //                   });
-  //                 }
-  //               }
-  //             };
-
-  //             // Subscribe to real-time messages
-  //             ablyRoom.messages.subscribe(messageListener);
-
-  //             // Perform initial check
-  //             await checkInitialMessages();
-
-  //             console.log(`✅ Always-on connection established for ${roomKey}`);
-  //           } catch (error) {
-  //             console.error(
-  //               `Failed to create always-on connection for ${roomKey}:`,
-  //               error
-  //             );
-  //           }
-  //         }
-  //       } catch (error) {
-  //         console.error(
-  //           `Failed to fetch rooms for user ${user.userId}:`,
-  //           error
-  //         );
-  //         // Add user with empty rooms to maintain consistency
-  //         usersWithRoomsData.push({
-  //           user: { userId: user.userId, name: user.name },
-  //           rooms: [],
-  //           hasNewMessages: {},
-  //           lastMessageTime: {},
-  //         });
-  //       }
-  //     }
-
-  //     if (isEffectActive) {
-  //       setUsersWithRooms(usersWithRoomsData);
-  //       setIsMessageTrackingActive(true);
-  //       console.log("✅ All always-on connections established successfully");
-  //     }
-  //   };
-
-  //   setupAlwaysOnConnections();
-
-  //   // Cleanup function
-  //   return () => {
-  //     isEffectActive = false;
-
-  //     const cleanup = async () => {
-  //       console.log("🧹 Cleaning up always-on connections...");
-
-  //       for (const [roomKey, room] of Object.entries(roomConnections.current)) {
-  //         try {
-  //           if (room) {
-  //             if (room.messages?.unsubscribeAll) {
-  //               await room.messages.unsubscribeAll();
-  //             } else if (room.messages?.unsubscribe) {
-  //               room.messages.unsubscribe();
-  //             }
-
-  //             if (room.detach && room.status === "attached") {
-  //               await room.detach();
-  //             }
-
-  //             if (room.release) {
-  //               await room.release();
-  //             }
-  //           }
-  //         } catch (error) {
-  //           console.error(`Error cleaning up room ${roomKey}:`, error);
-  //         }
-  //       }
-
-  //       roomConnections.current = {};
-  //       setNewMessagesCount({});
-  //       setUserChatRooms({});
-  //       setIsMessageTrackingActive(false);
-  //       console.log("Always-on connections cleanup completed");
-  //     };
-
-  //     cleanup();
-  //   };
-  // }, [stableModalUsers, isOpen]); // Removed chatClient from dependencies
 
 // Replace the existing useEffect (around line 300-500) with this:
 useEffect(() => {
@@ -1039,264 +741,7 @@ const handleOpenRoomChat = async (userId: string) => {
   }
 };
 
-  // Replace the existing handleOpenRoomChat function with this updated version:
-  // const handleOpenRoomChat = async (userId: string) => {
-  //   if (!userId || !cellData.bookingId) return;
-
-  //   try {
-  //     setDirectGameChatRoomName(`loading-${userId}-${Date.now()}`);
-  //     setDirectGameChatDisplayName("Loading...");
-  //     setOpenDirectGameChat(true);
-  //     setDirectChatUserId(userId);
-
-
-  //     if (directGameChatRoomName && roomConnections.current[directGameChatRoomName]) {
-  //     try {
-  //       const oldRoom = roomConnections.current[directGameChatRoomName];
-  //       console.log(`Detaching old room: ${directGameChatRoomName}`);
-
-  //       if (oldRoom.messages?.unsubscribeAll) {
-  //         await oldRoom.messages.unsubscribeAll();
-  //       } else if (oldRoom.messages?.unsubscribe) {
-  //         oldRoom.messages.unsubscribe();
-  //       }
-
-  //       if (oldRoom.status === "attached") {
-  //         await oldRoom.detach();
-  //       }
-  //       if (oldRoom.release) {
-  //         await oldRoom.release();
-  //       }
-  //     } catch (err) {
-  //       console.error("Error detaching old room:", err);
-  //     }
-  //   }
-
-  //     // Find user in usersWithRooms instead of making API calls
-  //     const userWithRooms = usersWithRooms.find(
-  //       (uwr) => uwr.user.userId === userId
-  //     );
-
-  //     if (!userWithRooms || !userWithRooms.rooms.length) {
-  //       setDirectGameChatDisplayName("No rooms available");
-  //       return;
-  //     }
-
-  //     // Get court and sport info for room type matching
-  //     const [bookingRes] = await Promise.all([
-  //       axios.get(
-  //         `https://play-os-backend.forgehub.in/booking/${cellData.bookingId}`
-  //       ),
-  //     ]);
-
-  //     const courtId = bookingRes.data.courtId;
-  //     const courtRes = await axios.get(
-  //       `https://play-os-backend.forgehub.in/court/${courtId}`
-  //     );
-
-  //     const allowedSports = courtRes.data.allowedSports;
-  //     const firstSportId = Array.isArray(allowedSports) && allowedSports[0];
-
-  //     let roomType = "SPORTS";
-  //     if (firstSportId) {
-  //       try {
-  //         const sportRes = await axios.get(
-  //           `https://play-os-backend.forgehub.in/sports/id/${firstSportId}`
-  //         );
-  //         roomType = sportRes.data.category || "SPORTS";
-  //         setDirectChatRoomType(roomType);
-  //         localStorage.setItem("roomType", roomType);
-  //       } catch (error) {
-  //         console.warn("Failed to fetch sport info, using default roomType");
-  //       }
-  //     }
-
-  //     // Find matching room from usersWithRooms data
-  //     let matchedRoom = userWithRooms.rooms.find(
-  //       (room) =>
-  //         room.roomType &&
-  //         room.roomType.trim().toUpperCase() === roomType.trim().toUpperCase()
-  //     );
-
-  //     if (!matchedRoom) {
-  //       matchedRoom = userWithRooms.rooms[0];
-  //       if (!matchedRoom) {
-  //         setDirectGameChatDisplayName("No rooms available");
-  //         return;
-  //       }
-  //     }
-
-  //     const roomNameDisplay = matchedRoom.roomName;
-  //     const finalRoomName = `${roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${userId}`;
-
-  //     // Reset new messages count when opening chat
-  //     //   setNewMessagesCount((prev) => ({
-  //     //     ...prev,
-  //     //     [finalRoomName]: 0,
-  //     //   }));
-
-  //     setDirectGameChatRoomName(finalRoomName);
-  //     setDirectGameChatDisplayName(roomNameDisplay);
-  //   } catch (error) {
-  //     console.error("Error opening room chat:", error);
-  //     setDirectGameChatDisplayName("Error loading chat");
-  //   }
-  // };
-
-  // Add this function after existing functions
-  //   const fetchUserChatRooms = async (userId: string) => {
-  //     try {
-  //       const response = await axios.get(
-  //         `https://play-os-backend.forgehub.in/human/human/${userId}`
-  //       );
-  //       const rooms = Array.isArray(response.data)
-  //         ? response.data
-  //         : response.data.rooms || [];
-
-  //       setUserChatRooms((prev) => ({
-  //         ...prev,
-  //         [userId]: rooms,
-  //       }));
-
-  //       return rooms;
-  //     } catch (error) {
-  //       console.error(`Failed to fetch chat rooms for user ${userId}:`, error);
-  //       return [];
-  //     }
-  //   };
-
-  //   // Add this function after fetchUserChatRooms
-  //   const startMessagePolling = async (
-  //     userId: string,
-  //     roomType: string,
-  //     chatId: string,
-  //     roomName: string,
-  //     seenByTeamAtUnix: number
-  //   ) => {
-  //     const roomKey = `${roomType}-${roomName}-${chatId}-${userId}`;
-  //     const ablyRoomName = roomKey;
-
-  //     try {
-  //       // Get the room connection
-  //       const room = await chatClient.rooms.get(ablyRoomName);
-
-  //       // Store room connection
-  //       setAblyRoomConnections((prev) => ({
-  //         ...prev,
-  //         [roomKey]: room,
-  //       }));
-
-  //       // Clear existing interval if any
-  //       if (messagePollingIntervals[roomKey]) {
-  //         clearInterval(messagePollingIntervals[roomKey]);
-  //       }
-
-  //       const pollMessages = async () => {
-  //         try {
-  //           // Use the room's messages history method correctly
-  //           const messageHistory = await room.messages.history({ limit: 1000 });
-  //           const messages = messageHistory.items;
-
-  //           // Convert seenByTeamAt unix timestamp to IST Date for comparison
-  //           const seenByTeamAtIST = new Date(seenByTeamAtUnix * 1000);
-
-  //           // Count new messages (messages newer than seenByTeamAt)
-  //           let newMessageCount = 0;
-
-  //           messages.forEach((message: any) => {
-  //             const messageTimestamp = message.createdAt || message.timestamp;
-
-  //             if (
-  //               messageTimestamp &&
-  //               new Date(messageTimestamp) > seenByTeamAtIST
-  //             ) {
-  //               newMessageCount++;
-  //             }
-  //           });
-
-  //           // Update new messages count
-  //           setNewMessagesCount((prev) => ({
-  //             ...prev,
-  //             [roomKey]: newMessageCount,
-  //           }));
-  //         } catch (error) {
-  //           console.error(`Failed to poll messages for ${roomKey}:`, error);
-  //           // Reset count on error
-  //           setNewMessagesCount((prev) => ({
-  //             ...prev,
-  //             [roomKey]: 0,
-  //           }));
-  //         }
-  //       };
-
-  //       // Initial poll
-  //       await pollMessages();
-
-  //       // Poll every 5 seconds
-  //       const interval = setInterval(pollMessages, 5000);
-
-  //       setMessagePollingIntervals((prev) => ({
-  //         ...prev,
-  //         [roomKey]: interval,
-  //       }));
-
-  //       console.log(`Started Ably message polling for ${roomKey}`);
-  //     } catch (error) {
-  //       console.error(`Failed to create room connection for ${roomKey}:`, error);
-  //     }
-  //   };
-
-  //   const startAllMessagePolling = async () => {
-  //     console.log("Starting Ably message polling for all user rooms...");
-
-  //     const pollingPromises = Object.entries(userChatRooms).flatMap(
-  //       ([userId, rooms]) =>
-  //         rooms.map((room) =>
-  //           startMessagePolling(
-  //             userId,
-  //             room.roomType,
-  //             room.chatId,
-  //             room.roomName,
-  //             room.seenByTeamAt || 0 // fallback to 0 if seenByTeamAt is missing
-  //           )
-  //         )
-  //     );
-
-  //     // Start all polling in parallel
-  //     await Promise.allSettled(pollingPromises);
-
-  //     console.log(
-  //       `Started Ably polling for ${Object.keys(userChatRooms).length} users`
-  //     );
-  //   };
-
-  //   const initializeAllUserChatRooms = async () => {
-  //     if (modalUsers.length === 0) return;
-
-  //     console.log("Initializing chat rooms for all users...");
-  //     setIsMessageTrackingActive(true);
-
-  //     // Fetch chat rooms for all users in parallel
-  //     const roomPromises = modalUsers.map((user) =>
-  //       fetchUserChatRooms(user.userId)
-  //     );
-  //     await Promise.all(roomPromises);
-
-  //     // Initialize message counts to 0 for all rooms
-  //     const initialCounts: { [roomKey: string]: number } = {};
-  //     modalUsers.forEach((user) => {
-  //       const userRooms = userChatRooms[user.userId] || [];
-  //       userRooms.forEach((room) => {
-  //         const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${user.userId}`;
-  //         initialCounts[roomKey] = 0;
-  //       });
-  //     });
-
-  //     setNewMessagesCount(initialCounts);
-  //     console.log(
-  //       "Initialized chat rooms for all users, starting message tracking..."
-  //     );
-  //   };
+  
 
   const getNewMessagesForUser = (userId: string) => {
     const userWithRooms = usersWithRooms.find(
@@ -1320,36 +765,7 @@ const handleOpenRoomChat = async (userId: string) => {
     return totalNewMessages;
   };
 
-  //   const cleanupMessagePolling = async () => {
-  //     console.log("Cleaning up Ably message polling...");
 
-  //     // Clear all polling intervals
-  //     Object.values(messagePollingIntervals).forEach((interval) => {
-  //       if (interval) clearInterval(interval);
-  //     });
-
-  //     // Cleanup Ably room connections
-  //     Object.values(ablyRoomConnections).forEach((room) => {
-  //       try {
-  //         // Release room resources if needed
-  //         if (room && typeof room.release === "function") {
-  //           room.release();
-  //         }
-  //       } catch (error) {
-  //         console.error("Error releasing room connection:", error);
-  //       }
-  //     });
-
-  //     setMessagePollingIntervals({});
-  //     setNewMessagesCount({});
-  //     setUserChatRooms({});
-  //     setAblyRoomConnections({});
-  //     setIsMessageTrackingActive(false);
-
-  //     console.log("Ably message polling cleanup completed");
-  //   };
-
-// Replace the existing SmallChatBox component with this simplified version:
 
 // At the top of the SmallChatBox file/component
 interface SmallChatBoxProps {
@@ -1387,20 +803,38 @@ const SmallChatBox: React.FC<SmallChatBoxProps> = ({
   const nameRequestsCache = useRef(new Set());
 
   // Independent connection via useMessages hook
-  const { historyBeforeSubscribe, send } = useMessages({
-    listener: (event) => {
-      if (event.type === ChatMessageEventType.Created) {
-        const newMsg = event.message;
-        console.log("📨 New message in chat:", newMsg.text);
-        setMessages((prev) => [...prev, newMsg]);
+const { historyBeforeSubscribe, send } = useMessages({
+  listener: (event) => {
+    console.log("🎯 useMessages listener fired:", event.type);
+    if (event.type === ChatMessageEventType.Created) {
+      const newMsg = event.message;
+      console.log("📨 New message in chat:", newMsg.text);
+      
+      // Prevent adding duplicates by checking if message already exists
+      setMessages((prev) => {
+        const isDuplicate = prev.some(msg => 
+          msg.clientId === newMsg.clientId && 
+          msg.text === newMsg.text && 
+          Math.abs(new Date(msg.timestamp || msg.createdAt || 0).getTime() - new Date(newMsg.timestamp || newMsg.createdAt || 0).getTime()) < 1000
+        );
+        
+        if (isDuplicate) {
+          console.log("🚫 Duplicate message detected, skipping");
+          return prev;
+        }
+        
+        console.log("✅ Adding new message to chat");
         fetchSenderName(newMsg.clientId);
-      }
-    },
-    onDiscontinuity: (error) => {
-      console.error("📡 Chat discontinuity:", error);
-      setLoading(true);
-    },
-  });
+        return [...prev, newMsg];
+      });
+    }
+  },
+  onDiscontinuity: (error) => {
+    console.error("📡 Chat discontinuity:", error);
+    // Don't set loading to true here as it would trigger message reload
+    console.log("📡 Handling discontinuity without reloading messages");
+  },
+});
 
   const currentClientId = useMemo(() => {
     try {
@@ -1442,9 +876,12 @@ const fetchSenderName = useCallback(
   [clientNames]
 );
 
+console.log("🔍 historyBeforeSubscribe reference:", historyBeforeSubscribe);
+console.log("🔍 loading state:", loading);
 
   // Load messages - show only new messages since handledAt
   useEffect(() => {
+    console.log("🔥 useEffect triggered - historyBeforeSubscribe:", !!historyBeforeSubscribe, "loading:", loading);
     if (!historyBeforeSubscribe || !loading) return;
     
     const loadMessages = async () => {
@@ -1499,7 +936,7 @@ const fetchSenderName = useCallback(
     };
     
     loadMessages();
-  }, [historyBeforeSubscribe, loading, userId, roomType, roomName, fetchSenderName]);
+  }, [historyBeforeSubscribe, loading, userId, roomType, roomName]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -1816,6 +1253,161 @@ const handleChatSave = async (comment: string) => {
   }
 };
 
+const ReplyToAllBox: React.FC<{
+  onClose: () => void;
+}> = ({ onClose }) => {
+  const [localInput, setLocalInput] = useState("");
+  const currentClientId = useMemo(() => {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }, []);
+
+  const sendToAllUsers = async () => {
+    if (!localInput.trim()) return;
+    
+    setSendingToAll(true);
+    const message = localInput.trim();
+    let successCount = 0;
+    let failedUsers: string[] = [];
+
+    try {
+      // We'll need to send to each room individually
+      // Since useMessages hook works per room, we'll use the existing chat infrastructure
+      for (const user of modalUsers) {
+        try {
+          // Find user's room
+          const userWithRooms = usersWithRooms.find(
+            (uwr) => uwr.user.userId === user.userId
+          );
+
+          if (!userWithRooms || !userWithRooms.rooms.length) {
+            console.warn(`No rooms found for user: ${user.name}`);
+            failedUsers.push(user.name);
+            continue;
+          }
+
+          // Get first matching room
+          const matchedRoom = userWithRooms.rooms[0];
+          const roomKey = `${matchedRoom.roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${user.userId}`;
+
+          // Get the room and send message using Chat client
+          const room = await stableChatClient.rooms.get(roomKey);
+          await room.messages.send({ text: message });
+
+          successCount++;
+          console.log(`✅ Message sent to ${user.name}`);
+        } catch (error) {
+          console.error(`Failed to send to ${user.name}:`, error);
+          failedUsers.push(user.name);
+        }
+      }
+
+      // Show results
+      if (successCount > 0) {
+        enqueueSnackbar(
+          `Message sent successfully to ${successCount} user${successCount > 1 ? 's' : ''}`,
+          { variant: "success" }
+        );
+      }
+
+      if (failedUsers.length > 0) {
+        enqueueSnackbar(
+          `Failed to send to: ${failedUsers.join(", ")}`,
+          { variant: "error" }
+        );
+      }
+
+      // Close modal and reset
+      setLocalInput("");
+      onClose();
+    } catch (error) {
+      console.error("Reply to all error:", error);
+      enqueueSnackbar("Failed to send messages", { variant: "error" });
+    } finally {
+      setSendingToAll(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey && !sendingToAll) {
+      e.preventDefault();
+      sendToAllUsers();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 backdrop-blur bg-opacity-30 flex items-center justify-center z-[60]">
+      <div className="bg-white rounded-lg w-96 h-64 flex flex-col shadow-xl">
+        {/* Header */}
+        <div className="bg-green-500 text-white p-3 rounded-t-lg flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <span className="font-medium">Reply to All Users</span>
+            <span className="text-xs bg-green-600 px-2 py-1 rounded">
+              {modalUsers.length} users
+            </span>
+          </div>
+          <button onClick={onClose} className="hover:bg-green-600 rounded p-1">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 p-4 flex flex-col justify-center">
+          <div className="text-sm text-gray-600 mb-3">
+            This message will be sent individually to all {modalUsers.length} users in their respective chat rooms.
+          </div>
+          
+  <textarea
+    value={localInput}
+    onChange={(e) => setLocalInput(e.target.value)}
+    onKeyDown={handleKeyDown}
+    className="w-full border rounded px-3 py-2 h-20 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
+    placeholder="Type your message to send to all users..."
+    disabled={sendingToAll}
+    autoFocus
+  />
+        </div>
+
+        {/* Footer */}
+        <div className="p-3 border-t flex space-x-2">
+          <button
+            onClick={onClose}
+            disabled={sendingToAll}
+            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={sendToAllUsers}
+            disabled={!localInput.trim() || sendingToAll}
+            className={`flex-1 py-2 rounded flex items-center justify-center space-x-2 ${
+              !localInput.trim() || sendingToAll
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+                : "bg-green-500 text-white hover:bg-green-600"
+            }`}
+          >
+            {sendingToAll ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                <span>Sending...</span>
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4" />
+                <span>Send to All</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
   if (!isOpen) return null;
 
   return (
@@ -1835,7 +1427,16 @@ const handleChatSave = async (comment: string) => {
               setOpenGameChat(true);
             }}
           >
-            Group Chat
+            Game Chat
+          </div>
+
+          <div
+            className="
+    border-2 border-blue-400 rounded-lg shadow-md px-3 py-1 font-semibold text-blue-700 bg-blue-50 cursor-pointer transition duration-150 w-fit hover:bg-blue-100 hover:shadow-xl hover:scale-105 hover:border-blue-600 hover:ring-2 hover:ring-blue-300 active:scale-95 select-none
+  "
+            onClick={() => setOpenReplyToAllBox(true)}
+          >
+            Reply to All
           </div>
 
           <button
@@ -2139,6 +1740,15 @@ onClick={async (e) => {
             onSave={handleChatSave}
             userName={smallChatBoxData?.userName || ""}
           />
+          {openReplyToAllBox && (
+  <ReplyToAllBox
+    onClose={() => {
+      setOpenReplyToAllBox(false);
+      setReplyToAllInput("");
+      setSendingToAll(false);
+    }}
+  />
+)}
         </div>
       </div>
     </div>
@@ -2147,27 +1757,3 @@ onClick={async (e) => {
 
 export default CellModal2;
 
-//comment
-
-// replaced from openSmallChatBox
-// {openDirectGameChat && (
-//   <div
-//     className="fixed inset-0 z-[100] bg-white flex flex-col"
-//     style={{ minHeight: "100vh" }}
-//   >
-//     {/* Use your existing Ably provider setup here if needed */}
-//     <AblyProvider client={realtimeClient}>
-//       <ChatClientProvider client={chatClient}>
-//         <ChatRoomProvider name={directGameChatRoomName}>
-//           <GameChat
-//             roomName={directGameChatDisplayName}
-//             onClose={() => setOpenDirectGameChat(false)}
-//             userId={directChatUserId}
-//             roomType={directChatRoomType}
-//           />
-//         </ChatRoomProvider>
-//       </ChatClientProvider>
-//     </AblyProvider>
-//   </div>
-// )}
-//stash

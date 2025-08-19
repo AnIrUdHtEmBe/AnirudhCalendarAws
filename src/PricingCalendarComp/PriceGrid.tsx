@@ -84,11 +84,14 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
   // Fetch prices for each day in the week
   await Promise.all(
     weekDays.map(async (day) => {
-      // Don't add +1 here - use the actual day for API call
-      const dayKey = formatDateForInput(day);
+      // Add 1 day to match the navigation logic and fix timezone issue
+      const adjustedDay = addDays(day, 1);
+      const dayKey = formatDateForInput(day); // Keep original day as key for display
+      const apiDayKey = formatDateForInput(adjustedDay); // Use adjusted day for API call
+      
       try {
         const response = await axios.get(
-          `${API_BASE_URL_Latest}/arena/pricing-ranges/AREN_JZSW15?date=${dayKey}`
+          `${API_BASE_URL_Latest}/arena/pricing-ranges/AREN_JZSW15?date=${apiDayKey}`
         );
 
         data[dayKey] = {};
@@ -121,7 +124,7 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
           }
         });
       } catch (error) {
-        console.error(`Failed to fetch prices for ${dayKey}:`, error);
+        console.error(`Failed to fetch prices for ${apiDayKey}:`, error);
         // Fallback: set empty data for this day
         data[dayKey] = {};
         courts.forEach((court) => {
@@ -428,7 +431,7 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
       </div>
 
       {/* Bottom Bar - Fixed */}
-      <div className="w-full bg-white px-6 py-3 shadow-md flex items-center justify-between shrink-0 text-sm">
+      {/* <div className="w-full bg-white px-6 py-3 shadow-md flex items-center justify-between shrink-0 text-sm">
         <div className="min-w-[200px]">
           <strong>Court:</strong>{" "}
           {selectedCell && selectedCell.court
@@ -443,7 +446,7 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
         >
           Save
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

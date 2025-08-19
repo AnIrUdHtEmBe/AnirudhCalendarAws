@@ -1083,7 +1083,7 @@ const RmDashNew = () => {
                   userName: "",
                 })
               }
-              onSave={handleChatSave}
+              onSave={handleChatSave(comment)}
               userName={handleChatModal.userName}
             />
           </div>

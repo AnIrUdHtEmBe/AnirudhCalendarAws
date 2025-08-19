@@ -459,6 +459,10 @@ const HandleChatModal = ({
           placeholder="Add your comment..."
         />
 
+        <div className="text-xs text-gray-500 mt-1">
+            {comment.length}/20 characters minimum
+          </div>
+
         <div className="flex space-x-2 mt-4">
           <button
             onClick={onClose}
@@ -468,7 +472,12 @@ const HandleChatModal = ({
           </button>
           <button
             onClick={handleSave}
-            className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+            disabled={comment.length < 20}
+            className={`flex-1 py-2 rounded ${
+                comment.length >= 20
+                  ? "bg-blue-500 text-white hover:bg-blue-600"
+                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              }`}
           >
             Save
           </button>
