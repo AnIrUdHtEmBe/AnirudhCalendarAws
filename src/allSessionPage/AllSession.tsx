@@ -16,7 +16,7 @@ import {
   TextField,
 } from "@mui/material";
 import { Mediation, NordicWalking } from "@mui/icons-material";
-
+import YouTubeVideoModal from "../Youtube/YouTubeVideoModal";
 function AllSession() {
   const context = useContext(DataContext);
   const { getSessions, patchSession, getActivities, getActivityById } =
@@ -40,7 +40,9 @@ function AllSession() {
   );
 
   const [loadingRowIndex, setLoadingRowIndex] = useState<number | null>(null);
-
+const [showVideoModal, setShowVideoModal] = useState(false);
+const [currentVideoUrl, setCurrentVideoUrl] = useState("");
+const [videoTitle, setVideoTitle] = useState("");
   // console.log(sessions);
   useEffect(() => {
     getSessions();
@@ -127,11 +129,14 @@ function AllSession() {
     });
   };
 
-  const handleVideoLinkClick = (videoLink: string) => {
-    if (videoLink) {
-      window.open(videoLink, '_blank');
-    }
-  };
+ // Replace this function:
+const handleVideoLinkClick = (videoLink: string, activityName?: string) => {
+  if (videoLink) {
+    setCurrentVideoUrl(videoLink);
+    setVideoTitle(activityName || "Activity Video");
+    setShowVideoModal(true);
+  }
+};
 
   const formatUnit = (unit: string) => {
     switch (unit) {
@@ -370,7 +375,8 @@ function AllSession() {
                           <td className="activity-cell">
                             {item.videoLink && (
                               <button
-                                onClick={() => handleVideoLinkClick(item.videoLink)}
+  onClick={() => handleVideoLinkClick(item.videoLink, item.name)}
+
                                 className="video-link-button"
                                 title="Watch Video"
                                 style={{
@@ -417,7 +423,19 @@ function AllSession() {
           )}
         </div>
       </div>
+      {/* Add this right before the closing </div> of your main container */}
+<YouTubeVideoModal
+  isOpen={showVideoModal}
+  onClose={() => {
+    setShowVideoModal(false);
+    setCurrentVideoUrl("");
+    setVideoTitle("");
+  }}
+  videoUrl={currentVideoUrl}
+  title={videoTitle}
+/>
     </div>
+    
   );
 }
 

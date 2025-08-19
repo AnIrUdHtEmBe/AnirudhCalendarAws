@@ -17,6 +17,7 @@ import {
   TextField,
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
+import YouTubeVideoModal from "../Youtube/YouTubeVideoModal";
 
 function ActivityTable() {
   const context = useContext(DataContext);
@@ -41,7 +42,9 @@ function ActivityTable() {
     goals: [],
     category: [],
   });
-
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [currentVideoUrl, setCurrentVideoUrl] = useState("");
+  const [videoTitle, setVideoTitle] = useState("");
   useEffect(() => {});
   useEffect(() => {
     const fetchLiterals = async () => {
@@ -98,22 +101,22 @@ function ActivityTable() {
     setSelectComponent("AllSessions");
   };
 
-const handleSessionCreation = async () => {
-  const activityIds: string[] = emptyArr
-    .map((item) => item.activityId)
-    .filter((id): id is string => typeof id === "string");
+  const handleSessionCreation = async () => {
+    const activityIds: string[] = emptyArr
+      .map((item) => item.activityId)
+      .filter((id): id is string => typeof id === "string");
 
-  const sessionToBeCreated: Session_Api_call = {
-    title: planName,
-    description: "",
-    category: category,
-    activityIds: activityIds,
-    themes: theme ? [theme] : [],
-    goals: goal ? [goal] : [],
+    const sessionToBeCreated: Session_Api_call = {
+      title: planName,
+      description: "",
+      category: category,
+      activityIds: activityIds,
+      themes: theme ? [theme] : [],
+      goals: goal ? [goal] : [],
+    };
+    console.log(sessionToBeCreated);
+    await createSession(sessionToBeCreated);
   };
-  console.log(sessionToBeCreated);
-  await createSession(sessionToBeCreated);
-};
 
   const handleAddNewRow = () => {
     setNewActivities((prev) => [
@@ -253,9 +256,12 @@ const handleSessionCreation = async () => {
     updateTheActivitityById(value, id);
   };
 
-  const handleVideoLinkClick = (videoLink: string) => {
+  // Replace this function:
+  const handleVideoLinkClick = (videoLink: string, activityName?: string) => {
     if (videoLink) {
-      window.open(videoLink, "_blank");
+      setCurrentVideoUrl(videoLink);
+      setVideoTitle(activityName || "Activity Video");
+      setShowVideoModal(true);
     }
   };
 
@@ -280,7 +286,7 @@ const handleSessionCreation = async () => {
     console.log(goal);
   }, [theme, goal]);
 
-  //controlling activities with themes and goals 
+  //controlling activities with themes and goals
   // useEffect(() => {
   //   if (theme && goal) {
   //     getActivities(theme, goal);
@@ -523,7 +529,10 @@ const handleSessionCreation = async () => {
                       {activity.videoLink && (
                         <button
                           onClick={() =>
-                            handleVideoLinkClick(activity.videoLink)
+                            handleVideoLinkClick(
+                              activity.videoLink,
+                              activity.name
+                            )
                           }
                           className="video-link-button"
                           title="Watch Video"
@@ -572,7 +581,17 @@ const handleSessionCreation = async () => {
           </table>
         </div>
       </div>
-
+      {/* Add this right before the closing </div> of your main container */}
+      <YouTubeVideoModal
+        isOpen={showVideoModal}
+        onClose={() => {
+          setShowVideoModal(false);
+          setCurrentVideoUrl("");
+          setVideoTitle("");
+        }}
+        videoUrl={currentVideoUrl}
+        title={videoTitle}
+      />
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4 py-8">

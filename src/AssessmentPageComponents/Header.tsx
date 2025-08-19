@@ -2,6 +2,7 @@ import { FileText } from "lucide-react";
 import React, { useContext,useEffect,useState } from "react";
 import { DataContext } from "../store/DataContext";
 import "./Header.css"; // Assuming this is the path to your CSS file
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 
 function Header() {
   const context = useContext(DataContext);
@@ -25,11 +26,15 @@ const handleSelection=async(dataString:string)=>{
   return (
     <div className="header-con">
       <div className="header-t">
-        <FileText size={35} className="text-gray-800" />
+        <FileText size={28} className="text-gray-800" />
         <span className="header-titl">{headingText}</span>
       </div>
       <div className="header-tabs-ass">
-        <button
+         <div className="header-breadcrumb-left">
+    <Breadcrumb />
+  </div>
+<div className="header-tabs-center" style={{marginRight : '30rem'}}>
+          <button
          onClick={()=>handleSelection("assignment")}
           className={`text-[20px] font-medium ${selectComponent === "/assignment" || selectComponent === "AssessmentCreationPage2" || selectComponent === 'dashboard' ? "border-b-4 border-black" : ""}`}
         >
@@ -46,6 +51,7 @@ const handleSelection=async(dataString:string)=>{
             Questions
           </button>
         <button className="header-taab">Settings</button>
+</div>
       </div>
     </div>
   );

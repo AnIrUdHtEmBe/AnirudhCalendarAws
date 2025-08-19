@@ -32,10 +32,28 @@
 
 .header-tabs {
   display: flex;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  min-height: 60px; /* or adjust as needed */
+}
+
+.header-breadcrumb-left {
+  flex: 0 0 auto;
+  /* align left naturally */
+  display: flex;
+  align-items: center;
+}
+
+.header-tabs-center {
+  flex: 1 1 0%;
+  display: flex;
   justify-content: center;
   align-items: center;
-  gap: 3rem;
+  gap: 3rem; /* Keep your gap */
+  margin-right: 10rem;
 }
+
 
 .header-tab {
   font-size: 19px;

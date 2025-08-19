@@ -49,9 +49,25 @@ const breadcrumbConfig = {
     parentRoute: "/Dashboard",
     parentComponent: "seePlan"
   },
+  "/question-bank": {
+    default: {
+      label: "Question Bank",
+      path: "/question-bank",
+      selectComponent: "default",
+    },
+    "/assignment": {
+      label: "Assessments",
+      path: "/question-bank",
+      selectComponent: "/assignment",
+    },
+    "AssessmentCreationPage2": {
+      label: "Create Assessment",
+      path: "/question-bank",
+      selectComponent: "AssessmentCreationPage2",
+    },
+  },
   "/plans": { label: "Plans", path: "/plans" },
   "/sessions": { label: "Sessions", path: "/sessions" },
-  "/question-bank": { label: "Question Bank", path: "/question-bank" },
   "/gameChat": { label: "Game Chat", path: "/gameChat" },
   "/bookingCalendar": { label: "Booking Calendar", path: "/bookingCalendar" },
   "/nutrition": { label: "Nutrition", path: "/nutrition" },
@@ -113,6 +129,7 @@ const Breadcrumb: React.FC = () => {
       return crumbs;
     }
 
+    // Handle /question-bank route - remove special case, treat like other routes
     const routeConfig = breadcrumbConfig[pathname] || breadcrumbConfig["/Dashboard"];
 
     if (routeConfig) {
@@ -129,8 +146,30 @@ const Breadcrumb: React.FC = () => {
           },
         });
 
+        // Special case for AssessmentCreationPage2 to show under Assessments 
+        if (selectComponent === "AssessmentCreationPage2" && pathname === "/question-bank") {
+          crumbs.push({
+            label: routeConfig["/assignment"].label,
+            path: routeConfig["/assignment"].path,
+            selectComponent: routeConfig["/assignment"].selectComponent,
+            onClick: () => {
+              console.log("Navigating to Assessments");
+              setSelectComponent("/assignment");
+              navigate(routeConfig["/assignment"].path);
+            },
+          });
+          
+          crumbs.push({
+            label: routeConfig["AssessmentCreationPage2"].label,
+            path: routeConfig["AssessmentCreationPage2"].path,
+            selectComponent: routeConfig["AssessmentCreationPage2"].selectComponent,
+            onClick: () => {
+              console.log("Already on Create Assessment");
+            },
+          });
+        }
         // Special case for Q&A to show under Assessment
-        if (selectComponent === "Q&A" && routeConfig.assessment?.subComponents?.["Q&A"]) {
+        else if (selectComponent === "Q&A" && routeConfig.assessment?.subComponents?.["Q&A"]) {
           crumbs.push({
             label: routeConfig.assessment.label,
             path: routeConfig.assessment.path,
@@ -228,6 +267,25 @@ const Breadcrumb: React.FC = () => {
           selectComponent: component 
         };
       }
+      if (pathname === "/question-bank") {
+        const component = selectComponent || "default";
+        // Only create different keys for actual different components, not for the default view
+        if (component === "default" || component === "/question-bank" || !selectComponent) {
+          return { 
+            key: pathname, 
+            label: "Question Bank", 
+            path: pathname 
+          };
+        } else {
+          const config = breadcrumbConfig["/question-bank"][component] || breadcrumbConfig["/question-bank"].default;
+          return { 
+            key: `${pathname}-${component}`, 
+            label: config.label, 
+            path: pathname, 
+            selectComponent: component 
+          };
+        }
+      }
       
       const config = breadcrumbConfig[pathname];
       if (config) {
@@ -262,8 +320,10 @@ const Breadcrumb: React.FC = () => {
   const getBreadcrumbs = () => {
     const hierarchicalCrumbs = getHierarchicalBreadcrumbs();
     
-    // Use history if we have more than 1 different page visited (so it shows previous page)
-    if (navigationHistory.length >= 2) {
+    // Use history only if we have genuinely different pages (not just reloads of the same page)
+    const uniqueRoutes = [...new Set(navigationHistory.map(item => item.path))];
+    
+    if (navigationHistory.length >= 2 && uniqueRoutes.length >= 2) {
       const historyCrumbs = navigationHistory.map(pageInfo => {
         if (pageInfo.key.startsWith("/Dashboard-")) {
           return {
@@ -274,6 +334,22 @@ const Breadcrumb: React.FC = () => {
               setSelectComponent(pageInfo.selectComponent);
               navigate("/Dashboard");
             }
+          };
+        } else if (pageInfo.key.startsWith("/question-bank-")) {
+          return {
+            label: pageInfo.label,
+            path: "/question-bank",
+            selectComponent: pageInfo.selectComponent,
+            onClick: () => {
+              setSelectComponent(pageInfo.selectComponent);
+              navigate("/question-bank");
+            }
+          };
+        } else if (pageInfo.key === "/question-bank") {
+          return {
+            label: pageInfo.label,
+            path: "/question-bank",
+            onClick: () => navigate("/question-bank")
           };
         } else {
           return {

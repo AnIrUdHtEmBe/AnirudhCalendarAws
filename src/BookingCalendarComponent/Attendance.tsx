@@ -1,3 +1,4 @@
+//CHECK
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Check, X, Clock, AlertCircle } from 'lucide-react';
 import { TbMessage } from "react-icons/tb";
@@ -93,12 +94,14 @@ const ChatBox = ({
   userId,
   roomType,
   userName,
+  setOpenHandleModal,
 }: {
   roomName: string;
   onClose: () => void;
   userId: string;
   roomType: string;
   userName: string;
+  setOpenHandleModal: (data: { userId: string; userName: string }) => void;
 }) => {
   const [inputValue, setInputValue] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -124,51 +127,52 @@ const ChatBox = ({
   });
 
   // ✅ Get correct Ably clientId for this logged-in agent
-  const currentClientId = useMemo(() => {
-    try {
-      const t = sessionStorage.getItem("token");
-      if (t) {
-        const decoded = JSON.parse(atob(t.split(".")[1]));
-        // Prefer clientId if available, else fallback to name
-        return decoded.clientId || decoded.sub || decoded.name || "Guest";
-      }
-      return "Guest";
-    } catch {
-      return "Guest";
+const currentClientId = useMemo(() => {
+  try {
+    const t = sessionStorage.getItem("token");
+    if (t) {
+      const decoded = JSON.parse(atob(t.split(".")[1]));
+      // Prefer clientId if available, else fallback to name
+      return decoded.clientId || decoded.sub || decoded.name || "Guest";
     }
-  }, []);
+    return "Guest";
+  } catch {
+    return "Guest";
+  }
+}, []);
 
-  const fetchSenderName = useCallback(
-    async (clientId: string) => {
-      if (
-        !clientId ||
-        clientId === "Guest" ||
-        clientNames[clientId] ||
-        nameRequestsCache.current.has(clientId)
-      ) {
-        return;
-      }
+const fetchSenderName = useCallback(
+  async (clientId: string) => {
+    if (
+      !clientId ||
+      clientId === "Guest" ||
+      clientNames[clientId] ||
+      nameRequestsCache.current.has(clientId) ||
+      clientId === currentClientId  // ADD THIS LINE TO SKIP FETCHING OWN NAME
+    ) {
+      return;
+    }
 
-      nameRequestsCache.current.add(clientId);
+    nameRequestsCache.current.add(clientId);
 
-      try {
-        const res = await axios.get(
-          `https://play-os-backend.forgehub.in/human/${clientId}`
-        );
-        if (res.data?.name) {
-          setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
-        } else {
-          setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
-        }
-      } catch (error) {
-        console.error("Error fetching sender name", error);
+    try {
+      const res = await axios.get(
+        `https://play-os-backend.forgehub.in/human/${clientId}`
+      );
+      if (res.data?.name) {
+        setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
+      } else {
         setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
-      } finally {
-        nameRequestsCache.current.delete(clientId);
       }
-    },
-    [clientNames]
-  );
+    } catch (error) {
+      console.error("Error fetching sender name", error);
+      setClientNames((prev) => ({ ...prev, [clientId]: clientId }));
+    } finally {
+      nameRequestsCache.current.delete(clientId);
+    }
+  },
+  [clientNames, currentClientId]  // ADD currentClientId TO DEPS
+);
 
   const markSeenByTeam = useCallback(async (targetUserId: string) => {
     console.log(`markSeenByTeam called for userId: ${targetUserId}`);
@@ -317,8 +321,14 @@ const ChatBox = ({
     );
   }, [messages]);
 
+  // Handle Chat function - Updated to use the prop
+  const handleChatOpen = () => {
+    setOpenHandleModal({ userId, userName }); // Use the prop function correctly
+    onClose(); // Close chat when handle modal opens
+  };
+
   return (
-    <div className="fixed inset-0 backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 backdrop-blur bg-opacity-30 flex items-center justify-center z-[60]">
       <div className="bg-white rounded-lg w-96 h-96 flex flex-col shadow-xl">
         {/* Header */}
         <div className="bg-blue-500 text-white p-3 rounded-t-lg flex items-center justify-between">
@@ -339,7 +349,7 @@ const ChatBox = ({
             <div className="text-center text-gray-500">Loading messages...</div>
           ) : sortedMessages.length === 0 ? (
             <div className="text-center text-gray-500">
-              No messages found in the specified time range
+              No New Messages
             </div>
           ) : (
             sortedMessages.map((msg, idx) => {
@@ -386,12 +396,24 @@ const ChatBox = ({
             onKeyDown={handleKeyDown}
             className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             placeholder="Type a message..."
+            autoComplete="off"
           />
           <button
             onClick={sendMessage}
             className="bg-blue-500 text-white px-3 py-2 rounded hover:bg-blue-600 flex items-center"
           >
             <Send className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Handle Chat Button */}
+        <div className="p-3 border-t">
+          <button
+            onClick={handleChatOpen}
+            className="w-full bg-green-500 text-white py-2 rounded hover:bg-green-600 flex items-center justify-center space-x-2"
+          >
+            <Check className="w-4 h-4" />
+            <span>Handle Chat</span>
           </button>
         </div>
       </div>
@@ -412,78 +434,92 @@ const HandleModal = ({
   onSave: (message: string) => void;
   userName: string;
 }) => {
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  // Move the state inside this component to prevent external re-renders
+  const [localComment, setLocalComment] = useState("");
+
+  // Reset when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      setLocalComment("");
+    }
+  }, [isOpen]);
 
   const handleSave = () => {
-    if (message.trim().length < 25) {
-      setError("Message must be at least 25 characters");
-      return;
+    if (localComment.trim() && localComment.length >= 20) {
+      onSave(localComment.trim());
+      setLocalComment("");
     }
-    onSave(message.trim());
-    setMessage("");
-    setError("");
-  };
-
-  const handleClose = () => {
-    setMessage("");
-    setError("");
-    onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-96 p-4 shadow-xl">
-        {/* Header */}
+    <div className="fixed inset-0 backdrop-blur bg-opacity-30 flex items-center justify-center z-[70]">
+      <div className="bg-white rounded-lg w-80 p-4 shadow-xl">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="font-medium text-lg">Handle User - {userName}</h3>
+          <h3 className="font-medium">Handle Chat - {userName}</h3>
           <button
-            onClick={handleClose}
+            onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Input */}
-        <div className="mb-4">
-          <textarea
-            value={message}
-            onChange={(e) => {
-              setMessage(e.target.value);
-              if (e.target.value.trim().length >= 25) {
-                setError("");
-              }
-            }}
-            className="w-full border rounded p-3 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Enter your message (minimum 25 characters)..."
-          />
-          {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
-          <p className="text-gray-500 text-sm mt-1">
-            {message.length}/25 characters minimum
-          </p>
+        <textarea
+          value={localComment}
+          onChange={(e) => setLocalComment(e.target.value)}
+          className="w-full border rounded p-3 h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Add your comment (minimum 20 characters)..."
+          autoFocus
+        />
+
+        <div className="text-xs text-gray-500 mt-1">
+          {localComment.length}/20 characters minimum
         </div>
 
-        {/* Send Button */}
-        <div className="flex justify-end">
+        <div className="flex space-x-2 mt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+          >
+            Cancel
+          </button>
           <button
             onClick={handleSave}
-            disabled={message.trim().length < 25}
-            className={`px-4 py-2 rounded flex items-center space-x-2 ${
-              message.trim().length >= 25
+            disabled={localComment.length < 20}
+            className={`flex-1 py-2 rounded ${
+              localComment.length >= 20
                 ? "bg-blue-500 text-white hover:bg-blue-600"
                 : "bg-gray-300 text-gray-500 cursor-not-allowed"
             }`}
           >
-            <Send className="w-4 h-4" />
-            <span>Send</span>
+            Save
           </button>
         </div>
       </div>
     </div>
   );
+};
+// for handled users
+// Utility function to get start of next day in Unix timestamp
+const getNextDayStartUnix = (date: Date): number => {
+  const nextDay = new Date(date);
+  nextDay.setDate(nextDay.getDate() + 1);
+  nextDay.setHours(0, 0, 0, 0);
+  return Math.floor(nextDay.getTime() / 1000);
+};
+
+// Function to check if user was handled after a specific date
+const checkIfHandledAfterDate = (handledHistory: any[], afterDateUnix: number): boolean => {
+  if (!handledHistory || handledHistory.length === 0) return false;
+  
+  return handledHistory.some(entry => {
+    return entry.handledAt > 0 && 
+           entry.handledAt > afterDateUnix && 
+           entry.handledMsg && 
+           entry.handledMsg.trim() !== "";
+  });
 };
 
 const Attendance = () => {
@@ -517,11 +553,18 @@ const [newMessagesCount, setNewMessagesCount] = useState<{
 const [roomConnections, setRoomConnections] = useState<{
   [roomKey: string]: any;
 }>({});
+const [handledAfterDateUsers, setHandledAfterDateUsers] = useState<Set<string>>(new Set());
 
+useEffect(() => {
+  const loadData = async () => {
+    await fetchAttendanceData();
+    // Immediately check for handled users without delay
+    checkAllAbsentUsersHandledStatus();
+  };
+  
+  loadData();
+}, [currentDate]);
 
-  useEffect(() => {
-    fetchAttendanceData();
-  }, [currentDate]);
 
   // Convert UTC time to IST
   const convertToIST = (utcTimeString: string) => {
@@ -619,12 +662,23 @@ const fetchAttendanceData = async () => {
 
     console.log("Active booking data:", activeBookingData);
 
-    // Extract users and determine their status with court and time info (only from active bookings)
+    // Modified data structure to track individual bookings per user
     const userBookingsMap = new Map<string, {
       userId: string;
       name?: string;
-      status: 'present' | 'absent' | 'pending';
-      bookings: {
+      presentBookings: {
+        courtName: string;
+        timeSlot: string;
+        sportId: string;
+        bookingId: string;
+      }[];
+      absentBookings: {
+        courtName: string;
+        timeSlot: string;
+        sportId: string;
+        bookingId: string;
+      }[];
+      completedBookings: {
         courtName: string;
         timeSlot: string;
         sportId: string;
@@ -660,12 +714,13 @@ const fetchAttendanceData = async () => {
       return now > selectedDateMidnight;
     };
 
-    const shouldShowAbsentUsers = isDayEnded();
+    const shouldShowAbsentBookings = isDayEnded();
 
     console.log("Current IST Time:", currentISTTime);
     console.log("Is Today:", isToday());
-    console.log("Should show absent users:", shouldShowAbsentUsers);
+    console.log("Should show absent bookings:", shouldShowAbsentBookings);
     
+    // Process each booking individually
     activeBookingData.forEach(({ courtName, booking }) => {
       const { joinedUsers, scheduledPlayers, startTime, endTime, sportId, bookingId } = booking;
       const timeSlot = formatTimeSlot(startTime, endTime);
@@ -685,76 +740,201 @@ const fetchAttendanceData = async () => {
         if (!userBookingsMap.has(userId)) {
           userBookingsMap.set(userId, {
             userId,
-            status: 'pending', // Default status - will be filtered out if day hasn't ended
-            bookings: []
+            presentBookings: [],
+            absentBookings: [],
+            completedBookings: []
           });
           console.log(`Initialized new user entry for ${userId}`);
         }
         
         const userEntry = userBookingsMap.get(userId)!;
         
-        // Add booking info
-        userEntry.bookings.push({
+        const bookingInfo = {
           courtName,
           timeSlot,
           sportId: sportId || 'Unknown Sport',
           bookingId
-        });
-        console.log(`Added booking to user ${userId}:`, { courtName, timeSlot, sportId });
+        };
         
-        // Determine user status
+        // Determine booking status
         if (joinedUsers.includes(userId)) {
-          // User joined at least one booking - mark as present
-          userEntry.status = 'present';
-          console.log(`Marked ${userId} as present`);
-        } else if (shouldShowAbsentUsers) {
-          // Only show as absent if the whole day has ended and user didn't join any booking
-          userEntry.status = 'absent';
-          console.log(`Marked ${userId} as absent (day ended)`);
-        } else {
-          // Day is still ongoing, keep as pending (will be filtered out)
-          console.log(`${userId} - day still ongoing, keeping as pending`);
+          // User joined this specific booking - add to present
+          userEntry.presentBookings.push(bookingInfo);
+          console.log(`Added booking to present for ${userId}:`, bookingInfo);
+        } else if (shouldShowAbsentBookings) {
+          // Day has ended and user didn't join this booking - add to absent
+          userEntry.absentBookings.push(bookingInfo);
+          console.log(`Added booking to absent for ${userId}:`, bookingInfo);
         }
+        // If day hasn't ended and user didn't join, we don't show it yet
       });
     });
 
     console.log("Final userBookingsMap:", Array.from(userBookingsMap.entries()));
 
-    // Filter users to only show those with appropriate status (exclude 'pending')
-    const filteredUsers = Array.from(userBookingsMap.values()).filter(user => {
-      return user.status === 'present' || user.status === 'absent';
-    });
+    // Convert to the format expected by your UI
+    // We'll create separate user entries for present, absent, and completed
+    const presentUsers: User[] = [];
+    const absentUsers: User[] = [];
+    const completedUsers: User[] = [];
 
-    // API 3: Get user names (only for filtered users)
-    const usersWithNames = await Promise.all(
-      filteredUsers.map(async (userEntry) => {
+    // API 3: Get user names and process the data
+    await Promise.all(
+      Array.from(userBookingsMap.entries()).map(async ([userId, userEntry]) => {
         try {
-          const userResponse = await fetch(`https://play-os-backend.forgehub.in/human/${userEntry.userId}`);
+          const userResponse = await fetch(`https://play-os-backend.forgehub.in/human/${userId}`);
           const userData = await userResponse.json();
-          
-          return {
-            userId: userEntry.userId,
-            name: userData.name || 'Unknown User',
-            status: userEntry.status,
-            bookings: userEntry.bookings
-          };
+          const userName = userData.name || 'Unknown User';
+
+          // Create present user entry if they have present bookings
+          if (userEntry.presentBookings.length > 0) {
+            presentUsers.push({
+              userId,
+              name: userName,
+              status: 'present',
+              bookings: userEntry.presentBookings
+            });
+          }
+
+          // Create absent user entry if they have absent bookings
+          if (userEntry.absentBookings.length > 0) {
+            absentUsers.push({
+              userId,
+              name: userName,
+              status: 'absent',
+              bookings: userEntry.absentBookings
+            });
+          }
+
+          // Create completed user entry if they have completed bookings
+          if (userEntry.completedBookings.length > 0) {
+            completedUsers.push({
+              userId,
+              name: userName,
+              status: 'completed',
+              bookings: userEntry.completedBookings
+            });
+          }
         } catch (error) {
-          console.error(`Error fetching user data for ${userEntry.userId}:`, error);
-          return {
-            userId: userEntry.userId,
-            name: 'Unknown User',
-            status: userEntry.status,
-            bookings: userEntry.bookings
-          };
+          console.error(`Error fetching user data for ${userId}:`, error);
+          // Handle error case with unknown user name
+          if (userEntry.presentBookings.length > 0) {
+            presentUsers.push({
+              userId,
+              name: 'Unknown User',
+              status: 'present',
+              bookings: userEntry.presentBookings
+            });
+          }
+          if (userEntry.absentBookings.length > 0) {
+            absentUsers.push({
+              userId,
+              name: 'Unknown User',
+              status: 'absent',
+              bookings: userEntry.absentBookings
+            });
+          }
+          if (userEntry.completedBookings.length > 0) {
+            completedUsers.push({
+              userId,
+              name: 'Unknown User',
+              status: 'completed',
+              bookings: userEntry.completedBookings
+            });
+          }
         }
       })
     );
     
-    setUsers(usersWithNames);
+    // Combine all users for the state
+// Combine all users for the state
+const allUsers = [...presentUsers, ...absentUsers, ...completedUsers];
+setUsers(allUsers);
+
+// Immediately check for users handled after this date
+const nextDayStartUnix = getNextDayStartUnix(currentDate);
+const handledUserIds: string[] = [];
+
+for (const user of allUsers.filter(u => u.status === 'absent')) {
+  const isHandledAfterDate = await fetchUserHandledStatus(user.userId, nextDayStartUnix);
+  if (isHandledAfterDate) {
+    handledUserIds.push(user.userId);
+  }
+}
+
+if (handledUserIds.length > 0) {
+  setHandledAfterDateUsers(new Set(handledUserIds));
+  
+  // Update users to move from absent to completed
+  const updatedUsers = allUsers.map(user => {
+    if (handledUserIds.includes(user.userId) && user.status === 'absent') {
+      return { ...user, status: 'completed' };
+    }
+    return user;
+  });
+  
+  setUsers(updatedUsers);
+}
+    
   } catch (error) {
     console.error('Error fetching attendance data:', error);
   } finally {
     setIsLoading(false);
+  }
+};
+// Function to fetch user's handled status from the API
+const fetchUserHandledStatus = async (userId: string, afterDateUnix: number): Promise<boolean> => {
+  try {
+    const response = await axios.get(
+      `https://play-os-backend.forgehub.in/human/human/${userId}`
+    );
+    
+    const userData = Array.isArray(response.data) ? response.data : [response.data];
+    
+    // Find the RM room data
+    const rmRoom = userData.find((room: any) => room.roomType === "RM");
+    
+    if (rmRoom && rmRoom.handledHistory) {
+      return checkIfHandledAfterDate(rmRoom.handledHistory, afterDateUnix);
+    }
+    
+    return false;
+  } catch (error) {
+    console.error(`Error fetching handled status for user ${userId}:`, error);
+    return false;
+  }
+};
+// Function to check handled status for all absent users
+const checkAllAbsentUsersHandledStatus = async () => {
+  const absentUsers = getFilteredUsers('absent');
+  if (absentUsers.length === 0) return;
+  
+  const nextDayStartUnix = getNextDayStartUnix(currentDate);
+  const handledUserIds: string[] = [];
+  
+  // Check each absent user
+  for (const user of absentUsers) {
+    const isHandledAfterDate = await fetchUserHandledStatus(user.userId, nextDayStartUnix);
+    if (isHandledAfterDate) {
+      handledUserIds.push(user.userId);
+    }
+  }
+  
+  if (handledUserIds.length > 0) {
+    // Update the handledAfterDateUsers state
+    setHandledAfterDateUsers(new Set(handledUserIds));
+    
+    // Move these users from absent to completed
+    setUsers(prevUsers => 
+      prevUsers.map(user => {
+        if (handledUserIds.includes(user.userId) && user.status === 'absent') {
+          return { ...user, status: 'completed' };
+        }
+        return user;
+      })
+    );
+    
+    console.log(`Moved ${handledUserIds.length} users from absent to completed:`, handledUserIds);
   }
 };
   const getFilteredUsers = (filter: string): User[] => {
@@ -879,18 +1059,34 @@ const handleUserAction = async (userId: string, message: string) => {
       handledMsg: message
     });
 
-    // Mark handled locally
+    // Mark handled locally for immediate handling
     setHandledUsers(prev => new Set([...prev, userId]));
+    
+    // Also add to handledAfterDateUsers for consistency
+    setHandledAfterDateUsers(prev => new Set([...prev, userId]));
 
-    // Update users list to set status = "completed"
+    // Update users list to move absent user to completed
     setUsers(prevUsers =>
       prevUsers.map(u =>
-        u.userId === userId ? { ...u, status: 'completed' } : u
+        u.userId === userId && u.status === 'absent' 
+          ? { ...u, status: 'completed' } 
+          : u
       )
     );
 
+    // Reset new message count for this user
+    const userRooms = userChatRooms[userId] || [];
+    const updatedCounts = { ...newMessagesCount };
+    userRooms.forEach((room) => {
+      const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+      updatedCounts[roomKey] = 0;
+    });
+    setNewMessagesCount(updatedCounts);
+
     // Close modal
     setOpenHandleModal(null);
+    
+    console.log(`User ${userId} handled successfully with message: ${message}`);
   } catch (error) {
     console.error('Failed to handle user:', error);
   }
@@ -905,6 +1101,17 @@ const checkUserHandledStatus = async (userId: string) => {
     
     if (rmRoom && rmRoom.handledMsg && rmRoom.handledMsg.trim() !== "") {
       setHandledUsers(prev => new Set([...prev, userId]));
+      
+      // Move user's absent bookings to completed
+      setUsers(prevUsers => 
+        prevUsers.map(user => {
+          if (user.userId === userId && user.status === 'absent') {
+            return { ...user, status: 'completed' };
+          }
+          return user;
+        })
+      );
+      
       return true;
     }
     return false;
@@ -924,11 +1131,11 @@ const handleChatOpen = async (userId: string, userName: string) => {
     if (rmRoom) {
       const roomName = `${rmRoom.roomType}-${rmRoom.roomName}-${rmRoom.chatId}-${userId}`;
       
-      // Reset new messages count when opening chat
-      setNewMessagesCount((prev) => ({
-        ...prev,
-        [roomName]: 0,
-      }));
+      // // Reset new messages count when opening chat
+      // setNewMessagesCount((prev) => ({
+      //   ...prev,
+      //   [roomName]: 0,
+      // }));
       
       setOpenChat({ 
         userId, 
@@ -1051,9 +1258,9 @@ useEffect(() => {
 // Add this useEffect to initialize message polling for absent users (add after your existing useEffects)
 useEffect(() => {
   const initializeMessagePolling = async () => {
-    const absentUsers = getFilteredUsers('absent');
+    const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed')];
     
-    for (const user of absentUsers) {
+    for (const user of allUsers) {
       try {
         const rooms = await fetchUserChatRooms(user.userId);
         const rmRoom = rooms.find((room: ChatRoom) => room.roomType === "RM");
@@ -1091,6 +1298,74 @@ useEffect(() => {
   };
 }, [users]);
 
+useEffect(() => {
+  let intervalId;
+
+  // Function to fetch new message counts for all absent users
+  const pollNewMessageCounts = async () => {
+    const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed')];
+
+    for (const user of allUsers) {
+      try {
+        const rooms = await fetchUserChatRooms(user.userId);
+        const rmRoom = rooms.find(room => room.roomType === "RM");
+        if (rmRoom) {
+          const roomKey = `${rmRoom.roomType}-${rmRoom.roomName}-${rmRoom.chatId}-${user.userId}`;
+          const ablyRoomName = roomKey;
+          
+          // Get current client ID to exclude self messages
+          const getCurrentClientId = () => {
+            try {
+              const token = sessionStorage.getItem("token");
+              if (token) {
+                const payload = JSON.parse(atob(token.split(".")[1]));
+                return payload?.sub || payload?.name || "Guest";
+              }
+            } catch {
+              return "Guest";
+            }
+            return "Guest";
+          };
+          const currentClientId = getCurrentClientId();
+
+          // Fetch recent messages and count unread
+          const room = await chatClient.rooms.get(ablyRoomName);
+          const messageHistory = await room.messages.history({ limit: 50 });
+          const messages = messageHistory.items || [];
+          const seenByTeamAtDate = new Date((rmRoom.seenByTeamAt || 0) * 1000);
+
+          let newMessageCount = 0;
+          messages.forEach(message => {
+            const messageTimestamp = message.createdAt || message.timestamp;
+            if (
+              messageTimestamp &&
+              new Date(messageTimestamp) > seenByTeamAtDate &&
+              message.clientId !== currentClientId
+            ) {
+              newMessageCount++;
+            }
+          });
+
+          setNewMessagesCount(prev => ({
+            ...prev,
+            [roomKey]: newMessageCount,
+          }));
+        } console.log("polled");
+        
+      } catch (error) {
+        console.error("Polling error for user", user.userId, error);
+      }
+    }
+  };
+
+  intervalId = setInterval(pollNewMessageCounts, 10000);
+
+  return () => {
+    clearInterval(intervalId);
+  };
+}, [users, chatClient]);
+
+
 // Function to get new message count for a user
 const getNewMessagesForUser = (userId: string) => {
   const userRooms = userChatRooms[userId] || [];
@@ -1108,17 +1383,21 @@ const getNewMessagesForUser = (userId: string) => {
 const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boolean }) => {
   const newMsgCount = getNewMessagesForUser(user.userId);
   const isHandled = handledUsers.has(user.userId);
+  const isHandledAfterDate = handledAfterDateUsers.has(user.userId);
   
   return (
     <div className="flex items-center p-3 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
       <div className="flex items-center space-x-3 flex-1">
-        {user.status === 'absent' && !isHandled && (
+        {user.status === 'absent' && !isHandled && !isHandledAfterDate && (
           <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
             <AlertCircle className="w-4 h-4 text-red-500" />
           </div>
         )}
+        
         <div className="flex flex-col flex-1">
-          <span className="font-medium text-gray-800 mb-1">{user.name}</span>
+          <span className="font-medium text-gray-800 mb-1">
+            {user.name}
+          </span>
           {/* Display all bookings for this user */}
           <div className="space-y-1">
             {user.bookings.map((booking, index) => (
@@ -1131,24 +1410,18 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
         </div>
       </div>
       <div className="flex items-center space-x-3 ml-8">
-        {showCheckButton && (
-          <button 
-            className={`w-6 h-6 border-2 rounded flex items-center justify-center transition-colors ${
-              isHandled 
-                ? "border-green-500 bg-green-50 cursor-not-allowed" 
-                : "border-blue-500 hover:bg-blue-50"
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (!isHandled) {
-                setOpenHandleModal({ userId: user.userId, userName: user.name });
-              }
-            }}
-            disabled={isHandled}
-          >
-            <Check className={`w-4 h-4 ${isHandled ? "text-green-500" : "text-blue-500"}`} />
-          </button>
-        )}
+{(showCheckButton || (isHandled || isHandledAfterDate)) && (
+  <button 
+    className={`w-6 h-6 border-2 rounded flex items-center justify-center transition-colors ${
+      (isHandled || isHandledAfterDate)
+        ? "border-green-500 bg-green-50 cursor-not-allowed" 
+        : "border-blue-500 hover:bg-blue-50"
+    }`}
+    disabled={isHandled || isHandledAfterDate}
+  >
+    <Check className={`w-4 h-4 ${(isHandled || isHandledAfterDate) ? "text-green-500" : "text-blue-500"}`} />
+  </button>
+)}
         <div className="relative">
           <button 
             className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -1158,7 +1431,7 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
           </button>
           {newMsgCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              {newMsgCount}
+              {/* {newMsgCount} */}
             </span>
           )}
         </div>
@@ -1283,6 +1556,7 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
                 userId={openChat.userId}
                 roomType={openChat.roomType}
                 userName={openChat.userName}
+                setOpenHandleModal={setOpenHandleModal}  // ADD THIS LINE
               />
             </ChatRoomProvider>
           )}
