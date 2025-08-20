@@ -678,7 +678,7 @@ const RmDashNew3 = () => {
 
       for (const userWithRooms of usersWithRooms) {
         for (const room of userWithRooms.rooms) {
-          const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userWithRooms.user.userId}`;
+          const roomKey = `${room.chatId}`;
 
           // Skip if room already exists and is connected
           if (roomConnections.current[roomKey]) {
@@ -905,7 +905,7 @@ const messageListener = (messageEvent: { message: any; }) => {
     const room = userWithRooms?.rooms.find((r) => r.roomType === roomType);
 
     if (room) {
-      const roomName = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+      const roomName = `${room.chatId}`;
       setOpenChat({ userId, roomType, userName, roomName });
     }
   };
@@ -997,7 +997,7 @@ const refreshUserRoomDataAndRecalculate = async (userId: string, roomType: strin
     }
 
     // Recalculate messages with updated handledAt
-    const roomKey = `${updatedRoom.roomType}-${updatedRoom.roomName}-${updatedRoom.chatId}-${userId}`;
+    const roomKey = `${updatedRoom.chatId}`;
     const roomConnection = roomConnections.current[roomKey];
     
     if (roomConnection) {

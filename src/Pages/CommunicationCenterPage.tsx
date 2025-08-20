@@ -30,7 +30,7 @@ const CommunicationPage = () => {
     // if (initialRoomName) {
     //   setRoomName(`room-tribe-${initialRoomName}`);
     // }
-    setRoomName("room-tribe-CHAT_SOTD47")
+    setRoomName("CHAT_SOTD47")
     setIsLoading(false);
   }, []);
 
@@ -39,7 +39,7 @@ const CommunicationPage = () => {
     const handleStorageChange = () => {
       const newRoomName = sessionStorage.getItem("communicationName");
       if (newRoomName && newRoomName !== roomName) {
-        setRoomName(`room-tribe-${newRoomName}`);
+        setRoomName(`${newRoomName}`);
       }
     };
 

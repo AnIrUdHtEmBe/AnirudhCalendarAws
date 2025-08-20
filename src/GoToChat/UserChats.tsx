@@ -356,7 +356,7 @@ const ChatRoomWrapper: React.FC<ChatRoomWrapperProps> = ({
   }
 
   // Create room name: roomType-roomName-chatId-userId
-  const roomName = `${roomData.roomType}-${roomData.roomName}-${roomData.chatId}-${userId}`;
+  const roomName = `${roomData.chatId}`;
 
   console.log("🏠 Creating room with name:", roomName);
 

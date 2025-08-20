@@ -450,7 +450,7 @@ const handleModalClose = () => {
 
   const clientId = getClientId();
 
-  const roomName = `room-game-${localStorage.getItem("gameroomChatId")}`;
+  const roomName = `${localStorage.getItem("gameroomChatId")}`;
 
 const realtimeClient = useMemo(() => {
   return new Ably.Realtime({ key: API_KEY, clientId });
@@ -546,7 +546,7 @@ useEffect(() => {
         for (const room of filteredRooms) {
           if (!isEffectActive) break;
 
-          const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${user.userId}`;
+          const roomKey = `${room.chatId}`;
 
           if (roomConnections.current[roomKey]) {
             console.log(`⏭️ Skipping ${roomKey} - already connected`);
@@ -728,7 +728,7 @@ const handleOpenRoomChat = async (userId: string) => {
     // Since we filtered to only matching rooms, take the first (and only) room
     const matchedRoom = userWithRooms.rooms[0];
     const roomNameDisplay = matchedRoom.roomName;
-    const finalRoomName = `${matchedRoom.roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${userId}`;
+    const finalRoomName = `${matchedRoom.chatId}`;
 
     console.log("🔍 Found matching room:", { finalRoomName, roomNameDisplay });
     
@@ -758,7 +758,7 @@ const handleOpenRoomChat = async (userId: string) => {
 
     let totalNewMessages = 0;
     userWithRooms.rooms.forEach((room) => {
-      const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+      const roomKey = `${room.chatId}`;
       const count = newMessagesCount[roomKey] || 0;
       totalNewMessages += count;
       console.log(`Room ${roomKey}: ${count} new messages`);
@@ -1210,7 +1210,7 @@ const handleChatSave = async (comment: string) => {
     );
 
     // Recalculate message count with new handledAt using existing always-on connection
-    const roomKey = `${smallChatBoxData.roomType}-${smallChatBoxData.roomName.split("-")[1]}-${smallChatBoxData.roomName.split("-")[2]}-${smallChatBoxData.userId}`;
+    const roomKey = `${smallChatBoxData.roomName.split("-")[2]}`;
     
     // Get the room connection and recheck messages
     const roomConnection = roomConnections.current[roomKey];
@@ -1295,7 +1295,7 @@ const ReplyToAllBox: React.FC<{
 
           // Get first matching room
           const matchedRoom = userWithRooms.rooms[0];
-          const roomKey = `${matchedRoom.roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${user.userId}`;
+          const roomKey = `${matchedRoom.chatId}`;
 
           // Get the room and send message using Chat client
           const room = await stableChatClient.rooms.get(roomKey);
@@ -1643,7 +1643,7 @@ onClick={async (e) => {
 
     if (!matchedRoom) return null;
 
-    const roomKey = `${matchedRoom.roomType}-${matchedRoom.roomName}-${matchedRoom.chatId}-${user.userId}`;
+    const roomKey = `${matchedRoom.chatId}`;
     const count = newMessagesCount[roomKey] || 0;
 
     return count > 0 ? (

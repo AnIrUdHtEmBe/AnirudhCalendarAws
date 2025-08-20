@@ -238,7 +238,7 @@ export default function Communications({
           const data = res.data;
           setMySports(data);
           console.log("communication sports", data);
-          setActiveChat("room-tribe-CHAT_BTAV33")
+          setActiveChat("CHAT_BTAV33")
           // Optionally set the first sport as active by default
           // if (data.length > 0 && data[0].chatId) {
           //   setActiveChat("CHAT_BTAV33");
@@ -277,7 +277,7 @@ export default function Communications({
   };
 
   function extractChatId(roomName: string) {
-  const prefix = "room-tribe-";
+  const prefix = "";
   // console.log("original roomname", roomName);
   
   // console.log(roomName.startsWith(prefix) ? roomName.substring(prefix.length) : roomName, "undefined!");

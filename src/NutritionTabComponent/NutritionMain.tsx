@@ -786,7 +786,7 @@ const handleUserAction = async (userId: string, message: string) => {
     const userRooms = userChatRooms[userId] || [];
     const updatedCounts = { ...newMessagesCount };
     userRooms.forEach((room) => {
-      const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+      const roomKey = `${room.chatId}`;
       updatedCounts[roomKey] = 0;
     });
     setNewMessagesCount(updatedCounts);
@@ -809,7 +809,7 @@ const handleChatOpen = async (userId: string, userName: string) => {
     const nutritionRoom = rooms.find((room: ChatRoom) => room.roomType === "NUTRITION");
     
     if (nutritionRoom) {
-      const roomName = `${nutritionRoom.roomType}-${nutritionRoom.roomName}-${nutritionRoom.chatId}-${userId}`;
+      const roomName = `${nutritionRoom.chatId}`;
       
       setOpenChat({ 
         userId, 
@@ -918,7 +918,7 @@ const getNewMessagesForUser = (userId: string) => {
   let totalNewMessages = 0;
 
   userRooms.forEach((room) => {
-    const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+    const roomKey = `${room.chatId}`;
     totalNewMessages += newMessagesCount[roomKey] || 0;
   });
 
@@ -978,7 +978,7 @@ useEffect(() => {
         const rooms = await fetchUserChatRooms(user.userId);
         const nutritionRoom = rooms.find((room: { roomType: string; }) => room.roomType === "NUTRITION");
         if (nutritionRoom) {
-          const roomKey = `${nutritionRoom.roomType}-${nutritionRoom.roomName}-${nutritionRoom.chatId}-${user.userId}`;
+          const roomKey = `${nutritionRoom.chatId}`;
           const ablyRoomName = roomKey;
           
           // Get current client ID to exclude self messages

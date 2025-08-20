@@ -2303,7 +2303,7 @@ const subscribeToRoom = async (
   roomName: string,
   seenByTeamAt: number
 ) => {
-  const roomKey = `${roomType}-${roomName}-${chatId}-${userId}`;
+  const roomKey = `${chatId}`;
 
   try {
     console.log(`📨 Subscribing to room: ${roomKey}`);
