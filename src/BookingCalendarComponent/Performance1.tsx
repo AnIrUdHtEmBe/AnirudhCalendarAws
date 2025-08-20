@@ -2126,15 +2126,34 @@ const pollingInterval = useRef<NodeJS.Timeout | null>(null);
     }
   }, [currentGameName]);
 
-  useEffect(() => {
-    // Set a timer to hide loading screen after 10 seconds
+// Replace the useEffect around line 570 that controls loading screen
+useEffect(() => {
+  // Only show loading screen during critical operations
+  if (isLoadingBookings || isLoadingCellDetails) {
+    setLoadingScreen(true);
+    
+    // Set a maximum timeout for loading screen
     const timer = setTimeout(() => {
       setLoadingScreen(false);
-    }, 1300);
-
-    // Cleanup timer if component unmounts early
-    return () => clearTimeout(timer);
-  }, []);
+    }, 800); // Reduced from 1300ms
+    
+    // Clear loading screen as soon as critical data is loaded
+    const checkDataLoaded = () => {
+      if (!isLoadingBookings && !isLoadingCellDetails && grid.length > 0) {
+        setLoadingScreen(false);
+        clearTimeout(timer);
+      }
+    };
+    
+    // Use requestAnimationFrame to check without blocking
+    const intervalId = setInterval(checkDataLoaded, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      clearInterval(intervalId);
+    };
+  }
+}, [isLoadingBookings, isLoadingCellDetails, grid.length]);
 
   // Add this state to track sidebar width
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -2207,26 +2226,41 @@ const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
 // Replace the existing useEffect around line 550
 // Replace the existing useEffect around line 550
+// Replace the existing useEffect around line 550
 useEffect(() => {
   if (filteredCourtId.length > 0 && !isModalOpen) {
-    // cleanupMessagePolling();
-
-    // Immediate polling only if modal is not open
+    // Defer polling until UI is fully interactive - wait 10 seconds instead of 3
     const timeoutId = setTimeout(() => {
       if (!isModalOpen) {
-        startPollingForAllOccupiedCells();
+        // Use requestIdleCallback to run during browser idle time
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(() => {
+            startPollingForAllOccupiedCells();
+          }, { timeout: 5000 });
+        } else {
+          // Fallback for browsers without requestIdleCallback
+          setTimeout(() => {
+            startPollingForAllOccupiedCells();
+          }, 100);
+        }
       }
-    }, 3000);
+    }, 10000); // Increased from 3000 to 10000ms
 
-    // Set up 1-minute interval polling
+    // Increase interval to 3 minutes to reduce frequency
     pollingInterval.current = setInterval(() => {
-      console.log("🔄 1-minute interval polling triggered");
       if (!isModalOpen) {
-        startPollingForAllOccupiedCells();
+        // Use requestIdleCallback here too
+        if (window.requestIdleCallback) {
+          window.requestIdleCallback(() => {
+            startPollingForAllOccupiedCells();
+          }, { timeout: 5000 });
+        } else {
+          startPollingForAllOccupiedCells();
+        }
       } else {
         cleanupMessagePolling();
       }
-    }, 120000); // 60 seconds
+    }, 180000); // Increased from 120000 to 180000ms (3 minutes)
 
     return () => {
       clearTimeout(timeoutId);
@@ -2295,6 +2329,7 @@ useEffect(() => {
 
 // Replace the existing subscribeToRoom function
 // In subscribeToRoom function, replace individual setCellMessageCounts calls with batched updates
+// Replace the existing subscribeToRoom function
 const subscribeToRoom = async (
   bookingId: string,
   userId: string,
@@ -2314,160 +2349,206 @@ const subscribeToRoom = async (
     const seenByTeamAtIST = new Date(seenByTeamAt * 1000);
     let hasUnreadMessages = false;
 
-    // 1. Check historical messages
-    try {
-      const messageHistory = await room.messages.history({ limit: 60 });
-      const messages = messageHistory.items;
-      
-      console.log(`📚 Fetched ${messages.length} historical messages for room: ${roomKey}`);
-      
-      messages.forEach((message) => {
-        const messageTimestamp = message.createdAt || message.timestamp;
-        if (messageTimestamp) {
-          const msgDate = new Date(messageTimestamp);
-          if (msgDate.getTime() > seenByTeamAtIST.getTime()) {
-            hasUnreadMessages = true;
+    // 1. Check historical messages in background
+    setTimeout(async () => {
+      try {
+        const messageHistory = await room.messages.history({ limit: 60 });
+        const messages = messageHistory.items;
+        
+        console.log(`📚 Fetched ${messages.length} historical messages for room: ${roomKey}`);
+        
+        messages.forEach((message) => {
+          const messageTimestamp = message.createdAt || message.timestamp;
+          if (messageTimestamp) {
+            const msgDate = new Date(messageTimestamp);
+            if (msgDate.getTime() > seenByTeamAtIST.getTime()) {
+              hasUnreadMessages = true;
+            }
           }
+        });
+        
+        // Use requestAnimationFrame for smooth state updates
+        if (hasUnreadMessages) {
+          requestAnimationFrame(() => {
+            setCellMessageCounts((prev) => ({
+              ...prev,
+              [bookingId]: true,
+            }));
+          });
+        }
+      } catch (historyError) {
+        console.error(`❌ Failed to fetch message history for room ${roomKey}:`, historyError);
+      }
+    }, 0);
+
+    // 2. Set up subscription for future messages (non-blocking)
+    setTimeout(() => {
+      room.messages.subscribe((message: any) => {
+        const messageTimestamp =
+          message.data?.createdAt ||
+          message.data?.timestamp ||
+          message.createdAt;
+
+        if (messageTimestamp && new Date(messageTimestamp) > seenByTeamAtIST) {
+          // Use requestAnimationFrame for smooth updates
+          requestAnimationFrame(() => {
+            setCellMessageCounts((prev) => ({
+              ...prev,
+              [bookingId]: true,
+            }));
+          });
         }
       });
-      
-      // Batch update instead of individual updates
-      if (hasUnreadMessages) {
-        setCellMessageCounts((prev) => ({
-          ...prev,
-          [bookingId]: true,
-        }));
-      }
-    } catch (historyError) {
-      console.error(`❌ Failed to fetch message history for room ${roomKey}:`, historyError);
-    }
+    }, 100); // Small delay to prevent blocking
 
-    // 2. Set up subscription for future messages
-    room.messages.subscribe((message: any) => {
-      const messageTimestamp =
-        message.data?.createdAt ||
-        message.data?.timestamp ||
-        message.createdAt;
-
-      if (messageTimestamp && new Date(messageTimestamp) > seenByTeamAtIST) {
-        // Debounce state updates
-        setTimeout(() => {
-          setCellMessageCounts((prev) => ({
-            ...prev,
-            [bookingId]: true,
-          }));
-        }, 100);
-      }
-    });
   } catch (error) {
     console.error(`Failed to subscribe to room ${roomKey}:`, error);
   }
 };
 
+// Replace the existing initializeMessagePollingForCell function
 const initializeMessagePollingForCell = async (bookingId: string) => {
   if (pollingQueue.current.has(bookingId)) return;
   pollingQueue.current.add(bookingId);
 
-  try {
-    console.log(`🔄 Initializing polling for booking: ${bookingId}`);
-    
-    // First, get the booking details to find the sport category
-    const bookingRes = await axios.get(
-      `${API_BASE_URL_Latest}/booking/${bookingId}`
-    );
-    const bookingData = bookingRes.data;
-    
-    if (!bookingData.sportId) {
-      console.log(`❌ No sportId found for booking: ${bookingId}`);
-      return;
-    }
-    
-    // Get sport details to find category
-    const sportRes = await axios.get(
-      `${API_BASE_URL_Latest}/sports/id/${bookingData.sportId}`
-    );
-    const sportCategory = sportRes.data.category; // e.g., "WELLNESS", "FITNESS", "SPORTS"
-    
-    console.log(`🏷️ Sport category for booking ${bookingId}:`, sportCategory);
-
-    const scheduledUsers = await fetchScheduledUsersForBooking(bookingId);
-    if (scheduledUsers.length === 0) return;
-
-    console.log(`👥 Scheduled users:`, scheduledUsers);
-
-    setCellMessageCounts((prev) => ({ ...prev, [bookingId]: false }));
-
-    const userRoomsPromises = scheduledUsers.map(async (userId: string) => {
-      const allRooms = await fetchChatRoomsForUser(userId);
+  // Use setTimeout to move heavy processing to background
+  setTimeout(async () => {
+    try {
+      console.log(`🔄 Initializing polling for booking: ${bookingId}`);
       
-      // Filter rooms to match sport category
-      const filteredRooms = allRooms.filter((room: any) => 
-        room.roomType === sportCategory
+      // First, get the booking details to find the sport category
+      const bookingRes = await axios.get(
+        `${API_BASE_URL_Latest}/booking/${bookingId}`
       );
+      const bookingData = bookingRes.data;
       
-      console.log(`🎯 Filtered rooms for user ${userId} with category ${sportCategory}:`, filteredRooms);
+      if (!bookingData.sportId) {
+        console.log(`❌ No sportId found for booking: ${bookingId}`);
+        return;
+      }
       
-      return { userId, rooms: filteredRooms };
-    });
+      // Get sport details to find category
+      const sportRes = await axios.get(
+        `${API_BASE_URL_Latest}/sports/id/${bookingData.sportId}`
+      );
+      const sportCategory = sportRes.data.category; // e.g., "WELLNESS", "FITNESS", "SPORTS"
+      
+      console.log(`🏷️ Sport category for booking ${bookingId}:`, sportCategory);
 
-    const userRoomsResults = await Promise.allSettled(userRoomsPromises);
+      const scheduledUsers = await fetchScheduledUsersForBooking(bookingId);
+      if (scheduledUsers.length === 0) return;
 
-    const subscriptionPromises: Promise<void>[] = [];
+      console.log(`👥 Scheduled users:`, scheduledUsers);
 
-    userRoomsResults.forEach((result) => {
-      if (result.status === "fulfilled") {
-        const { userId, rooms } = result.value;
-        rooms.forEach(
-          (room: {
-            roomType: string;
-            chatId: string;
-            roomName: string;
-            handledAt: any;
-          }) => {
-            subscriptionPromises.push(
-              subscribeToRoom(
-                bookingId,
-                userId,
-                room.roomType,
-                room.chatId,
-                room.roomName,
-                room.handledAt || 0
-              )
+      // Use requestAnimationFrame for smooth UI updates
+      requestAnimationFrame(() => {
+        setCellMessageCounts((prev) => ({ ...prev, [bookingId]: false }));
+      });
+
+      // Process users in smaller chunks
+      const userChunks = [];
+      const chunkSize = 2; // Process 2 users at a time
+      for (let i = 0; i < scheduledUsers.length; i += chunkSize) {
+        userChunks.push(scheduledUsers.slice(i, i + chunkSize));
+      }
+
+      const allSubscriptionPromises: Promise<void>[] = [];
+
+      for (const userChunk of userChunks) {
+        const userRoomsPromises = userChunk.map(async (userId: string) => {
+          const allRooms = await fetchChatRoomsForUser(userId);
+          
+          // Filter rooms to match sport category
+          const filteredRooms = allRooms.filter((room: any) => 
+            room.roomType === sportCategory
+          );
+          
+          console.log(`🎯 Filtered rooms for user ${userId} with category ${sportCategory}:`, filteredRooms);
+          
+          return { userId, rooms: filteredRooms };
+        });
+
+        const userRoomsResults = await Promise.allSettled(userRoomsPromises);
+
+        userRoomsResults.forEach((result) => {
+          if (result.status === "fulfilled") {
+            const { userId, rooms } = result.value;
+            rooms.forEach(
+              (room: {
+                roomType: string;
+                chatId: string;
+                roomName: string;
+                handledAt: any;
+              }) => {
+                // Queue subscription with small delay to prevent blocking
+                allSubscriptionPromises.push(
+                  new Promise<void>((resolve) => {
+                    setTimeout(() => {
+                      subscribeToRoom(
+                        bookingId,
+                        userId,
+                        room.roomType,
+                        room.chatId,
+                        room.roomName,
+                        room.handledAt || 0
+                      ).then(resolve).catch(resolve);
+                    }, allSubscriptionPromises.length * 10); // Stagger by 10ms each
+                  })
+                );
+              }
             );
           }
-        );
-      }
-    });
+        });
 
-    await Promise.allSettled(subscriptionPromises);
-  } catch (error) {
-    console.error(
-      `Error initializing polling for booking ${bookingId}:`,
-      error
-    );
-  } finally {
-    pollingQueue.current.delete(bookingId);
-  }
+        // Small delay between user chunks
+        if (userChunks.indexOf(userChunk) < userChunks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+
+      // Process all subscriptions in background
+      setTimeout(() => {
+        Promise.allSettled(allSubscriptionPromises);
+      }, 0);
+
+    } catch (error) {
+      console.error(
+        `Error initializing polling for booking ${bookingId}:`,
+        error
+      );
+    } finally {
+      pollingQueue.current.delete(bookingId);
+    }
+  }, 0); // Move to background immediately
 };
 
-  const startPollingForAllOccupiedCells = async () => {
-    if (isPollingActive.current) return;
+// Replace the existing startPollingForAllOccupiedCells function
+const startPollingForAllOccupiedCells = async () => {
+  if (isPollingActive.current) return;
 
-    isPollingActive.current = true;
-    pollingController.current = new AbortController();
+  isPollingActive.current = true;
+  pollingController.current = new AbortController();
 
-    // Debounce to prevent rapid successive calls
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
+  // Use setTimeout to move processing to background
+  setTimeout(async () => {
     if (pollingController.current?.signal.aborted) return;
 
     const dateStr = currentDate.toISOString().split("T")[0];
     const bookingPromises: Promise<void>[] = [];
 
-    for (const court of filteredCourtId) {
-      const promise = (async () => {
-        if (pollingController.current?.signal.aborted) return;
+    // Process courts in smaller batches to avoid blocking
+    const batchSize = 3; // Process 3 courts at a time
+    const courtBatches = [];
+    
+    for (let i = 0; i < filteredCourtId.length; i += batchSize) {
+      courtBatches.push(filteredCourtId.slice(i, i + batchSize));
+    }
 
+    // Process batches sequentially with small delays
+    for (const batch of courtBatches) {
+      if (pollingController.current?.signal.aborted) return;
+      
+      const batchPromises = batch.map(async (court) => {
         try {
           const bookingsRes = await axios.get(
             `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`,
@@ -2482,9 +2563,12 @@ const initializeMessagePollingForCell = async (bookingId: string) => {
 
           for (const booking of activeBookings) {
             if (pollingController.current?.signal.aborted) return;
-            bookingPromises.push(
-              initializeMessagePollingForCell(booking.bookingId)
-            );
+            // Use setTimeout to queue each polling task
+            setTimeout(() => {
+              if (!pollingController.current?.signal.aborted) {
+                initializeMessagePollingForCell(booking.bookingId);
+              }
+            }, 0);
           }
         } catch (error) {
           if (!axios.isCancel(error)) {
@@ -2494,14 +2578,19 @@ const initializeMessagePollingForCell = async (bookingId: string) => {
             );
           }
         }
-      })();
+      });
 
-      bookingPromises.push(promise);
+      await Promise.allSettled(batchPromises);
+      
+      // Small delay between batches to prevent blocking
+      if (courtBatches.indexOf(batch) < courtBatches.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
     }
 
-    await Promise.allSettled(bookingPromises);
     isPollingActive.current = false;
-  };
+  }, 0); // Move to background immediately
+};
 
 // Replace the existing cleanupMessagePolling function
 const cleanupMessagePolling = () => {
