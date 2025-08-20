@@ -607,7 +607,10 @@ useEffect(() => {
     
     return courtName; // Return original court name if no prefix
   };
-
+const formatTimeFromScheduledDate = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
 const fetchAttendanceData = async () => {
   setIsLoading(true);
   try {
@@ -700,15 +703,15 @@ const fetchAttendanceData = async () => {
       return today === selectedDate;
     };
 
-//     // Check if the day has ended (past midnight)
-// const isDayEnded = () => {
-//   const now = getCurrentISTTime();
-//   const selectedDateMidnight = new Date(currentDate);
-//   selectedDateMidnight.setHours(23, 59, 59, 999);
-
-//   // Return true only for past dates or today if it's past midnight
-//   return now > selectedDateMidnight;
-// };
+    // Check if the day has ended (past midnight)
+const isDayEnded = () => {
+  const now = getCurrentISTTime();
+  const selectedDateMidnight = new Date(currentDate);
+  selectedDateMidnight.setHours(23, 59, 59, 999);
+console.log('isDayEnded:', { now, selectedDateMidnight, result: now > selectedDateMidnight });
+  // Return true only for past dates or today if it's past midnight
+  return now > selectedDateMidnight;
+};
 
 //     const shouldShowAbsentBookings = isDayEnded();
 
@@ -841,6 +844,71 @@ activeBookingData.forEach(({ courtName, booking }) => {
 const allUsers = [...presentUsers, ...absentUsers, ...completedUsers];
 setUsers(allUsers);
 
+// Separate logic for Not Booked column (only if day has ended)
+if (isDayEnded()) {
+  try {
+    // Fetch all forge users to get userIds
+    const forgeUsersResponse = await fetch('https://play-os-backend.forgehub.in/human/all?type=forge');
+    const forgeUsers = await forgeUsersResponse.json();
+    const userIds = forgeUsers.map((u: any) => u.userId);
+    console.log(userIds, "== all usersss");
+    
+    const dateStr = formatDateForInput(currentDate);
+    const notBookedMap = new Map<string, { userId: string; name?: string; sessions: { title: string; time: string }[] }>();
+
+    // Fetch plan instances for each userId and filter SCHEDULED sessions
+    await Promise.all(
+      userIds.map(async (userId: string) => {
+        try {
+          const resp = await fetch(`https://forge-play-backend.forgehub.in/humans/${userId}/plan-instances-within-date?start=${dateStr}&end=${dateStr}`);
+          console.log("api = ", resp);
+          
+          const plans = await resp.json();
+          const scheduledSessions: { title: string; time: string }[] = [];
+
+          for (const plan of plans) {
+            for (const session of plan.sessionInstances) {
+              if (session.status === 'SCHEDULED') {
+                const time = formatTimeFromScheduledDate(session.scheduledDate);
+                scheduledSessions.push({ title: session.sessionTemplateTitle, time });
+              }
+            }
+          }
+
+          if (scheduledSessions.length > 0) {
+            // Fetch user name
+            const userResp = await fetch(`https://play-os-backend.forgehub.in/human/${userId}`);
+            const userData = await userResp.json();
+            const name = userData.name || 'Unknown User';
+
+            notBookedMap.set(userId, { userId, name, sessions: scheduledSessions });
+          }
+        } catch (e) {
+          console.error(`Error fetching plans for user ${userId}:`, e);
+        }
+      })
+    );
+
+    // Convert to User format (reuse bookings structure: courtName for title, timeSlot for time)
+    const notBookedUsers: User[] = Array.from(notBookedMap.values()).map(entry => ({
+      userId: entry.userId,
+      name: entry.name || 'Unknown User',
+      status: 'not_booked',
+      bookings: entry.sessions.map(s => ({
+        courtName: s.title,
+        timeSlot: s.time,
+        sportId: '',
+        bookingId: ''
+      }))
+    }));
+
+    // Append to existing users (separate from other statuses)
+    setUsers(prev => [...prev, ...notBookedUsers]);
+  } catch (error) {
+    console.error('Error fetching not booked users:', error);
+  }
+}
+
 // Immediately check for users handled after this date
 const nextDayStartUnix = getNextDayStartUnix(currentDate);
 const handledUserIds: string[] = [];
@@ -896,7 +964,7 @@ const fetchUserHandledStatus = async (userId: string, afterDateUnix: number): Pr
 };
 // Function to check handled status for all absent users
 const checkAllAbsentUsersHandledStatus = async () => {
-  const absentUsers = getFilteredUsers('absent');
+  const absentUsers = [...getFilteredUsers('absent'), ...getFilteredUsers('not_booked')];
   if (absentUsers.length === 0) return;
   
   const nextDayStartUnix = getNextDayStartUnix(currentDate);
@@ -1248,8 +1316,7 @@ useEffect(() => {
 // Add this useEffect to initialize message polling for absent users (add after your existing useEffects)
 useEffect(() => {
   const initializeMessagePolling = async () => {
-    const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed')];
-    
+const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed'), ...getFilteredUsers('not_booked')];    
     for (const user of allUsers) {
       try {
         const rooms = await fetchUserChatRooms(user.userId);
@@ -1293,8 +1360,7 @@ useEffect(() => {
 
   // Function to fetch new message counts for all absent users
   const pollNewMessageCounts = async () => {
-    const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed')];
-
+const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed'), ...getFilteredUsers('not_booked')];
     for (const user of allUsers) {
       try {
         const rooms = await fetchUserChatRooms(user.userId);
@@ -1447,7 +1513,7 @@ const columns = [
   { 
     title: 'Not Booked', 
     type: 'not_booked', 
-    users: [], // Empty until data logic is added
+    users: getFilteredUsers('not_booked'), // Fix: Use dynamic user list
     icon: <AlertCircle className="w-5 h-5" />
   },
   { 
