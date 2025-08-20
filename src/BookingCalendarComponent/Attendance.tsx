@@ -1136,7 +1136,7 @@ const handleUserAction = async (userId: string, message: string) => {
     const userRooms = userChatRooms[userId] || [];
     const updatedCounts = { ...newMessagesCount };
     userRooms.forEach((room) => {
-      const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+      const roomKey = `${room.chatId}`;
       updatedCounts[roomKey] = 0;
     });
     setNewMessagesCount(updatedCounts);
@@ -1187,7 +1187,7 @@ const handleChatOpen = async (userId: string, userName: string) => {
     const rmRoom = rooms.find((room: ChatRoom) => room.roomType === "RM");
     
     if (rmRoom) {
-      const roomName = `${rmRoom.roomType}-${rmRoom.roomName}-${rmRoom.chatId}-${userId}`;
+      const roomName = `${rmRoom.chatId}`;
       
       // // Reset new messages count when opening chat
       // setNewMessagesCount((prev) => ({
@@ -1218,7 +1218,7 @@ const startMessagePolling = async (
   roomName: string,
   seenByTeamAtUnix: number
 ) => {
-  const roomKey = `${roomType}-${roomName}-${chatId}-${userId}`;
+  const roomKey = `${chatId}`;
   const ablyRoomName = roomKey;
 
   try {
@@ -1364,9 +1364,9 @@ const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'),
     for (const user of allUsers) {
       try {
         const rooms = await fetchUserChatRooms(user.userId);
-        const rmRoom = rooms.find(room => room.roomType === "RM");
+        const rmRoom = rooms.find((room: { roomType: string; }) => room.roomType === "RM");
         if (rmRoom) {
-          const roomKey = `${rmRoom.roomType}-${rmRoom.roomName}-${rmRoom.chatId}-${user.userId}`;
+          const roomKey = `${rmRoom.chatId}`;
           const ablyRoomName = roomKey;
           
           // Get current client ID to exclude self messages
@@ -1428,7 +1428,7 @@ const getNewMessagesForUser = (userId: string) => {
   let totalNewMessages = 0;
 
   userRooms.forEach((room) => {
-    const roomKey = `${room.roomType}-${room.roomName}-${room.chatId}-${userId}`;
+    const roomKey = `${room.chatId}`;
     totalNewMessages += newMessagesCount[roomKey] || 0;
   });
 
