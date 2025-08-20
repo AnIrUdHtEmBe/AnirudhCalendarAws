@@ -259,6 +259,7 @@ const fetchUserData = async () => {
   };
 
   // Reset modal state when closed
+// Replace the entire handleModalClose function
 const handleModalClose = () => {
   // Immediate cleanup of all state and connections
   const cleanup = async () => {
@@ -301,6 +302,9 @@ const handleModalClose = () => {
 
     roomConnections.current = {};
     console.log("✅ All room connections cleaned up");
+    
+    // Wait additional time for Ably cleanup
+    // await new Promise(resolve => setTimeout(resolve, 2000));
   };
 
   cleanup();
@@ -322,7 +326,6 @@ const handleModalClose = () => {
   console.log("🏁 Modal cleanup completed");
   onClose();
 };
-
   const fetchGameChatId = async () => {
     if (!cellData.bookingId) {
       console.error("Missing bookingId");
