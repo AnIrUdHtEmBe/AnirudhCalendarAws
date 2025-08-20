@@ -704,64 +704,61 @@ const fetchAttendanceData = async () => {
     };
 
     // Check if the day has ended (past midnight)
-const isDayEnded = () => {
-  const now = getCurrentISTTime();
-  const selectedDateMidnight = new Date(currentDate);
-  selectedDateMidnight.setHours(23, 59, 59, 999);
-console.log('isDayEnded:', { now, selectedDateMidnight, result: now > selectedDateMidnight });
-  // Return true only for past dates or today if it's past midnight
-  return now > selectedDateMidnight;
-};
-
-//     const shouldShowAbsentBookings = isDayEnded();
+    const isDayEnded = () => {
+      const now = getCurrentISTTime();
+      const selectedDateMidnight = new Date(currentDate);
+      selectedDateMidnight.setHours(23, 59, 59, 999);
+      console.log('isDayEnded:', { now, selectedDateMidnight, result: now > selectedDateMidnight });
+      // Return true only for past dates or today if it's past midnight
+      return now > selectedDateMidnight;
+    };
 
     console.log("Current IST Time:", currentISTTime);
     console.log("Is Today:", isToday());
-    //console.log("Should show absent bookings:", shouldShowAbsentBookings);
     
     // Process each booking individually
-activeBookingData.forEach(({ courtName, booking }) => {
-  const { joinedUsers, scheduledPlayers, startTime, endTime, sportId, bookingId } = booking;
-  const timeSlot = formatTimeSlot(startTime, endTime);
-  
-  // Convert endTime (GMT) to IST and add 30 minutes
-  const endTimeIST = convertToIST(endTime);
-  const endTimePlus30Min = new Date(endTimeIST.getTime() + 30 * 60 * 1000);
-  const currentISTTime = getCurrentISTTime();
+    activeBookingData.forEach(({ courtName, booking }) => {
+      const { joinedUsers, scheduledPlayers, startTime, endTime, sportId, bookingId } = booking;
+      const timeSlot = formatTimeSlot(startTime, endTime);
+      
+      // Convert endTime (GMT) to IST and add 30 minutes
+      const endTimeIST = convertToIST(endTime);
+      const endTimePlus30Min = new Date(endTimeIST.getTime() + 30 * 60 * 1000);
+      const currentISTTime = getCurrentISTTime();
 
-  scheduledPlayers.forEach(userId => {
-    console.log(`Processing user ${userId} for booking ${bookingId}`);
-    
-    if (!userBookingsMap.has(userId)) {
-      userBookingsMap.set(userId, {
-        userId,
-        presentBookings: [],
-        absentBookings: [],
-        completedBookings: []
+      scheduledPlayers.forEach(userId => {
+        console.log(`Processing user ${userId} for booking ${bookingId}`);
+        
+        if (!userBookingsMap.has(userId)) {
+          userBookingsMap.set(userId, {
+            userId,
+            presentBookings: [],
+            absentBookings: [],
+            completedBookings: []
+          });
+          console.log(`Initialized new user entry for ${userId}`);
+        }
+        
+        const userEntry = userBookingsMap.get(userId)!;
+        
+        const bookingInfo = {
+          courtName,
+          timeSlot,
+          sportId: sportId || 'Unknown Sport',
+          bookingId
+        };
+        
+        // Determine booking status
+        if (joinedUsers.includes(userId)) {
+          userEntry.presentBookings.push(bookingInfo);
+          console.log(`Added booking to present for ${userId}:`, bookingInfo);
+        } else if (currentISTTime > endTimePlus30Min) {
+          userEntry.absentBookings.push(bookingInfo);
+          console.log(`Added booking to absent for ${userId}:`, bookingInfo);
+        }
+        // If current time is before endTime + 30 min, do nothing (booking stays hidden)
       });
-      console.log(`Initialized new user entry for ${userId}`);
-    }
-    
-    const userEntry = userBookingsMap.get(userId)!;
-    
-    const bookingInfo = {
-      courtName,
-      timeSlot,
-      sportId: sportId || 'Unknown Sport',
-      bookingId
-    };
-    
-    // Determine booking status
-    if (joinedUsers.includes(userId)) {
-      userEntry.presentBookings.push(bookingInfo);
-      console.log(`Added booking to present for ${userId}:`, bookingInfo);
-    } else if (currentISTTime > endTimePlus30Min) {
-      userEntry.absentBookings.push(bookingInfo);
-      console.log(`Added booking to absent for ${userId}:`, bookingInfo);
-    }
-    // If current time is before endTime + 30 min, do nothing (booking stays hidden)
-  });
-});
+    });
 
     console.log("Final userBookingsMap:", Array.from(userBookingsMap.entries()));
 
@@ -839,100 +836,103 @@ activeBookingData.forEach(({ courtName, booking }) => {
       })
     );
     
-    // Combine all users for the state
-// Combine all users for the state
-const allUsers = [...presentUsers, ...absentUsers, ...completedUsers];
-setUsers(allUsers);
+    // Combine all users for the state FIRST
+    let allUsers = [...presentUsers, ...absentUsers, ...completedUsers];
 
-// Separate logic for Not Booked column (only if day has ended)
-if (isDayEnded()) {
-  try {
-    // Fetch all forge users to get userIds
-    const forgeUsersResponse = await fetch('https://play-os-backend.forgehub.in/human/all?type=forge');
-    const forgeUsers = await forgeUsersResponse.json();
-    const userIds = forgeUsers.map((u: any) => u.userId);
-    console.log(userIds, "== all usersss");
-    
-    const dateStr = formatDateForInput(currentDate);
-    const notBookedMap = new Map<string, { userId: string; name?: string; sessions: { title: string; time: string }[] }>();
+    // Handle "Not Booked" logic (only if day has ended)
+    let notBookedUsers: User[] = [];
+    if (isDayEnded()) {
+      try {
+        // Fetch all forge users to get userIds
+        const forgeUsersResponse = await fetch('https://play-os-backend.forgehub.in/human/all?type=forge');
+        const forgeUsers = await forgeUsersResponse.json();
+        const userIds = forgeUsers.map((u: any) => u.userId);
+        console.log(userIds, "== all usersss");
+        
+        const dateStr = formatDateForInput(currentDate);
+        const notBookedMap = new Map<string, { userId: string; name?: string; sessions: { title: string; time: string }[] }>();
 
-    // Fetch plan instances for each userId and filter SCHEDULED sessions
-    await Promise.all(
-      userIds.map(async (userId: string) => {
-        try {
-          const resp = await fetch(`https://forge-play-backend.forgehub.in/humans/${userId}/plan-instances-within-date?start=${dateStr}&end=${dateStr}`);
-          console.log("api = ", resp);
-          
-          const plans = await resp.json();
-          const scheduledSessions: { title: string; time: string }[] = [];
+        // Fetch plan instances for each userId and filter SCHEDULED sessions
+        await Promise.all(
+          userIds.map(async (userId: string) => {
+            try {
+              const resp = await fetch(`https://forge-play-backend.forgehub.in/humans/${userId}/plan-instances-within-date?start=${dateStr}&end=${dateStr}`);
+              console.log("api = ", resp);
+              
+              const plans = await resp.json();
+              const scheduledSessions: { title: string; time: string }[] = [];
 
-          for (const plan of plans) {
-            for (const session of plan.sessionInstances) {
-              if (session.status === 'SCHEDULED') {
-                const time = formatTimeFromScheduledDate(session.scheduledDate);
-                scheduledSessions.push({ title: session.sessionTemplateTitle, time });
+              for (const plan of plans) {
+                for (const session of plan.sessionInstances) {
+                  if (session.status === 'SCHEDULED') {
+                    const time = formatTimeFromScheduledDate(session.scheduledDate);
+                    scheduledSessions.push({ title: session.sessionTemplateTitle, time });
+                  }
+                }
               }
+
+              if (scheduledSessions.length > 0) {
+                // Fetch user name
+                const userResp = await fetch(`https://play-os-backend.forgehub.in/human/${userId}`);
+                const userData = await userResp.json();
+                const name = userData.name || 'Unknown User';
+
+                notBookedMap.set(userId, { userId, name, sessions: scheduledSessions });
+              }
+            } catch (e) {
+              console.error(`Error fetching plans for user ${userId}:`, e);
             }
-          }
+          })
+        );
 
-          if (scheduledSessions.length > 0) {
-            // Fetch user name
-            const userResp = await fetch(`https://play-os-backend.forgehub.in/human/${userId}`);
-            const userData = await userResp.json();
-            const name = userData.name || 'Unknown User';
+        // Convert to User format (reuse bookings structure: courtName for title, timeSlot for time)
+        notBookedUsers = Array.from(notBookedMap.values()).map(entry => ({
+          userId: entry.userId,
+          name: entry.name || 'Unknown User',
+          status: 'not_booked',
+          bookings: entry.sessions.map(s => ({
+            courtName: s.title,
+            timeSlot: s.time,
+            sportId: '',
+            bookingId: ''
+          }))
+        }));
 
-            notBookedMap.set(userId, { userId, name, sessions: scheduledSessions });
-          }
-        } catch (e) {
-          console.error(`Error fetching plans for user ${userId}:`, e);
-        }
-      })
-    );
+        console.log("Not booked users:", notBookedUsers);
 
-    // Convert to User format (reuse bookings structure: courtName for title, timeSlot for time)
-    const notBookedUsers: User[] = Array.from(notBookedMap.values()).map(entry => ({
-      userId: entry.userId,
-      name: entry.name || 'Unknown User',
-      status: 'not_booked',
-      bookings: entry.sessions.map(s => ({
-        courtName: s.title,
-        timeSlot: s.time,
-        sportId: '',
-        bookingId: ''
-      }))
-    }));
-
-    // Append to existing users (separate from other statuses)
-    setUsers(prev => [...prev, ...notBookedUsers]);
-  } catch (error) {
-    console.error('Error fetching not booked users:', error);
-  }
-}
-
-// Immediately check for users handled after this date
-const nextDayStartUnix = getNextDayStartUnix(currentDate);
-const handledUserIds: string[] = [];
-
-for (const user of allUsers.filter(u => u.status === 'absent')) {
-  const isHandledAfterDate = await fetchUserHandledStatus(user.userId, nextDayStartUnix);
-  if (isHandledAfterDate) {
-    handledUserIds.push(user.userId);
-  }
-}
-
-if (handledUserIds.length > 0) {
-  setHandledAfterDateUsers(new Set(handledUserIds));
-  
-  // Update users to move from absent to completed
-  const updatedUsers = allUsers.map(user => {
-    if (handledUserIds.includes(user.userId) && user.status === 'absent') {
-      return { ...user, status: 'completed' };
+      } catch (error) {
+        console.error('Error fetching not booked users:', error);
+      }
     }
-    return user;
-  });
-  
-  setUsers(updatedUsers);
-}
+
+    // Add not booked users to the main users array
+    allUsers = [...allUsers, ...notBookedUsers];
+
+    // Check for users handled after this date and update their status
+    const nextDayStartUnix = getNextDayStartUnix(currentDate);
+    const handledUserIds: string[] = [];
+
+    for (const user of allUsers.filter(u => u.status === 'absent')) {
+      const isHandledAfterDate = await fetchUserHandledStatus(user.userId, nextDayStartUnix);
+      if (isHandledAfterDate) {
+        handledUserIds.push(user.userId);
+      }
+    }
+
+    if (handledUserIds.length > 0) {
+      setHandledAfterDateUsers(new Set(handledUserIds));
+      
+      // Update users to move from absent to completed
+      allUsers = allUsers.map(user => {
+        if (handledUserIds.includes(user.userId) && user.status === 'absent') {
+          return { ...user, status: 'completed' };
+        }
+        return user;
+      });
+    }
+
+    // Set the final users state ONCE with all users included
+    setUsers(allUsers);
     
   } catch (error) {
     console.error('Error fetching attendance data:', error);
