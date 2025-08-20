@@ -607,7 +607,10 @@ useEffect(() => {
     
     return courtName; // Return original court name if no prefix
   };
-
+const formatTimeFromScheduledDate = (dateStr: string) => {
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+};
 const fetchAttendanceData = async () => {
   setIsLoading(true);
   try {
@@ -701,74 +704,64 @@ const fetchAttendanceData = async () => {
     };
 
     // Check if the day has ended (past midnight)
-    const isDayEnded = () => {
-      if (!isToday()) {
-        return true; // Past dates are always "ended"
-      }
-      
-      // For today, check if it's past midnight (next day has started)
-      const now = getCurrentISTTime();
-      const selectedDateMidnight = new Date(currentDate);
-      selectedDateMidnight.setHours(23, 59, 59, 999);
-      
-      return now > selectedDateMidnight;
-    };
+const isDayEnded = () => {
+  const now = getCurrentISTTime();
+  const selectedDateMidnight = new Date(currentDate);
+  selectedDateMidnight.setHours(23, 59, 59, 999);
+console.log('isDayEnded:', { now, selectedDateMidnight, result: now > selectedDateMidnight });
+  // Return true only for past dates or today if it's past midnight
+  return now > selectedDateMidnight;
+};
 
-    const shouldShowAbsentBookings = isDayEnded();
+//     const shouldShowAbsentBookings = isDayEnded();
 
     console.log("Current IST Time:", currentISTTime);
     console.log("Is Today:", isToday());
-    console.log("Should show absent bookings:", shouldShowAbsentBookings);
+    //console.log("Should show absent bookings:", shouldShowAbsentBookings);
     
     // Process each booking individually
-    activeBookingData.forEach(({ courtName, booking }) => {
-      const { joinedUsers, scheduledPlayers, startTime, endTime, sportId, bookingId } = booking;
-      const timeSlot = formatTimeSlot(startTime, endTime);
-      
-      console.log(`Processing booking ${bookingId}:`, {
-        scheduledPlayers,
-        joinedUsers,
-        startTime,
-        endTime,
-        sportId
+activeBookingData.forEach(({ courtName, booking }) => {
+  const { joinedUsers, scheduledPlayers, startTime, endTime, sportId, bookingId } = booking;
+  const timeSlot = formatTimeSlot(startTime, endTime);
+  
+  // Convert endTime (GMT) to IST and add 30 minutes
+  const endTimeIST = convertToIST(endTime);
+  const endTimePlus30Min = new Date(endTimeIST.getTime() + 30 * 60 * 1000);
+  const currentISTTime = getCurrentISTTime();
+
+  scheduledPlayers.forEach(userId => {
+    console.log(`Processing user ${userId} for booking ${bookingId}`);
+    
+    if (!userBookingsMap.has(userId)) {
+      userBookingsMap.set(userId, {
+        userId,
+        presentBookings: [],
+        absentBookings: [],
+        completedBookings: []
       });
-      
-      scheduledPlayers.forEach(userId => {
-        console.log(`Processing user ${userId} for booking ${bookingId}`);
-        
-        // Initialize user if not exists
-        if (!userBookingsMap.has(userId)) {
-          userBookingsMap.set(userId, {
-            userId,
-            presentBookings: [],
-            absentBookings: [],
-            completedBookings: []
-          });
-          console.log(`Initialized new user entry for ${userId}`);
-        }
-        
-        const userEntry = userBookingsMap.get(userId)!;
-        
-        const bookingInfo = {
-          courtName,
-          timeSlot,
-          sportId: sportId || 'Unknown Sport',
-          bookingId
-        };
-        
-        // Determine booking status
-        if (joinedUsers.includes(userId)) {
-          // User joined this specific booking - add to present
-          userEntry.presentBookings.push(bookingInfo);
-          console.log(`Added booking to present for ${userId}:`, bookingInfo);
-        } else if (shouldShowAbsentBookings) {
-          // Day has ended and user didn't join this booking - add to absent
-          userEntry.absentBookings.push(bookingInfo);
-          console.log(`Added booking to absent for ${userId}:`, bookingInfo);
-        }
-        // If day hasn't ended and user didn't join, we don't show it yet
-      });
-    });
+      console.log(`Initialized new user entry for ${userId}`);
+    }
+    
+    const userEntry = userBookingsMap.get(userId)!;
+    
+    const bookingInfo = {
+      courtName,
+      timeSlot,
+      sportId: sportId || 'Unknown Sport',
+      bookingId
+    };
+    
+    // Determine booking status
+    if (joinedUsers.includes(userId)) {
+      userEntry.presentBookings.push(bookingInfo);
+      console.log(`Added booking to present for ${userId}:`, bookingInfo);
+    } else if (currentISTTime > endTimePlus30Min) {
+      userEntry.absentBookings.push(bookingInfo);
+      console.log(`Added booking to absent for ${userId}:`, bookingInfo);
+    }
+    // If current time is before endTime + 30 min, do nothing (booking stays hidden)
+  });
+});
 
     console.log("Final userBookingsMap:", Array.from(userBookingsMap.entries()));
 
@@ -851,6 +844,71 @@ const fetchAttendanceData = async () => {
 const allUsers = [...presentUsers, ...absentUsers, ...completedUsers];
 setUsers(allUsers);
 
+// Separate logic for Not Booked column (only if day has ended)
+if (isDayEnded()) {
+  try {
+    // Fetch all forge users to get userIds
+    const forgeUsersResponse = await fetch('https://play-os-backend.forgehub.in/human/all?type=forge');
+    const forgeUsers = await forgeUsersResponse.json();
+    const userIds = forgeUsers.map((u: any) => u.userId);
+    console.log(userIds, "== all usersss");
+    
+    const dateStr = formatDateForInput(currentDate);
+    const notBookedMap = new Map<string, { userId: string; name?: string; sessions: { title: string; time: string }[] }>();
+
+    // Fetch plan instances for each userId and filter SCHEDULED sessions
+    await Promise.all(
+      userIds.map(async (userId: string) => {
+        try {
+          const resp = await fetch(`https://forge-play-backend.forgehub.in/humans/${userId}/plan-instances-within-date?start=${dateStr}&end=${dateStr}`);
+          console.log("api = ", resp);
+          
+          const plans = await resp.json();
+          const scheduledSessions: { title: string; time: string }[] = [];
+
+          for (const plan of plans) {
+            for (const session of plan.sessionInstances) {
+              if (session.status === 'SCHEDULED') {
+                const time = formatTimeFromScheduledDate(session.scheduledDate);
+                scheduledSessions.push({ title: session.sessionTemplateTitle, time });
+              }
+            }
+          }
+
+          if (scheduledSessions.length > 0) {
+            // Fetch user name
+            const userResp = await fetch(`https://play-os-backend.forgehub.in/human/${userId}`);
+            const userData = await userResp.json();
+            const name = userData.name || 'Unknown User';
+
+            notBookedMap.set(userId, { userId, name, sessions: scheduledSessions });
+          }
+        } catch (e) {
+          console.error(`Error fetching plans for user ${userId}:`, e);
+        }
+      })
+    );
+
+    // Convert to User format (reuse bookings structure: courtName for title, timeSlot for time)
+    const notBookedUsers: User[] = Array.from(notBookedMap.values()).map(entry => ({
+      userId: entry.userId,
+      name: entry.name || 'Unknown User',
+      status: 'not_booked',
+      bookings: entry.sessions.map(s => ({
+        courtName: s.title,
+        timeSlot: s.time,
+        sportId: '',
+        bookingId: ''
+      }))
+    }));
+
+    // Append to existing users (separate from other statuses)
+    setUsers(prev => [...prev, ...notBookedUsers]);
+  } catch (error) {
+    console.error('Error fetching not booked users:', error);
+  }
+}
+
 // Immediately check for users handled after this date
 const nextDayStartUnix = getNextDayStartUnix(currentDate);
 const handledUserIds: string[] = [];
@@ -906,7 +964,7 @@ const fetchUserHandledStatus = async (userId: string, afterDateUnix: number): Pr
 };
 // Function to check handled status for all absent users
 const checkAllAbsentUsersHandledStatus = async () => {
-  const absentUsers = getFilteredUsers('absent');
+  const absentUsers = [...getFilteredUsers('absent'), ...getFilteredUsers('not_booked')];
   if (absentUsers.length === 0) return;
   
   const nextDayStartUnix = getNextDayStartUnix(currentDate);
@@ -1258,8 +1316,7 @@ useEffect(() => {
 // Add this useEffect to initialize message polling for absent users (add after your existing useEffects)
 useEffect(() => {
   const initializeMessagePolling = async () => {
-    const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed')];
-    
+const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed'), ...getFilteredUsers('not_booked')];    
     for (const user of allUsers) {
       try {
         const rooms = await fetchUserChatRooms(user.userId);
@@ -1303,8 +1360,7 @@ useEffect(() => {
 
   // Function to fetch new message counts for all absent users
   const pollNewMessageCounts = async () => {
-    const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed')];
-
+const allUsers = [...getFilteredUsers('present'), ...getFilteredUsers('absent'), ...getFilteredUsers('completed'), ...getFilteredUsers('not_booked')];
     for (const user of allUsers) {
       try {
         const rooms = await fetchUserChatRooms(user.userId);
@@ -1380,25 +1436,29 @@ const getNewMessagesForUser = (userId: string) => {
 };
 
 // Update your UserItem component to include the handle functionality
-const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boolean }) => {
+const UserItem = ({ user, columnType }: { user: User; columnType: string }) => {
   const newMsgCount = getNewMessagesForUser(user.userId);
-  const isHandled = handledUsers.has(user.userId);
-  const isHandledAfterDate = handledAfterDateUsers.has(user.userId);
-  
+
+  // Show checkbox for Absent, Not Booked, and Completed columns
+  const showCheckbox = columnType === 'absent' || columnType === 'not_booked' || columnType === 'completed';
+  const isCompleted = columnType === 'completed';
+  const checkboxStyle = isCompleted
+    ? 'border-green-500 bg-green-50 cursor-not-allowed'
+    : 'border-blue-500 hover:bg-blue-50';
+  const checkboxIconColor = isCompleted ? 'text-green-500' : 'text-blue-500';
+
   return (
     <div className="flex items-center p-3 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow">
       <div className="flex items-center space-x-3 flex-1">
-        {user.status === 'absent' && !isHandled && !isHandledAfterDate && (
+        {user.status === 'absent' && !isCompleted && (
           <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
             <AlertCircle className="w-4 h-4 text-red-500" />
           </div>
         )}
-        
         <div className="flex flex-col flex-1">
           <span className="font-medium text-gray-800 mb-1">
             {user.name}
           </span>
-          {/* Display all bookings for this user */}
           <div className="space-y-1">
             {user.bookings.map((booking, index) => (
               <div key={`${booking.bookingId}-${index}`} className="text-xs text-gray-500">
@@ -1410,18 +1470,15 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
         </div>
       </div>
       <div className="flex items-center space-x-3 ml-8">
-{(showCheckButton || (isHandled || isHandledAfterDate)) && (
-  <button 
-    className={`w-6 h-6 border-2 rounded flex items-center justify-center transition-colors ${
-      (isHandled || isHandledAfterDate)
-        ? "border-green-500 bg-green-50 cursor-not-allowed" 
-        : "border-blue-500 hover:bg-blue-50"
-    }`}
-    disabled={isHandled || isHandledAfterDate}
-  >
-    <Check className={`w-4 h-4 ${(isHandled || isHandledAfterDate) ? "text-green-500" : "text-blue-500"}`} />
-  </button>
-)}
+        {showCheckbox && (
+          <button 
+            className={`w-4 h-4 border-2 rounded flex items-center justify-center transition-colors ${checkboxStyle}`}
+            disabled={isCompleted}
+            onClick={() => !isCompleted && handleChatOpen(user.userId, user.name)} // Trigger chat for clickable checkboxes
+          >
+            <Check className={`w-2 h-2 ${checkboxIconColor}`} />
+          </button>
+        )}
         <div className="relative">
           <button 
             className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
@@ -1440,29 +1497,32 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
   );
 };
 
-  const columns = [
-    { 
-      title: 'Present', 
-      type: 'present', 
-      users: getFilteredUsers('present'),
-      icon: <Check className="w-5 h-5" />,
-      showCheckButton: false
-    },
-    { 
-      title: 'Absent', 
-      type: 'absent', 
-      users: getFilteredUsers('absent'),
-      icon: <X className="w-5 h-5" />,
-      showCheckButton: true
-    },
-    { 
-      title: 'Completed/Handled', 
-      type: 'completed', 
-      users: getFilteredUsers('completed'),
-      icon: <Clock className="w-5 h-5" />,
-      showCheckButton: false
-    }
-  ];
+const columns = [
+  { 
+    title: 'Present', 
+    type: 'present', 
+    users: getFilteredUsers('present'),
+    icon: <Check className="w-5 h-5" />
+  },
+  { 
+    title: 'Absent', 
+    type: 'absent', 
+    users: getFilteredUsers('absent'),
+    icon: <X className="w-5 h-5" />
+  },
+  { 
+    title: 'Not Booked', 
+    type: 'not_booked', 
+    users: getFilteredUsers('not_booked'), // Fix: Use dynamic user list
+    icon: <AlertCircle className="w-5 h-5" />
+  },
+  { 
+    title: 'Completed/Handled', 
+    type: 'completed', 
+    users: getFilteredUsers('completed'),
+    icon: <Clock className="w-5 h-5" />
+  }
+];
 
   return (
     <>
@@ -1513,39 +1573,39 @@ const UserItem = ({ user, showCheckButton }: { user: User; showCheckButton?: boo
           </div>
 
           {/* Main Grid - Flexible */}
-          <div className="grid grid-cols-3 gap-6 flex-1 min-h-0 mb-6">
-            {columns.map((column) => (
-              <div key={column.type} className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
-                {/* Column Header */}
-                <div className={`p-4 flex-shrink-0 ${getColumnHeaderStyle(column.type)}`}>
-                  <div className="flex items-center space-x-2">
-                    {column.icon}
-                    <h2 className="text-lg font-bold">{column.title}</h2>
-                    <span className="bg-white/20 px-2 py-1 rounded-full text-sm font-medium">
-                      {column.users.length}
-                    </span>
-                  </div>
-                </div>
+       <div className="grid grid-cols-4 gap-6 flex-1 min-h-0 mb-6">
+  {columns.map((column) => (
+    <div key={column.type} className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col">
+      {/* Column Header */}
+      <div className={`p-4 flex-shrink-0 ${getColumnHeaderStyle(column.type)}`}>
+        <div className="flex items-center space-x-2">
+          {column.icon}
+          <h2 className="text-lg font-bold">{column.title}</h2>
+          <span className="bg-white/20 px-2 py-1 rounded-full text-sm font-medium">
+            {column.users.length}
+          </span>
+        </div>
+      </div>
 
-                {/* Column Content - Scrollable */}
-                <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
-                  {column.users.length > 0 ? (
-                    column.users.map((user, index) => (
-                      <UserItem
-                        key={`${user.userId}-${index}`}
-                        user={user}
-                        showCheckButton={column.showCheckButton}
-                      />
-                    ))
-                  ) : (
-                    <div className="text-center py-8">
-                      <p className="text-gray-500 text-sm">No users in this category</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+      {/* Column Content - Scrollable */}
+      <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+        {column.users.length > 0 ? (
+          column.users.map((user, index) => (
+            <UserItem
+              key={`${user.userId}-${index}`}
+              user={user}
+              columnType={column.type} // Pass columnType
+            />
+          ))
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500 text-sm">No users in this category</p>
           </div>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
         </div>
         {/* Chat Modal */}
           {openChat && (
