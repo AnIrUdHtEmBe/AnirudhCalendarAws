@@ -28,7 +28,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const mainStyle: React.CSSProperties = {
     flex: 1,
-    overflowY: 'auto',
+    overflowY: 'hidden',
   };
 
   return (
