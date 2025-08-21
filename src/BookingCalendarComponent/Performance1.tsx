@@ -60,6 +60,11 @@ interface CellProps {
     row: number,
     col: number
   ) => Promise<string | null>;
+  bookingSpans?: Record<string, Array<{
+    startCol: number;
+    endCol: number;
+    bookingId: string;
+  }>>;
 }
 
 type Court = { courtId: string; name: string };
@@ -133,13 +138,24 @@ const RedDotIndicator: React.FC<{
     row: number,
     col: number
   ) => Promise<string | null>;
-}> = ({ row, col, cellMessageCounts, getBookingIdForOccupiedCell }) => {
+  bookingSpans: Record<string, Array<{
+    startCol: number;
+    endCol: number;
+    bookingId: string;
+  }>>;
+}> = ({ row, col, cellMessageCounts, getBookingIdForOccupiedCell, bookingSpans }) => {
   const [hasNewMessages, setHasNewMessages] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
+  // Check if this cell is the first cell of a booking span
+  const rowSpans = bookingSpans[`${row}`] || [];
+  const isFirstCellOfSpan = rowSpans.some(span => span.startCol === col);
+
   // Only check for messages when cell becomes visible in viewport
   useEffect(() => {
+    if (!isFirstCellOfSpan) return;
+    
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
@@ -153,10 +169,10 @@ const RedDotIndicator: React.FC<{
     }
 
     return () => observer.disconnect();
-  }, [row, col]);
+  }, [row, col, isFirstCellOfSpan]);
 
   useEffect(() => {
-    if (!isVisible) return;
+    if (!isVisible || !isFirstCellOfSpan) return;
 
     let isMounted = true;
 
@@ -188,12 +204,15 @@ const RedDotIndicator: React.FC<{
       clearTimeout(timeoutId);
       isMounted = false;
     };
-  }, [isVisible, row, col, getBookingIdForOccupiedCell, cellMessageCounts]);
+  }, [isVisible, row, col, getBookingIdForOccupiedCell, cellMessageCounts, isFirstCellOfSpan]);
 
-  if (!hasNewMessages || !isVisible) return null;
+  // Return null after all hooks have been called
+  if (!isFirstCellOfSpan || !hasNewMessages || !isVisible) {
+    return null;
+  }
 
   return (
-    <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full z-10"></div>
+    <div className="absolute top-2 right-2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full z-10"></div>
   );
 };
 
@@ -209,6 +228,7 @@ const Cell = ({
   isSelected,
   cellMessageCounts,
   getBookingIdForOccupiedCell,
+  bookingSpans,
 }: CellProps) => {
   const colorMap: Record<CellState, string> = {
     available:
@@ -243,56 +263,57 @@ const Cell = ({
       state === "unbook");
 
   // In the Cell component definition, replace the return statement with:
-  return (
-    <div
-    data-cell={`${row}-${col}`}
-      className={clsx(
-        classNames,
-        "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors relative",
-        state && colorMap[state],
-        showRing &&
-          isSelected &&
-          "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
-      )}
-      style={style}
-      onClick={() => {
-        if (row !== undefined && col !== undefined && onClick) {
-          onClick(row, col);
-        }
-      }}
-      draggable={state === "occupied" || state === "blocked"}
-      onDragStart={(e) => {
-        if (row !== undefined && col !== undefined) {
-          e.dataTransfer.setData("text/plain", `${row},${col}`);
-        }
-      }}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        const [fromRow, fromCol] = e.dataTransfer
-          .getData("text/plain")
-          .split(",")
-          .map(Number);
-        if (
-          row !== undefined &&
-          col !== undefined &&
-          onDropAction &&
-          (state === "available" || "unblock" || "unbook")
-        ) {
-          onDropAction([fromRow, fromCol], [row, col]);
-        }
-      }}
-    >
-      {/* Add red dot for occupied cells with new messages */}
-      {state === "occupied" && row !== undefined && col !== undefined && (
-        <RedDotIndicator
-          row={row}
-          col={col}
-          cellMessageCounts={cellMessageCounts!}
-          getBookingIdForOccupiedCell={getBookingIdForOccupiedCell!}
-        />
-      )}
-    </div>
-  );
+return (
+  <div
+  data-cell={`${row}-${col}`}
+    className={clsx(
+      classNames,
+      "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors relative",
+      state && colorMap[state],
+      showRing &&
+        isSelected &&
+        "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
+    )}
+    style={style}
+    onClick={() => {
+      if (row !== undefined && col !== undefined && onClick) {
+        onClick(row, col);
+      }
+    }}
+    draggable={state === "occupied" || state === "blocked"}
+    onDragStart={(e) => {
+      if (row !== undefined && col !== undefined) {
+        e.dataTransfer.setData("text/plain", `${row},${col}`);
+      }
+    }}
+    onDragOver={(e) => e.preventDefault()}
+    onDrop={(e) => {
+      const [fromRow, fromCol] = e.dataTransfer
+        .getData("text/plain")
+        .split(",")
+        .map(Number);
+      if (
+        row !== undefined &&
+        col !== undefined &&
+        onDropAction &&
+        (state === "available" || "unblock" || "unbook")
+      ) {
+        onDropAction([fromRow, fromCol], [row, col]);
+      }
+    }}
+  >
+    {/* Add red dot for occupied cells with new messages */}
+    {state === "occupied" && row !== undefined && col !== undefined && (
+      <RedDotIndicator
+        row={row}
+        col={col}
+        cellMessageCounts={cellMessageCounts!}
+        getBookingIdForOccupiedCell={getBookingIdForOccupiedCell!}
+        bookingSpans={bookingSpans || {}}
+      />
+    )}
+  </div>
+);
 };
 
 const CellGridLatestP1 = () => {
@@ -338,6 +359,16 @@ console.log(`💬 Chat client status:`, cellChatClient);
   const pollingQueue = useRef<Set<string>>(new Set());
   // Add this near other useRef declarations (around line 180)
 const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const [bookingSpans, setBookingSpans] = useState<
+    Record<
+      string,
+      Array<{
+        startCol: number;
+        endCol: number;
+        bookingId: string;
+      }>
+    >
+  >({});
 // const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Add this filtering function
@@ -859,6 +890,73 @@ const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   //   }
   // }, [courtSlots]);
 
+const calculateBookingSpans = async (courtsData: Court[], date: Date) => {
+  const dateStr = date.toISOString().split("T")[0];
+  const spans: Record<
+    string,
+    Array<{
+      startCol: number;
+      endCol: number;
+      bookingId: string;
+    }>
+  > = {};
+
+  await Promise.all(
+    courtsData.map(async (court, rowIndex) => {
+      try {
+        const res = await axios.get(
+          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+        );
+        const bookings = res?.data?.bookings || [];
+
+        const activeBookings = bookings.filter(
+          (b: any) => b.status === "active" || b.status === "rescheduled"
+        );
+
+        const courtSpans: Array<{
+          startCol: number;
+          endCol: number;
+          bookingId: string;
+        }> = [];
+
+        activeBookings.forEach((booking: any) => {
+          const startTime = toIST(booking.startTime);
+          const endTime = toIST(booking.endTime);
+
+          // Calculate start column
+          const startHour = startTime.getHours();
+          const startMinute = startTime.getMinutes();
+          const startCol = startHour * 2 + (startMinute >= 30 ? 1 : 0);
+
+          // Calculate end column - FIXED: properly calculate the last cell
+          const endHour = endTime.getHours();
+          const endMinute = endTime.getMinutes();
+          const endCol = endHour * 2 + (endMinute > 0 ? 0 : -1);
+          
+          // FIXED: Ensure proper span calculation
+          const actualEndCol = endCol ; // Make it inclusive of the last cell
+
+          courtSpans.push({
+            startCol,
+            endCol: Math.max(startCol, actualEndCol), // Ensure at least 1 cell span
+            bookingId: booking.bookingId,
+          });
+        });
+
+        spans[`${rowIndex}`] = courtSpans;
+      } catch (error) {
+        console.error(
+          `Failed to calculate spans for court ${court.courtId}`,
+          error
+        );
+        spans[`${rowIndex}`] = [];
+      }
+    })
+  );
+
+  setBookingSpans(spans);
+};
+
   const getFilteredCourtByIndex = (index: number) => {
     return filteredCourtId[index];
   };
@@ -1094,6 +1192,8 @@ const pollingInterval = useRef<NodeJS.Timeout | null>(null);
         cancelledBookingsMap,
         date
       );
+
+await calculateBookingSpans(filteredCourtId, date);
 
       // Clear any cached cell details to force refresh
       setSelectedCellDetails({
@@ -2873,95 +2973,129 @@ const cleanupMessagePolling = () => {
                   minWidth: `calc(4rem * 48)`, // Ensure full grid width
                 }}
               >
-                {grid.map((row, rIdx) =>
-                  row.map((cell, cIdx) => {
-                    let isDisabled = false;
+                {grid.map((row, rIdx) => {
+  const rowSpans = bookingSpans[`${rIdx}`] || [];
+  const renderedCells: JSX.Element[] = [];
+  let skipCols = new Set<number>();
 
-                    const hasAvailableSelected = selected.some(
-                      ([r, c]) =>
-                        grid[r][c] === "available" || grid[r][c] === "selected"
-                    );
-                    const hasOccupiedOrBlockedSelected = selected.some(
-                      ([r, c]) =>
-                        grid[r][c] === "occupied" || grid[r][c] === "blocked"
-                    );
+  row.forEach((cell, cIdx) => {
+    if (skipCols.has(cIdx)) return;
 
-                    if (cell === "selected") {
-                      // Find all selected cells in this row
-                      const selectedInRow = selected
-                        .filter(([r, _]) => r === rIdx)
-                        .map(([_, col]) => col);
+    // Check if this cell is part of a booking span
+    const span = rowSpans.find(
+      (s) => cIdx >= s.startCol && cIdx <= s.endCol
+    );
+    let spanSize = 1;
+    let isSpanStart = false;
 
-                      if (selectedInRow.length > 0) {
-                        const minSelectedCol = Math.min(...selectedInRow);
-                        const maxSelectedCol = Math.max(...selectedInRow);
+    if (
+      span &&
+      cIdx === span.startCol &&
+      (cell === "occupied" || cell === "blocked")
+    ) {
+      spanSize = span.endCol - span.startCol + 1;
+      isSpanStart = true;
+      // Mark columns to skip
+      for (let i = span.startCol + 1; i <= span.endCol; i++) {
+        skipCols.add(i);
+      }
+    }
 
-                        // Disable this cell if it is not at the edges of selection
-                        if (
-                          cIdx !== minSelectedCol &&
-                          cIdx !== maxSelectedCol
-                        ) {
-                          isDisabled = true;
-                        }
-                      }
-                    }
+    let isDisabled = false;
 
-                    if (cell === "available") {
-                      if (hasOccupiedOrBlockedSelected) {
-                        // available cells are enabled to allow switching from occupied/blocked
-                        // isDisabled = true;
-                      } else if (selected.length > 0) {
-                        const [selRow] = selected[0];
-                        const selCols = selected.map(([, col]) => col);
-                        const minCol = Math.min(...selCols);
-                        const maxCol = Math.max(...selCols);
+    const hasAvailableSelected = selected.some(
+      ([r, c]) =>
+        grid[r][c] === "available" || grid[r][c] === "selected"
+    );
+    const hasOccupiedOrBlockedSelected = selected.some(
+      ([r, c]) =>
+        grid[r][c] === "occupied" || grid[r][c] === "blocked"
+    );
 
-                        if (rIdx !== selRow) isDisabled = true;
+    if (cell === "selected") {
+      // Find all selected cells in this row
+      const selectedInRow = selected
+        .filter(([r, _]) => r === rIdx)
+        .map(([_, col]) => col);
 
-                        const isNextToSelection =
-                          cIdx === minCol - 1 || cIdx === maxCol + 1;
-                        if (
-                          !(selected.length === 1 && cIdx === minCol) &&
-                          !isNextToSelection
-                        )
-                          isDisabled = true;
-                      }
-                    } else if (cell === "occupied" || cell === "blocked") {
-                      // Disabled if any available cell is already selected
-                      if (hasAvailableSelected) {
-                        isDisabled = true;
-                      }
-                    }
-                    const hoverClass = isDisabled
-                      ? "hover:bg-red-500"
-                      : "hover:bg-green-300";
-                    return (
-                      <Cell
-                        key={`${rIdx}-${cIdx}`}
-                        row={rIdx}
-                        col={cIdx}
-                        state={cell}
-                        onClick={() => {
-                          if (!isDisabled) updateCell(rIdx, cIdx);
-                        }}
-                        onDropAction={handleDrop}
-                        isSelected={selected.some(
-                          ([r, c]) => r === rIdx && c === cIdx
-                        )}
-                        style={{
-                          cursor: isDisabled ? "not-allowed" : "pointer",
-                          pointerEvents: isDisabled ? "none" : "auto",
-                          // Tailwind's red-500 hex
-                        }}
-                        classNames={hoverClass}
-                        cellMessageCounts={cellMessageCounts}
-                        getBookingIdForOccupiedCell={
-                          getBookingIdForOccupiedCell
-                        }
-                      />
-                    );
-                  })
-                )}
+      if (selectedInRow.length > 0) {
+        const minSelectedCol = Math.min(...selectedInRow);
+        const maxSelectedCol = Math.max(...selectedInRow);
+
+        // Disable this cell if it is not at the edges of selection
+        if (
+          cIdx !== minSelectedCol &&
+          cIdx !== maxSelectedCol
+        ) {
+          isDisabled = true;
+        }
+      }
+    }
+
+    if (cell === "available") {
+      if (hasOccupiedOrBlockedSelected) {
+        // available cells are enabled to allow switching from occupied/blocked
+        // isDisabled = true;
+      } else if (selected.length > 0) {
+        const [selRow] = selected[0];
+        const selCols = selected.map(([, col]) => col);
+        const minCol = Math.min(...selCols);
+        const maxCol = Math.max(...selCols);
+
+        if (rIdx !== selRow) isDisabled = true;
+
+        const isNextToSelection =
+          cIdx === minCol - 1 || cIdx === maxCol + 1;
+        if (
+          !(selected.length === 1 && cIdx === minCol) &&
+          !isNextToSelection
+        )
+          isDisabled = true;
+      }
+    } else if (cell === "occupied" || cell === "blocked") {
+      // Disabled if any available cell is already selected
+      if (hasAvailableSelected) {
+        isDisabled = true;
+      }
+    }
+    const hoverClass = isDisabled
+      ? "hover:bg-red-500"
+      : "hover:bg-green-300";
+
+    // NEW: Determine if this cell should have right border removed
+    const shouldRemoveRightBorder = span && cIdx < span.endCol && (cell === "occupied" || cell === "blocked");
+
+    renderedCells.push(
+      <Cell
+  key={`${rIdx}-${cIdx}`}
+  row={rIdx}
+  col={cIdx}
+  state={cell}
+  onClick={() => {
+    if (!isDisabled) updateCell(rIdx, cIdx);
+  }}
+  onDropAction={handleDrop}
+  isSelected={selected.some(
+    ([r, c]) => r === rIdx && c === cIdx
+  )}
+  style={{
+    cursor: isDisabled ? "not-allowed" : "pointer",
+    pointerEvents: isDisabled ? "none" : "auto",
+    gridColumn:
+      spanSize > 1 ? `span ${spanSize}` : undefined,
+    // NEW: Remove right border for cells in the middle of a span
+    borderRight: shouldRemoveRightBorder ? 'none' : undefined,
+  }}
+  classNames={hoverClass}
+  cellMessageCounts={cellMessageCounts}
+  getBookingIdForOccupiedCell={getBookingIdForOccupiedCell}
+  bookingSpans={bookingSpans}
+/>
+    );
+  });
+
+  return renderedCells;
+})}
               </div>
             </div>
           </div>
