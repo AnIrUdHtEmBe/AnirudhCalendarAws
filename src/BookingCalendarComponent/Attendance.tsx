@@ -26,6 +26,8 @@ import {
 import { AblyProvider } from "ably/react";
 import { Send } from "lucide-react";
 import axios from "axios";
+import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
+import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
 
 interface User {
   userId: string;
@@ -533,6 +535,8 @@ const Attendance = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [checkedUsers, setCheckedUsers] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(false);
+    const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
   //ably state componenets
   const [openChat, setOpenChat] = useState<{
     userId: string;
@@ -1100,11 +1104,11 @@ const Attendance = () => {
   };
 
   const handlePrevDay = () => {
-    setCurrentDate((prev) => new Date(prev.getTime() - 24 * 60 * 60 * 1000));
+    setCurrentDate((prev) => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000));
   };
 
   const handleNextDay = () => {
-    setCurrentDate((prev) => new Date(prev.getTime() + 24 * 60 * 60 * 1000));
+    setCurrentDate((prev) => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000));
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1663,6 +1667,26 @@ const UserItem = ({
     },
   ];
 
+    useEffect(() => {
+      let referenceDate = new Date(currentDate);
+  
+      if (isNaN(referenceDate.getTime())) {
+        referenceDate = new Date();
+      }
+  
+      const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
+  
+      setWeekStartToEndDates(weekDates);
+  
+      const currentDateStr = referenceDate.toISOString().split("T")[0];
+  
+      const newActiveIndex = weekDates.findIndex(
+        (dateStr) => dateStr === currentDateStr
+      );
+  
+      setActiveIndex(newActiveIndex !== -1 ? newActiveIndex : 0);
+    }, [currentDate]);
+
   return (
     <>
       <AblyProvider client={realtimeClient}>
@@ -1675,13 +1699,21 @@ const UserItem = ({
             >
               ← Prev
             </button>
+            <WeekPlanView
+                activeIndex={activeIndex}
+                setActiveIndex={setActiveIndex}
+                weekStartToEndDates={weekStartToEndDates}
+                onDateChange={(newDate) => {
+                  setCurrentDate(newDate);
+                }}
+              />
             <span className="text-xs font-semibold">
-              {currentDate.toLocaleDateString("en-IN", {
+              {/* {currentDate.toLocaleDateString("en-IN", {
                 weekday: "short",
                 year: "numeric",
                 month: "short",
                 day: "numeric",
-              })}
+              })} */}
               {isLoading && (
                 <span className="ml-2 text-blue-500">Loading...</span>
               )}

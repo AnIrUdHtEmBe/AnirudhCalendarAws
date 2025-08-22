@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Check, Clock, AlertCircle, Utensils, ArrowLeft } from "lucide-react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import TopBar from "../BookingCalendarComponent/Topbar";
+import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
+import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
 
 interface Activity {
   activityId: string;
@@ -79,6 +81,8 @@ const UserNutrition = () => {
   const [sessionDetails, setSessionDetails] = useState<
     NutritionSessionTemplate[]
   >([]);
+    const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
+    const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   useEffect(() => {
     // Get date from query params or use current date
@@ -258,11 +262,11 @@ const UserNutrition = () => {
   };
 
   const handlePrevDay = () => {
-    setCurrentDate((prev) => new Date(prev.getTime() - 24 * 60 * 60 * 1000));
+    setCurrentDate((prev) => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000));
   };
 
   const handleNextDay = () => {
-    setCurrentDate((prev) => new Date(prev.getTime() + 24 * 60 * 60 * 1000));
+    setCurrentDate((prev) => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000));
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -394,6 +398,26 @@ const UserNutrition = () => {
     // },
   ];
 
+  useEffect(() => {
+      let referenceDate = new Date(currentDate);
+  
+      if (isNaN(referenceDate.getTime())) {
+        referenceDate = new Date();
+      }
+  
+      const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
+  
+      setWeekStartToEndDates(weekDates);
+  
+      const currentDateStr = referenceDate.toISOString().split("T")[0];
+  
+      const newActiveIndex = weekDates.findIndex(
+        (dateStr) => dateStr === currentDateStr
+      );
+  
+      setActiveIndex(newActiveIndex !== -1 ? newActiveIndex : 0);
+    }, [currentDate]);
+
   return (
     <>
       <TopBar />
@@ -404,13 +428,21 @@ const UserNutrition = () => {
         >
           ← Prev
         </button>
+        <WeekPlanView
+                activeIndex={activeIndex}
+                setActiveIndex={setActiveIndex}
+                weekStartToEndDates={weekStartToEndDates}
+                onDateChange={(newDate) => {
+                  setCurrentDate(newDate);
+                }}
+              />
         <span className="text-xs font-semibold">
-          {currentDate.toLocaleDateString("en-IN", {
+          {/* {currentDate.toLocaleDateString("en-IN", {
             weekday: "short",
             year: "numeric",
             month: "short",
             day: "numeric",
-          })}
+          })} */}
           {isLoading && <span className="ml-2 text-blue-500">Loading...</span>}
         </span>
         <div className="flex items-center gap-4">

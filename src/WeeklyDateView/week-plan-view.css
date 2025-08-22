@@ -1,0 +1,33 @@
+/* In ./week-plan-view.css - add or append these */
+.week-plan-view-container {
+  display: flex;
+  
+  justify-content: center;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.--plan {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 1px;
+  cursor: pointer;
+  text-align: center;
+  min-width: 50px;
+  transition: background-color 0.2s;
+}
+
+.--plan:hover {
+  background-color: #e0f7ff !important; /* Light hover effect */
+}
+
+.--day {
+  display: block;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.--date {
+  display: block;
+  font-size: 14px;
+}

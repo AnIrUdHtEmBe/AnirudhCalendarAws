@@ -4,6 +4,9 @@ import TopBar from "../BookingCalendarComponent/Topbar";
 import Toast from "../BookingCalendarComponent/Toast";
 import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
 import { useLocation } from "react-router-dom";
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
+import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
+import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
 
 type Court = { courtId: string; name: string };
 type Slot = {
@@ -47,8 +50,8 @@ function addDays(date: Date, days: number) {
 function formatDateForInput(date: Date) {
   // Use local timezone instead of UTC to avoid date shifting
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 }
 
@@ -103,19 +106,21 @@ export default function PriceDaily() {
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
   );
-    const location = useLocation();
+  const location = useLocation();
+  const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
 
-const getDateFromUrl = (): Date => {
-  const params = new URLSearchParams(location.search);
-  const dateStr = params.get("date");
-  console.log("Date from URL:", dateStr); // Debug log
-  if (dateStr && !isNaN(new Date(dateStr).getTime())) {
-    // Parse as local date, not UTC
-    const [year, month, day] = dateStr.split('-').map(Number);
-    return new Date(year, month - 1, day); // month is 0-indexed
-  }
-  return new Date();
-};
+  const getDateFromUrl = (): Date => {
+    const params = new URLSearchParams(location.search);
+    const dateStr = params.get("date");
+    console.log("Date from URL:", dateStr); // Debug log
+    if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+      // Parse as local date, not UTC
+      const [year, month, day] = dateStr.split("-").map(Number);
+      return new Date(year, month - 1, day); // month is 0-indexed
+    }
+    return new Date();
+  };
 
   const [selectedDate, setSelectedDate] = useState(getDateFromUrl());
   const [selectedCell, setSelectedCell] = useState<{
@@ -132,19 +137,17 @@ const getDateFromUrl = (): Date => {
 
   const timeHeaderRef = useRef<HTMLDivElement>(null);
 
-
-
-useEffect(() => {
-  const params = new URLSearchParams(location.search);
-  const dateStr = params.get("date");
-  console.log("URL changed, date param:", dateStr); // Debug log
-  if (dateStr && !isNaN(new Date(dateStr).getTime())) {
-    const [year, month, day] = dateStr.split('-').map(Number);
-    const newDate = new Date(year, month - 1, day);
-    console.log("Setting new date:", newDate); // Debug log
-    setSelectedDate(newDate);
-  }
-}, [location.search]);
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const dateStr = params.get("date");
+    console.log("URL changed, date param:", dateStr); // Debug log
+    if (dateStr && !isNaN(new Date(dateStr).getTime())) {
+      const [year, month, day] = dateStr.split("-").map(Number);
+      const newDate = new Date(year, month - 1, day);
+      console.log("Setting new date:", newDate); // Debug log
+      setSelectedDate(newDate);
+    }
+  }, [location.search]);
 
   const toggleCellSelection = (courtId: string, slotId: string) => {
     const day = formatDateForInput(selectedDate);
@@ -317,40 +320,39 @@ useEffect(() => {
   };
 
   // Save updated prices for all changed slots
-const handleSave = async () => {
-  try {
-    const allUpdates = [];
+  const handleSave = async () => {
+    try {
+      const allUpdates = [];
 
-    for (const courtIdKey in changedSlots) {
-      for (const slotIdKey of changedSlots[courtIdKey]) {
-        const priceStr = prices[courtIdKey]?.[slotIdKey];
-        if (!priceStr) continue;
+      for (const courtIdKey in changedSlots) {
+        for (const slotIdKey of changedSlots[courtIdKey]) {
+          const priceStr = prices[courtIdKey]?.[slotIdKey];
+          if (!priceStr) continue;
 
-        const priceNum = parseInt(priceStr);
-        if (isNaN(priceNum)) continue;
+          const priceNum = parseInt(priceStr);
+          if (isNaN(priceNum)) continue;
 
-        allUpdates.push(
-          axios.patch(`${API_BASE_URL_Latest}/timeslot/${slotIdKey}`, {
-            price: priceNum,
-            status: "available",
-            bookingInfo: "active",
-          })
-        );
+          allUpdates.push(
+            axios.patch(`${API_BASE_URL_Latest}/timeslot/${slotIdKey}`, {
+              price: priceNum,
+              status: "available",
+              bookingInfo: "active",
+            })
+          );
+        }
       }
+
+      await Promise.all(allUpdates);
+      showToast("Prices saved successfully!");
+
+      // Clear changed slots after successful save
+      setChangedSlots({});
+      setSelectedCells([]);
+    } catch (e) {
+      console.error("Failed to save prices", e);
+      showToast("Failed to save prices. Please try again.");
     }
-
-    await Promise.all(allUpdates);
-    showToast("Prices saved successfully!");
-
-    // Clear changed slots after successful save
-    setChangedSlots({});
-    setSelectedCells([]);
-    
-  } catch (e) {
-    console.error("Failed to save prices", e);
-    showToast("Failed to save prices. Please try again.");
-  }
-};
+  };
 
   // Synchronize sidebar vertical scroll with grid vertical scroll
   const onGridScroll = () => {
@@ -365,6 +367,26 @@ const handleSave = async () => {
   // Helper: find slotId for a court and half-hour index
   // Return slotId or null if no slot matches that time
   const IST_OFFSET_MINUTES = 330; // IST is UTC +5:30
+
+useEffect(() => {
+  let referenceDate = new Date(selectedDate);
+
+  if (isNaN(referenceDate.getTime())) {
+    referenceDate = new Date();
+  }
+
+  const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
+
+  setWeekStartToEndDates(weekDates);
+
+  const currentDateStr = formatDateForInput(referenceDate);
+
+  const newActiveIndex = weekDates.findIndex(
+    (dateStr) => dateStr === currentDateStr
+  );
+
+  setActiveIndex(newActiveIndex !== -1 ? newActiveIndex : 0);
+}, [selectedDate]);
 
   const findSlotIdForTime = (
     courtId: string,
@@ -402,33 +424,49 @@ const handleSave = async () => {
     <div className="flex flex-col h-screen font-semibold">
       {/* Top Bar */}
       <TopBar />
-      <div className="flex items-center justify-between  bg-white shadow-sm shrink-0 rounded-b-lg p-2">
-        <button
-          onClick={() => setSelectedDate(addDays(selectedDate, -1))}
-          className="px-3 py-1 bg-gray-300 rounded"
-        >
-          ← Prev
-        </button>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold">
-            {formatWeekLabel(getWeekStart(selectedDate))}
-          </span>
-          <input
-            type="date"
-            value={formatDateForInput(selectedDate)}
-            onChange={(e) => {
-              const newDate = new Date(e.target.value);
-              if (!isNaN(newDate.getTime())) setSelectedDate(newDate);
-            }}
-            className="px-2 py-1 border border-gray-300 rounded text-xs"
-          />
+      <div className="flex items-center bg-white shadow-sm shrink-0 rounded-b-lg p-2">
+        {/* Breadcrumb at extreme start */}
+        <div>
+          <Breadcrumb />
         </div>
-        <button
-          onClick={() => setSelectedDate(addDays(selectedDate, 1))}
-          className="px-3 py-1 bg-gray-300 rounded"
-        >
-          Next →
-        </button>
+
+        {/* Centered navigation controls */}
+        <div className="flex items-center gap-5 absolute left-1/2 transform -translate-x-1/2">
+          <button
+            onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+            className="px-3 py-1 bg-gray-300 rounded"
+          >
+            ← Prev
+          </button>
+          <div className="flex items-center gap-4">
+            {/* <span className="text-sm font-semibold">
+              {formatWeekLabel(getWeekStart(selectedDate))}
+            </span> */}
+            <WeekPlanView
+              activeIndex={activeIndex}
+              setActiveIndex={setActiveIndex}
+              weekStartToEndDates={weekStartToEndDates}
+              onDateChange={(newDate) => {
+                setSelectedDate(newDate);
+              }}
+            />
+            <input
+              type="date"
+              value={formatDateForInput(selectedDate)}
+              onChange={(e) => {
+                const newDate = new Date(e.target.value);
+                if (!isNaN(newDate.getTime())) setSelectedDate(newDate);
+              }}
+              className="px-2 py-1 border border-gray-300 rounded text-xs"
+            />
+          </div>
+          <button
+            onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+            className="px-3 py-1 bg-gray-300 rounded"
+          >
+            Next →
+          </button>
+        </div>
       </div>
 
       {/* Main Content Area */}
@@ -437,7 +475,11 @@ const handleSave = async () => {
         <div
           ref={sidebarScrollRef}
           className="flex flex-col w-24 shrink-0 bg-white overflow-y-auto overflow-x-hidden rounded-md border border-gray-200"
-          style={{ overflowY: "hidden" , scrollbarWidth: "none", msOverflowStyle: "none" }}
+          style={{
+            overflowY: "hidden",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+          }}
         >
           <div className="h-10 shrink-0 bg-gray-100 border-b border-gray-200 rounded-tl-md" />
           {courtId.map((court) => (
@@ -606,19 +648,18 @@ const handleSave = async () => {
               })
             : "N/A"} */}
         </div>
-        <button
-          onClick={handleSave}
-          className="bg-green-500 text-white px-4 py-2 rounded shadow hover:bg-green-600 transition"
-        >
-          Save
-        </button>
+        {selectedCells.length > 0 && (
+          <button
+            onClick={handleSave}
+            className="bg-green-500 text-white px-4 py-2 rounded shadow hover:bg-green-600 transition"
+          >
+            Set Prices
+          </button>
+        )}
       </div>
       {toastMsg && (
-  <Toast
-    message={toastMsg}
-    onClose={() => setToastMsg(null)}
-  />
-)}
+        <Toast message={toastMsg} onClose={() => setToastMsg(null)} />
+      )}
     </div>
   );
 }

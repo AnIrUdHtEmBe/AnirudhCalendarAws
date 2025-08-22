@@ -1,4 +1,3 @@
-// changes
 import {
   ChatClient,
   ChatMessageEvent,
@@ -45,7 +44,7 @@ interface UserAttendance {
   name: string;
   status: "present" | "absent" | "pending" | "";
 }
-const CellModal2: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
+const CellModal3: React.FC<CellModalProps> = ({ isOpen, onClose, cellData }) => {
   const navigate = useNavigate();
   // Hard-coded users for now - later replace with API call
   const [modalUsers, setModalUsers] = useState<UserAttendance[]>([]);
@@ -790,14 +789,14 @@ interface ChatMessage {
 }
 
 
-const SmallChatBox: React.FC<SmallChatBoxProps> = ({
+const SmallChatBox = React.memo(({
   roomName,
   onClose,
   userId,
   roomType,
   userName,
   onHandleChat,
-}) => {
+}: SmallChatBoxProps) => {
 
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -1082,10 +1081,10 @@ const sortedMessages = useMemo(() => {
       </div>
     </div>
   );
-};
+});
 
   // Replace the HandleChatModal component entirely
-  const HandleChatModal = ({
+  const HandleChatModal = React.memo(({
     isOpen,
     onClose,
     onSave,
@@ -1162,7 +1161,7 @@ const sortedMessages = useMemo(() => {
         </div>
       </div>
     );
-  };
+  });
 
   const handleChatOpen = () => {
     setHandleChatModalOpen(true);
@@ -1257,9 +1256,11 @@ const handleChatSave = async (comment: string) => {
   }
 };
 
-const ReplyToAllBox: React.FC<{
+const ReplyToAllBox = React.memo(({ 
+  onClose 
+}: {
   onClose: () => void;
-}> = ({ onClose }) => {
+}) => {
   const [localInput, setLocalInput] = useState("");
   const currentClientId = useMemo(() => {
     try {
@@ -1410,7 +1411,7 @@ const ReplyToAllBox: React.FC<{
       </div>
     </div>
   );
-};
+});
 
   if (!isOpen) return null;
 
@@ -1759,5 +1760,4 @@ onClick={async (e) => {
   );
 };
 
-export default CellModal2;
-
+export default CellModal3;

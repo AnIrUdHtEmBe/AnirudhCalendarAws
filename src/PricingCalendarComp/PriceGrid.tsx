@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import TopBar from "../BookingCalendarComponent/Topbar";
 import { useNavigate } from "react-router-dom";
 import { API_BASE_URL_Latest } from "../BookingCalendarComponent/AxiosApi";
+import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
+import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
 
 type Court = { courtId: string; name: string };
 
@@ -43,6 +45,8 @@ export default function WeeklyPricingGrid() {
   );
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weekStart, setWeekStart] = useState(getWeekStart(new Date()));
+  const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   const [selectedCell, setSelectedCell] = useState<{
     day: string;
     court: string;
@@ -73,69 +77,69 @@ export default function WeeklyPricingGrid() {
     Record<string, Record<string, { minPrice: number; maxPrice: number }>>
   >({});
 
-// Replace the fetchPricesForWeek function in WeeklyPricingGrid with this:
+  // Replace the fetchPricesForWeek function in WeeklyPricingGrid with this:
 
-const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
-  const data: Record<
-    string,
-    Record<string, { minPrice: number; maxPrice: number }>
-  > = {};
+  const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
+    const data: Record<
+      string,
+      Record<string, { minPrice: number; maxPrice: number }>
+    > = {};
 
-  // Fetch prices for each day in the week
-  await Promise.all(
-    weekDays.map(async (day) => {
-      // Add 1 day to match the navigation logic and fix timezone issue
-      const adjustedDay = addDays(day, 1);
-      const dayKey = formatDateForInput(day); // Keep original day as key for display
-      const apiDayKey = formatDateForInput(adjustedDay); // Use adjusted day for API call
-      
-      try {
-        const response = await axios.get(
-          `${API_BASE_URL_Latest}/arena/pricing-ranges/AREN_JZSW15?date=${apiDayKey}`
-        );
+    // Fetch prices for each day in the week
+    await Promise.all(
+      weekDays.map(async (day) => {
+        // Add 1 day to match the navigation logic and fix timezone issue
+        const adjustedDay = addDays(day, 1);
+        const dayKey = formatDateForInput(day); // Keep original day as key for display
+        const apiDayKey = formatDateForInput(adjustedDay); // Use adjusted day for API call
 
-        data[dayKey] = {};
+        try {
+          const response = await axios.get(
+            `${API_BASE_URL_Latest}/arena/pricing-ranges/AREN_JZSW15?date=${apiDayKey}`
+          );
 
-        // Process the API response
-        Object.entries(response.data).forEach(([courtId, priceRange]) => {
-          if (priceRange === "Not Set") {
-            // Set default values when not set
-            data[dayKey][courtId] = { minPrice: 0, maxPrice: 0 };
-          } else {
-            // Parse price range like "₹500 - ₹1000" or "₹500"
-            const priceString = priceRange as string;
-            const cleanPrice = priceString.replace(/₹/g, "").trim();
+          data[dayKey] = {};
 
-            if (cleanPrice.includes(" - ")) {
-              // Range format: "500 - 1000"
-              const [minStr, maxStr] = cleanPrice.split(" - ");
-              data[dayKey][courtId] = {
-                minPrice: parseInt(minStr.trim()) || 0,
-                maxPrice: parseInt(maxStr.trim()) || 0,
-              };
+          // Process the API response
+          Object.entries(response.data).forEach(([courtId, priceRange]) => {
+            if (priceRange === "Not Set") {
+              // Set default values when not set
+              data[dayKey][courtId] = { minPrice: 0, maxPrice: 0 };
             } else {
-              // Single price format: "500"
-              const price = parseInt(cleanPrice) || 0;
-              data[dayKey][courtId] = {
-                minPrice: price,
-                maxPrice: price,
-              };
-            }
-          }
-        });
-      } catch (error) {
-        console.error(`Failed to fetch prices for ${apiDayKey}:`, error);
-        // Fallback: set empty data for this day
-        data[dayKey] = {};
-        courts.forEach((court) => {
-          data[dayKey][court.courtId] = { minPrice: 0, maxPrice: 0 };
-        });
-      }
-    })
-  );
+              // Parse price range like "₹500 - ₹1000" or "₹500"
+              const priceString = priceRange as string;
+              const cleanPrice = priceString.replace(/₹/g, "").trim();
 
-  return data;
-};
+              if (cleanPrice.includes(" - ")) {
+                // Range format: "500 - 1000"
+                const [minStr, maxStr] = cleanPrice.split(" - ");
+                data[dayKey][courtId] = {
+                  minPrice: parseInt(minStr.trim()) || 0,
+                  maxPrice: parseInt(maxStr.trim()) || 0,
+                };
+              } else {
+                // Single price format: "500"
+                const price = parseInt(cleanPrice) || 0;
+                data[dayKey][courtId] = {
+                  minPrice: price,
+                  maxPrice: price,
+                };
+              }
+            }
+          });
+        } catch (error) {
+          console.error(`Failed to fetch prices for ${apiDayKey}:`, error);
+          // Fallback: set empty data for this day
+          data[dayKey] = {};
+          courts.forEach((court) => {
+            data[dayKey][court.courtId] = { minPrice: 0, maxPrice: 0 };
+          });
+        }
+      })
+    );
+
+    return data;
+  };
 
   useEffect(() => {
     setWeekStart(getWeekStart(selectedDate));
@@ -235,6 +239,20 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
     }));
   };
 
+  useEffect(() => {
+    let referenceDate = new Date(selectedDate);
+
+    if (isNaN(referenceDate.getTime())) {
+      referenceDate = new Date();
+    }
+
+    const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
+
+    setWeekStartToEndDates(weekDates);
+
+    const currentDateStr = referenceDate.toISOString().split("T")[0];
+  }, [selectedDate]);
+
   const handleSave = () => {
     const priceData = Object.entries(prices).flatMap(([date, courtPrices]) =>
       Object.entries(courtPrices).map(([courtId, price]) => ({
@@ -262,10 +280,21 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
         >
           ← Prev
         </button>
+        <WeekPlanView
+          activeIndex={activeIndex}
+          setActiveIndex={setActiveIndex}
+          weekStartToEndDates={weekStartToEndDates}
+          onDateChange={(newDate) => {
+            const adjustedDay = addDays(newDate, 0);
+            navigate(
+              `/pricingCalendarDaily?date=${formatDateForInput(adjustedDay)}`
+            );
+          }}
+        />
         <div className="flex items-center gap-4">
-          <span className="text-xs font-semibold">
+          {/* <span className="text-xs font-semibold">
             {formatWeekLabel(weekStart)}
-          </span>
+          </span> */}
           <input
             type="date"
             value={formatDateForInput(selectedDate)}
@@ -316,9 +345,13 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
                   className="min-w-0 h-10 flex flex-col items-center justify-center text-xs font-semibold text-gray-700 cursor-pointer hover:bg-gray-100 rounded-md"
                   style={{ userSelect: "none" }}
                   onClick={() => {
-  const adjustedDay = addDays(day, 1); // Add 1 day to fix timezone issue
-  navigate(`/pricingCalendarDaily?date=${formatDateForInput(adjustedDay)}`);
-}}
+                    const adjustedDay = addDays(day, 1); // Add 1 day to fix timezone issue
+                    navigate(
+                      `/pricingCalendarDaily?date=${formatDateForInput(
+                        adjustedDay
+                      )}`
+                    );
+                  }}
                 >
                   <div>{dayNames[index]}</div>
                   <div>{day.getDate()}</div>
@@ -385,7 +418,7 @@ const fetchPricesForWeek = async (weekDays: Date[], courts: Court[]) => {
                           ? "bg-blue-100 ring-2 ring-blue-500 shadow-sm"
                           : "bg-white hover:bg-green-50 border border-gray-300"
                       }`}
-                      onClick={() => handleCellClick(dayKey, court.courtId)}
+                      // onClick={() => handleCellClick(dayKey, court.courtId)}
                     >
                       <span className="text-green-600 mr-1 text-sm font-semibold">
                         ₹

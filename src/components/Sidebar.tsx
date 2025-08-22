@@ -206,7 +206,12 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
                 text={item.text}
                 collapsed={collapsed}
                 onClick={() => handleClick(item.path)}
-                active={location.pathname === item.path}
+                active={
+  item.path === "/pricingCalendar"
+    ? location.pathname.startsWith("/pricingCalendar")
+    : location.pathname === item.path
+}
+
               />
             ))}
           </ul>

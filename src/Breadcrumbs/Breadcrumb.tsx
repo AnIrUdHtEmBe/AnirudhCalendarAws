@@ -72,7 +72,13 @@ const breadcrumbConfig = {
   "/bookingCalendar": { label: "Booking Calendar", path: "/bookingCalendar" },
   "/nutrition": { label: "Nutrition", path: "/nutrition" },
   "/notifications": { label: "Notifications", path: "/notifications" },
-  "/profile": { label: "Profile", path: "/profile" }
+  "/profile": { label: "Profile", path: "/profile" },
+  "/pricingCalendar": { label: "Pricing Calendar", path: "/pricingCalendar" },
+  "/pricingCalendarDaily" : { 
+    label: "Daily Price", 
+    path: "/pricingCalendarDaily",
+    parentRoute: "/pricingCalendar"
+  }
 };
 
 const Breadcrumb: React.FC = () => {
@@ -80,6 +86,11 @@ const Breadcrumb: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [navigationHistory, setNavigationHistory] = useState([]);
+
+  // Only show breadcrumb on /pricingCalendarDaily page
+  // if (location.pathname !== "/pricingCalendarDaily") {
+  //   return null;
+  // }
 
   // Your original getBreadcrumbs function with minor modifications
   const getHierarchicalBreadcrumbs = () => {
@@ -318,6 +329,27 @@ const Breadcrumb: React.FC = () => {
 
   // Decide whether to use hierarchical or history breadcrumbs
   const getBreadcrumbs = () => {
+    // For /pricingCalendarDaily, always show: Pricing Calendar > Daily Price
+    if (location.pathname === "/pricingCalendarDaily") {
+      return [
+        {
+          label: "Pricing Calendar",
+          path: "/pricingCalendar",
+          onClick: () => {
+            console.log("Navigating to Pricing Calendar");
+            navigate("/pricingCalendar");
+          }
+        },
+        {
+          label: "Daily Price",
+          path: "/pricingCalendarDaily",
+          onClick: () => {
+            console.log("Already on Daily Price page");
+          }
+        }
+      ];
+    }
+
     const hierarchicalCrumbs = getHierarchicalBreadcrumbs();
     
     // Use history only if we have genuinely different pages (not just reloads of the same page)

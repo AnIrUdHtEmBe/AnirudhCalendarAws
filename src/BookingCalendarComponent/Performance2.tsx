@@ -15,6 +15,12 @@ import * as Ably from "ably";
 import { ChatClient, LogLevel } from "@ably/chat";
 import UserModalNew from "./UserModalNew";
 import UserModal2 from "./UserModal2";
+import UserModal3 from "./UserModal3";
+import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
+import {
+  getDate,
+  getArrayOfDatesFromSundayToSaturday,
+} from "../WeeklyDateView/date";
 
 // Add before CellGridLatest component definition
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
@@ -131,214 +137,222 @@ function toLocalISOString(date: Date): string {
 // Add this component before CellGridLatest component
 // ✅ Outside of CellGridLatest, before Cell definition
 // RedDotIndicator with debug logs - use this temporarily to debug
-const RedDotIndicator: React.FC<{
-  row: number;
-  col: number;
-  cellMessageCounts: { [bookingId: string]: boolean };
-  getBookingIdForOccupiedCell: (
-    row: number,
-    col: number
-  ) => Promise<string | null>;
-  bookingSpans: Record<
-    string,
-    Array<{
-      startCol: number;
-      endCol: number;
-      bookingId: string;
-    }>
-  >;
-}> = ({
-  row,
-  col,
-  cellMessageCounts,
-  getBookingIdForOccupiedCell,
-  bookingSpans,
-}) => {
-  const [hasNewMessages, setHasNewMessages] = useState(false);
-  const [bookingId, setBookingId] = useState<string | null>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  // Check if this cell is the first cell of a booking span
-  const rowSpans = bookingSpans[`${row}`] || [];
-  const isFirstCellOfSpan = rowSpans.some((span) => span.startCol === col);
-
-  // Only check for messages when cell becomes visible in viewport
-  useEffect(() => {
-    if (!isFirstCellOfSpan) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
-
-    const cellElement = document.querySelector(`[data-cell="${row}-${col}"]`);
-    if (cellElement) {
-      observer.observe(cellElement);
-    }
-
-    return () => observer.disconnect();
-  }, [row, col, isFirstCellOfSpan]);
-
-  useEffect(() => {
-    if (!isVisible || !isFirstCellOfSpan) return;
-
-    let isMounted = true;
-
-    const checkForNewMessages = async () => {
-      try {
-        const id = await getBookingIdForOccupiedCell(row, col);
-
-        if (!isMounted) return;
-
-        setBookingId(id);
-
-        if (id && cellMessageCounts[id] === true) {
-          setHasNewMessages(true);
-        } else {
-          setHasNewMessages(false);
-        }
-      } catch (error) {
-        if (isMounted) {
-          setHasNewMessages(false);
-          setBookingId(null);
-        }
-      }
-    };
-
-    // Debounce the check
-    const timeoutId = setTimeout(checkForNewMessages, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      isMounted = false;
-    };
-  }, [
-    isVisible,
+const RedDotIndicator = React.memo(
+  ({
     row,
     col,
-    getBookingIdForOccupiedCell,
     cellMessageCounts,
-    isFirstCellOfSpan,
-  ]);
+    getBookingIdForOccupiedCell,
+    bookingSpans,
+  }: {
+    row: number;
+    col: number;
+    cellMessageCounts: { [bookingId: string]: boolean };
+    getBookingIdForOccupiedCell: (
+      row: number,
+      col: number
+    ) => Promise<string | null>;
+    bookingSpans: Record<
+      string,
+      Array<{
+        startCol: number;
+        endCol: number;
+        bookingId: string;
+      }>
+    >;
+  }) => {
+    const [hasNewMessages, setHasNewMessages] = useState(false);
+    const [bookingId, setBookingId] = useState<string | null>(null);
+    const [isVisible, setIsVisible] = useState(false);
 
-  // Return null after all hooks have been called
-  if (!isFirstCellOfSpan || !hasNewMessages || !isVisible) {
-    return null;
+    // Check if this cell is the first cell of a booking span
+    const rowSpans = bookingSpans[`${row}`] || [];
+    const isFirstCellOfSpan = rowSpans.some((span) => span.startCol === col);
+
+    // Only check for messages when cell becomes visible in viewport
+    useEffect(() => {
+      if (!isFirstCellOfSpan) return;
+
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          setIsVisible(entry.isIntersecting);
+        },
+        { threshold: 0.1 }
+      );
+
+      const cellElement = document.querySelector(`[data-cell="${row}-${col}"]`);
+      if (cellElement) {
+        observer.observe(cellElement);
+      }
+
+      return () => observer.disconnect();
+    }, [row, col, isFirstCellOfSpan]);
+
+    useEffect(() => {
+      if (!isVisible || !isFirstCellOfSpan) return;
+
+      let isMounted = true;
+
+      const checkForNewMessages = async () => {
+        try {
+          const id = await getBookingIdForOccupiedCell(row, col);
+
+          if (!isMounted) return;
+
+          setBookingId(id);
+
+          if (id && cellMessageCounts[id] === true) {
+            setHasNewMessages(true);
+          } else {
+            setHasNewMessages(false);
+          }
+        } catch (error) {
+          if (isMounted) {
+            setHasNewMessages(false);
+            setBookingId(null);
+          }
+        }
+      };
+
+      // Debounce the check
+      const timeoutId = setTimeout(checkForNewMessages, 100);
+
+      return () => {
+        clearTimeout(timeoutId);
+        isMounted = false;
+      };
+    }, [
+      isVisible,
+      row,
+      col,
+      getBookingIdForOccupiedCell,
+      cellMessageCounts,
+      isFirstCellOfSpan,
+    ]);
+
+    // Return null after all hooks have been called
+    if (!isFirstCellOfSpan || !hasNewMessages || !isVisible) {
+      return null;
+    }
+
+    return (
+      <div className="absolute top-2 right-2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full z-10"></div>
+    );
   }
+);
 
-  return (
-    <div className="absolute top-2 right-2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full z-10"></div>
-  );
-};
+const Cell = React.memo(
+  ({
+    row,
+    col,
+    state,
+    label,
+    style,
+    classNames,
+    onClick,
+    onDropAction,
+    isSelected,
+    cellMessageCounts,
+    getBookingIdForOccupiedCell,
+    bookingSpans,
+  }: CellProps) => {
+    const colorMap: Record<CellState, string> = {
+      available:
+        "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
+      occupied: "bg-green-500",
+      blocked: "bg-red-500",
+      selected: "bg-blue-500",
+      unblock:
+        "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
+      unbook:
+        "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
+      cancelled:
+        "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
+    };
 
-const Cell = ({
-  row,
-  col,
-  state,
-  label,
-  style,
-  classNames,
-  onClick,
-  onDropAction,
-  isSelected,
-  cellMessageCounts,
-  getBookingIdForOccupiedCell,
-  bookingSpans,
-}: CellProps) => {
-  const colorMap: Record<CellState, string> = {
-    available:
-      "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
-    occupied: "bg-green-500",
-    blocked: "bg-red-500",
-    selected: "bg-blue-500",
-    unblock:
-      "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
-    unbook:
-      "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
-    cancelled:
-      "bg-neutral-100 border-4 border-green-500 rounded transition focus:bg-green-50 hover:bg-green-300 text-gray-900 flex items-center px-2 py-1",
-  };
+    if (label) {
+      return (
+        <div
+          className="min-w-[4rem] flex-1 h-10 flex items-center justify-center border border-gray-200 rounded-md bg-white text-xs font-semibold text-timeSlot whitespace-nowrap"
+          style={{ userSelect: "none" }}
+        >
+          {label}
+        </div>
+      );
+    }
 
-  if (label) {
+    const showRing =
+      isSelected &&
+      (state === "occupied" ||
+        state === "blocked" ||
+        state === "unblock" ||
+        state === "unbook");
+
+    // In the Cell component definition, replace the return statement with:
     return (
       <div
-        className="min-w-[4rem] flex-1 h-10 flex items-center justify-center border border-gray-200 rounded-md bg-white text-xs font-semibold text-timeSlot whitespace-nowrap"
-        style={{ userSelect: "none" }}
+        data-cell={`${row}-${col}`}
+        className={clsx(
+          classNames,
+          "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors",
+          state && colorMap[state],
+          showRing &&
+            isSelected &&
+            "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
+        )}
+        style={style}
+        onClick={() => {
+          if (row !== undefined && col !== undefined && onClick) {
+            onClick(row, col);
+          }
+        }}
+        draggable={state === "occupied" || state === "blocked"}
+        onDragStart={(e) => {
+          if (row !== undefined && col !== undefined) {
+            e.dataTransfer.setData("text/plain", `${row},${col}`);
+          }
+        }}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => {
+          const [fromRow, fromCol] = e.dataTransfer
+            .getData("text/plain")
+            .split(",")
+            .map(Number);
+          if (
+            row !== undefined &&
+            col !== undefined &&
+            onDropAction &&
+            (state === "available" || "unblock" || "unbook")
+          ) {
+            onDropAction([fromRow, fromCol], [row, col]);
+          }
+        }}
       >
-        {label}
+        {/* Add red dot for occupied cells with new messages */}
+        <div className="relative w-full h-full">
+          {state === "occupied" && row !== undefined && col !== undefined && (
+            <RedDotIndicator
+              row={row}
+              col={col}
+              cellMessageCounts={cellMessageCounts!}
+              getBookingIdForOccupiedCell={getBookingIdForOccupiedCell!}
+              bookingSpans={bookingSpans || {}}
+            />
+          )}
+        </div>
       </div>
     );
   }
+);
 
-  const showRing =
-    isSelected &&
-    (state === "occupied" ||
-      state === "blocked" ||
-      state === "unblock" ||
-      state === "unbook");
-
-  // In the Cell component definition, replace the return statement with:
-  return (
-    <div
-      data-cell={`${row}-${col}`}
-      className={clsx(
-        classNames,
-        "min-w-[4rem] flex-1 h-10 border border-white rounded-md cursor-pointer transition-colors",
-        state && colorMap[state],
-        showRing &&
-          isSelected &&
-          "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
-      )}
-      style={style}
-      onClick={() => {
-        if (row !== undefined && col !== undefined && onClick) {
-          onClick(row, col);
-        }
-      }}
-      draggable={state === "occupied" || state === "blocked"}
-      onDragStart={(e) => {
-        if (row !== undefined && col !== undefined) {
-          e.dataTransfer.setData("text/plain", `${row},${col}`);
-        }
-      }}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        const [fromRow, fromCol] = e.dataTransfer
-          .getData("text/plain")
-          .split(",")
-          .map(Number);
-        if (
-          row !== undefined &&
-          col !== undefined &&
-          onDropAction &&
-          (state === "available" || "unblock" || "unbook")
-        ) {
-          onDropAction([fromRow, fromCol], [row, col]);
-        }
-      }}
-    >
-      {/* Add red dot for occupied cells with new messages */}
-      <div className="relative w-full h-full">
-        {state === "occupied" && row !== undefined && col !== undefined && (
-          <RedDotIndicator
-            row={row}
-            col={col}
-            cellMessageCounts={cellMessageCounts!}
-            getBookingIdForOccupiedCell={getBookingIdForOccupiedCell!}
-            bookingSpans={bookingSpans || {}}
-          />
-        )}
-      </div>
-    </div>
-  );
-};
-
-const CellGridLatestP1 = () => {
+const CellGridLatestP2 = () => {
   console.log(`🔌 Ably client status:`, ablyRealtimeClient.connection.state);
   console.log(`💬 Chat client status:`, cellChatClient);
   const [courtId, setCourtId] = useState<Court[]>([]);
+  const [selectedCell, setSelectedCell] = useState<{
+    row: number;
+    col: number;
+  } | null>(null);
   const [resolvedNames, setResolvedNames] = useState<Record<string, string>>(
     {}
   );
@@ -376,6 +390,8 @@ const CellGridLatestP1 = () => {
   const roomConnections = useRef<Map<string, any>>(new Map());
   const isPollingActive = useRef(false);
   const pollingQueue = useRef<Set<string>>(new Set());
+  const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
   // Add this near other useRef declarations (around line 180)
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   const [bookingSpans, setBookingSpans] = useState<
@@ -390,26 +406,6 @@ const CellGridLatestP1 = () => {
   >({});
   // const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Add this filtering function
-  // const getCourtType = (courtName: string): string => {
-  //   if (courtName.startsWith("Wellness")) return "Wellness";
-  //   if ((courtName.startsWith("Fitness") || courtName.startsWith("Forge Gym") || courtName.startsWith("Gym")))  return "Fitness";
-  //   return "Sports";
-  // };
-
-  // // Add this filtered courts computation
-  // const filteredCourtId = React.useMemo(() => {
-  //   if (activeTab === "All") return courtId;
-
-  //   return courtId.filter((court) => {
-  //     const resolvedName = resolvedNames[court.courtId] || court.name;
-  //     const courtType = getCourtType(resolvedName);
-  //     return courtType === activeTab;
-  //   });
-  // }, [courtId, resolvedNames, activeTab]);
-
-  // Updated getCourtType function that fetches data
-  // Updated getCourtType function that fetches data
   const getCourtType = async (courtId: string): Promise<string> => {
     try {
       const courtRes = await axios.get(
@@ -526,7 +522,7 @@ const CellGridLatestP1 = () => {
 
     // Extract all rows and columns
     const rows = selectedCells.map(([row]) => row);
-    const cols = selectedCells.map(([_, col]) => col).sort((a, b) => a - b);
+    const cols = selectedCells.map(([, col]) => col).sort((a, b) => a - b);
 
     // Check if all rows are the same
     const uniqueRows = new Set(rows);
@@ -594,7 +590,7 @@ const CellGridLatestP1 = () => {
     }
 
     const colsSelected = selectedCells
-      .map(([_, col]) => col)
+      .map(([, col]) => col)
       .sort((a, b) => a - b);
     const firstCol = colsSelected[0];
     const lastCol = colsSelected[colsSelected.length - 1];
@@ -1246,186 +1242,191 @@ const CellGridLatestP1 = () => {
 
   // New function to fetch cell details when a cell is selected
   // New function to fetch cell details when a cell is selected
-  const fetchCellDetails = async (row: number, col: number) => {
-    if (filteredCourtId.length === 0) return;
+  const fetchCellDetails = useCallback(
+    async (row: number, col: number) => {
+      if (filteredCourtId.length === 0) return;
 
-    const cacheKey = `${row}-${col}-${currentDate.toISOString().split("T")[0]}`;
+      const cacheKey = `${row}-${col}-${
+        currentDate.toISOString().split("T")[0]
+      }`;
 
-    // Check if we already have fresh data for this cell
-    if (
-      selectedCellDetails.courtDetails &&
-      selectedCell?.row === row &&
-      selectedCell?.col === col
-    ) {
-      return;
-    }
-
-    setIsLoadingCellDetails(true);
-    const court = getFilteredCourtByIndex(row);
-    const dateStr = currentDate.toISOString().split("T")[0];
-
-    // Initialize all details to null/empty before fetching
-    let selectedCourtDetails: CourtDetails | null = null;
-    let selectedBookingArray: Booking[] = [];
-    let selectedGameName: string = "";
-    let selectedAvailableSports: Sport[] = [];
-    let selectedCurrentBooking: Booking | null = null;
-
-    try {
-      // 1. Fetch court details (including allowedSports)
-      const courtRes = await axios.get(
-        `${API_BASE_URL_Latest}/court/${court.courtId}`
-      );
-      selectedCourtDetails = courtRes.data;
-
-      // 2. Fetch all allowed sports details for this court
+      // Check if we already have fresh data for this cell
       if (
-        selectedCourtDetails?.allowedSports &&
-        selectedCourtDetails.allowedSports.length > 0
+        selectedCellDetails.courtDetails &&
+        selectedCell?.row === row &&
+        selectedCell?.col === col
       ) {
-        const sportsPromises = selectedCourtDetails.allowedSports.map(
-          async (sportId: string) => {
-            try {
-              const sportRes = await axios.get(
-                `${API_BASE_URL_Latest}/sports/id/${sportId}`
-              );
-              return sportRes.data;
-            } catch (error) {
-              // console.error(`Failed to fetch sport ${sportId}:`, error);
-              return null;
-            }
-          }
-        );
-        selectedAvailableSports = (await Promise.all(sportsPromises)).filter(
-          (s) => s !== null
-        ) as Sport[];
+        return;
       }
 
-      // 3. ALWAYS fetch fresh bookings for the court on the selected date
+      setIsLoadingCellDetails(true);
+      const court = getFilteredCourtByIndex(row);
+      const dateStr = currentDate.toISOString().split("T")[0];
+
+      // Initialize all details to null/empty before fetching
+      let selectedCourtDetails: CourtDetails | null = null;
+      let selectedBookingArray: Booking[] = [];
+      let selectedGameName: string = "";
+      let selectedAvailableSports: Sport[] = [];
+      let selectedCurrentBooking: Booking | null = null;
+
       try {
-        const bookingsRes = await axios.get(
-          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+        // 1. Fetch court details (including allowedSports)
+        const courtRes = await axios.get(
+          `${API_BASE_URL_Latest}/court/${court.courtId}`
         );
-        selectedBookingArray = bookingsRes?.data?.bookings || [];
+        selectedCourtDetails = courtRes.data;
 
-        // Find current booking for this cell (if any) - ACTIVE AND RESCHEDULED BOOKINGS
-        const hour = Math.floor(col / 2);
-        const minute = col % 2 === 0 ? 0 : 30;
-        const slotTime = new Date(currentDate);
-        slotTime.setHours(hour, minute, 0, 0);
-        const slotStartMillis = slotTime.getTime();
-        const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
-
-        selectedCurrentBooking =
-          selectedBookingArray.find((booking: Booking) => {
-            const startTime = toIST(booking.startTime).getTime();
-            const endTime = toIST(booking.endTime).getTime();
-            // Include both active and rescheduled bookings
-            const isValidBooking =
-              booking.status === "active" || booking.status === "rescheduled";
-            return (
-              slotStartMillis < endTime &&
-              slotEndMillis > startTime &&
-              isValidBooking
-            );
-          }) || null;
-
-        // IMPORTANT: Always reset to all allowed sports first
-        selectedGameName = selectedAvailableSports
-          .map((sport) => sport.name)
-          .join(", ");
-
-        // If current booking exists (active or rescheduled), override gameName with booked sport's name
-        if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
-          try {
-            // 1. Fetch sport name for the booking
-            const sportRes = await axios.get(
-              `${API_BASE_URL_Latest}/sports/id/${selectedCurrentBooking.sportId}`
-            );
-            selectedGameName = sportRes.data.name;
-
-            // Only fetch game details if type is "game"
-            if (selectedCurrentBooking.type === "game") {
-              // 2. Compute cell timeslot start & end for the selected cell
-              const hour = Math.floor(col / 2);
-              const minute = col % 2 === 0 ? 0 : 30;
-              const slotStart = new Date(currentDate);
-              slotStart.setHours(hour, minute, 0, 0);
-              const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
-
-              // 3. Fetch the game list for this sport, court, and date
-              const gamesRes = await axios.get(
-                `${API_BASE_URL_Latest}/game/games/by-sport`,
-                {
-                  params: {
-                    sportId: selectedCurrentBooking.sportId,
-                    date: dateStr,
-                    courtId: court.courtId,
-                  },
-                }
-              );
-              const games = gamesRes.data || [];
-
-              // 4. Find the correct game for this timeslot/cell
-              const matchingGame = games.find((game: any) => {
-                const gameStart = new Date(game.startTime).getTime();
-                const gameEnd = new Date(game.endTime).getTime();
-                return (
-                  (gameStart === slotStart.getTime() &&
-                    gameEnd === slotEnd.getTime()) ||
-                  (slotStart.getTime() >= gameStart &&
-                    slotEnd.getTime() <= gameEnd)
+        // 2. Fetch all allowed sports details for this court
+        if (
+          selectedCourtDetails?.allowedSports &&
+          selectedCourtDetails.allowedSports.length > 0
+        ) {
+          const sportsPromises = selectedCourtDetails.allowedSports.map(
+            async (sportId: string) => {
+              try {
+                const sportRes = await axios.get(
+                  `${API_BASE_URL_Latest}/sports/id/${sportId}`
                 );
-              });
-
-              if (matchingGame) {
-                // console.log(
-                //   "latest game id and chatId",
-                //   matchingGame.gameId,
-                //   matchingGame.chatId
-                // );
+                return sportRes.data;
+              } catch (error) {
+                // console.error(`Failed to fetch sport ${sportId}:`, error);
+                return null;
               }
             }
-          } catch (err) {
-            // console.error("Error fetching sport details for booking:", err);
-            // Keep the default all allowed sports name
-            selectedGameName = selectedAvailableSports
-              .map((sport) => sport.name)
-              .join(", ");
-          }
+          );
+          selectedAvailableSports = (await Promise.all(sportsPromises)).filter(
+            (s) => s !== null
+          ) as Sport[];
         }
-        // If no valid booking, selectedGameName remains as all allowed sports
-      } catch (bookingsError) {
-        // console.error("Failed to fetch bookings:", bookingsError);
+
+        // 3. ALWAYS fetch fresh bookings for the court on the selected date
+        try {
+          const bookingsRes = await axios.get(
+            `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+          );
+          selectedBookingArray = bookingsRes?.data?.bookings || [];
+
+          // Find current booking for this cell (if any) - ACTIVE AND RESCHEDULED BOOKINGS
+          const hour = Math.floor(col / 2);
+          const minute = col % 2 === 0 ? 0 : 30;
+          const slotTime = new Date(currentDate);
+          slotTime.setHours(hour, minute, 0, 0);
+          const slotStartMillis = slotTime.getTime();
+          const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+
+          selectedCurrentBooking =
+            selectedBookingArray.find((booking: Booking) => {
+              const startTime = toIST(booking.startTime).getTime();
+              const endTime = toIST(booking.endTime).getTime();
+              // Include both active and rescheduled bookings
+              const isValidBooking =
+                booking.status === "active" || booking.status === "rescheduled";
+              return (
+                slotStartMillis < endTime &&
+                slotEndMillis > startTime &&
+                isValidBooking
+              );
+            }) || null;
+
+          // IMPORTANT: Always reset to all allowed sports first
+          selectedGameName = selectedAvailableSports
+            .map((sport) => sport.name)
+            .join(", ");
+
+          // If current booking exists (active or rescheduled), override gameName with booked sport's name
+          if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
+            try {
+              // 1. Fetch sport name for the booking
+              const sportRes = await axios.get(
+                `${API_BASE_URL_Latest}/sports/id/${selectedCurrentBooking.sportId}`
+              );
+              selectedGameName = sportRes.data.name;
+
+              // Only fetch game details if type is "game"
+              if (selectedCurrentBooking.type === "game") {
+                // 2. Compute cell timeslot start & end for the selected cell
+                const hour = Math.floor(col / 2);
+                const minute = col % 2 === 0 ? 0 : 30;
+                const slotStart = new Date(currentDate);
+                slotStart.setHours(hour, minute, 0, 0);
+                const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+                // 3. Fetch the game list for this sport, court, and date
+                const gamesRes = await axios.get(
+                  `${API_BASE_URL_Latest}/game/games/by-sport`,
+                  {
+                    params: {
+                      sportId: selectedCurrentBooking.sportId,
+                      date: dateStr,
+                      courtId: court.courtId,
+                    },
+                  }
+                );
+                const games = gamesRes.data || [];
+
+                // 4. Find the correct game for this timeslot/cell
+                const matchingGame = games.find((game: any) => {
+                  const gameStart = new Date(game.startTime).getTime();
+                  const gameEnd = new Date(game.endTime).getTime();
+                  return (
+                    (gameStart === slotStart.getTime() &&
+                      gameEnd === slotEnd.getTime()) ||
+                    (slotStart.getTime() >= gameStart &&
+                      slotEnd.getTime() <= gameEnd)
+                  );
+                });
+
+                if (matchingGame) {
+                  // console.log(
+                  //   "latest game id and chatId",
+                  //   matchingGame.gameId,
+                  //   matchingGame.chatId
+                  // );
+                }
+              }
+            } catch (err) {
+              // console.error("Error fetching sport details for booking:", err);
+              // Keep the default all allowed sports name
+              selectedGameName = selectedAvailableSports
+                .map((sport) => sport.name)
+                .join(", ");
+            }
+          }
+          // If no valid booking, selectedGameName remains as all allowed sports
+        } catch (bookingsError) {
+          // console.error("Failed to fetch bookings:", bookingsError);
+          selectedBookingArray = [];
+          selectedCurrentBooking = null;
+          // Keep selectedGameName as allowed sports names
+          selectedGameName = selectedAvailableSports
+            .map((sport) => sport.name)
+            .join(", ");
+        }
+      } catch (mainError) {
+        // console.error(
+        //   "Failed to fetch court details or primary info:",
+        //   mainError
+        // );
+        // If court details fail, clear everything
+        selectedCourtDetails = null;
         selectedBookingArray = [];
+        selectedGameName = "";
+        selectedAvailableSports = [];
         selectedCurrentBooking = null;
-        // Keep selectedGameName as allowed sports names
-        selectedGameName = selectedAvailableSports
-          .map((sport) => sport.name)
-          .join(", ");
+      } finally {
+        setSelectedCellDetails({
+          courtDetails: selectedCourtDetails,
+          bookings: selectedBookingArray,
+          gameName: selectedGameName,
+          availableSports: selectedAvailableSports,
+          currentBooking: selectedCurrentBooking,
+        });
+        setIsLoadingCellDetails(false);
       }
-    } catch (mainError) {
-      // console.error(
-      //   "Failed to fetch court details or primary info:",
-      //   mainError
-      // );
-      // If court details fail, clear everything
-      selectedCourtDetails = null;
-      selectedBookingArray = [];
-      selectedGameName = "";
-      selectedAvailableSports = [];
-      selectedCurrentBooking = null;
-    } finally {
-      setSelectedCellDetails({
-        courtDetails: selectedCourtDetails,
-        bookings: selectedBookingArray,
-        gameName: selectedGameName,
-        availableSports: selectedAvailableSports,
-        currentBooking: selectedCurrentBooking,
-      });
-      setIsLoadingCellDetails(false);
-    }
-  };
+    },
+    [selectedCell, currentDate, filteredCourtId]
+  );
 
   // Update updateCell to allow multiple selection toggling
   const updateCell = (row: number, col: number) => {
@@ -1696,7 +1697,7 @@ const CellGridLatestP1 = () => {
         }
 
         const [row] = selected[0];
-        const colsSelected = selected.map(([_, c]) => c).sort((a, b) => a - b);
+        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
 
         // Validate consecutive columns
         for (let i = 1; i < colsSelected.length; i++) {
@@ -1775,7 +1776,7 @@ const CellGridLatestP1 = () => {
         }
 
         const [row] = selected[0];
-        const colsSelected = selected.map(([_, c]) => c).sort((a, b) => a - b);
+        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
 
         // Validate consecutive columns
         for (let i = 1; i < colsSelected.length; i++) {
@@ -1853,7 +1854,7 @@ const CellGridLatestP1 = () => {
         }
 
         const [row] = selected[0];
-        const colsSelected = selected.map(([_, c]) => c).sort((a, b) => a - b);
+        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
 
         // Validate consecutive columns
         for (let i = 1; i < colsSelected.length; i++) {
@@ -1954,7 +1955,7 @@ const CellGridLatestP1 = () => {
         }
 
         const [row] = selected[0];
-        const colsSelected = selected.map(([_, c]) => c).sort((a, b) => a - b);
+        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
 
         // Check if columns are consecutive
         for (let i = 1; i < colsSelected.length; i++) {
@@ -2077,10 +2078,6 @@ const CellGridLatestP1 = () => {
   function closeModal() {
     setisModalOpen(false);
   }
-  const [selectedCell, setSelectedCell] = useState<{
-    row: number;
-    col: number;
-  } | null>(null);
 
   function formatDateForInput(date: Date) {
     return date.toISOString().split("T")[0];
@@ -2149,8 +2146,6 @@ const CellGridLatestP1 = () => {
             `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=ALL`
           );
         }
-        // console.log("new host name", response.data[0].hostName);
-
         // console.log("Fresh game fetch response:", response.data);
         const games = response.data;
         sessionStorage.setItem("newHostClick", response.data[0].hostName);
@@ -2233,194 +2228,6 @@ const CellGridLatestP1 = () => {
       return null;
     }
   };
-
-  const currentGameName =
-    selectedCellDetails.availableSports.find(
-      (s) => s.sportId === selectedCellDetails.currentBooking?.sportId
-    )?.name || "Unknown";
-
-  useEffect(() => {
-    if (currentGameName) {
-      localStorage.setItem("currentGameName", currentGameName);
-    }
-  }, [currentGameName]);
-
-  // Replace the useEffect around line 570 that controls loading screen
-  useEffect(() => {
-    // Only show loading screen during critical operations
-    if (isLoadingBookings || isLoadingCellDetails) {
-      setLoadingScreen(true);
-
-      // Set a maximum timeout for loading screen
-      const timer = setTimeout(() => {
-        setLoadingScreen(false);
-      }, 800); // Reduced from 1300ms
-
-      // Clear loading screen as soon as critical data is loaded
-      const checkDataLoaded = () => {
-        if (!isLoadingBookings && !isLoadingCellDetails && grid.length > 0) {
-          setLoadingScreen(false);
-          clearTimeout(timer);
-        }
-      };
-
-      // Use requestAnimationFrame to check without blocking
-      const intervalId = setInterval(checkDataLoaded, 100);
-
-      return () => {
-        clearTimeout(timer);
-        clearInterval(intervalId);
-      };
-    }
-  }, [isLoadingBookings, isLoadingCellDetails, grid.length]);
-
-  // Add this state to track sidebar width
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  // Add this useEffect to detect sidebar collapse state
-  useEffect(() => {
-    const checkSidebarCollapsed = () => {
-      const sidebar = document.querySelector(".sidebar");
-      if (sidebar) {
-        // Check if sidebar has the 'collapsed' class
-        setIsSidebarCollapsed(sidebar.classList.contains("collapsed"));
-      }
-    };
-
-    // Initial check
-    checkSidebarCollapsed();
-
-    // Use MutationObserver to watch for class changes on sidebar
-    const sidebar = document.querySelector(".sidebar");
-    if (sidebar) {
-      const observer = new MutationObserver(checkSidebarCollapsed);
-      observer.observe(sidebar, {
-        attributes: true,
-        attributeFilter: ["class"],
-      });
-
-      return () => {
-        observer.disconnect();
-      };
-    }
-  }, []);
-
-  // Add this useEffect after your existing useEffects
-  useEffect(() => {
-    // Reset grid when tab changes (but not on initial load)
-    if (filteredCourtId.length > 0) {
-      const newGrid = Array.from({ length: filteredCourtId.length }, () =>
-        Array(cols).fill("available")
-      );
-      setGrid(newGrid);
-
-      // Clear selections
-      setSelected([]);
-      setSelectedCell(null);
-      setSelectedSportId("");
-
-      // Refetch bookings and blocked slots for filtered courts
-      fetchBookingsAndBlocked(currentDate);
-    }
-  }, [activeTab, filteredCourtId.length]); // Trigger when activeTab or filtered court count changes
-
-  const [courName, setCourName] = useState("Loading...");
-
-  useEffect(() => {
-    const courtId = selectedCellDetails.courtDetails?.courtId;
-    if (firstSelected && courtId) {
-      const fetchCourtName = async () => {
-        try {
-          const res = await axios.get(
-            `${API_BASE_URL_Latest}/court/${courtId}`
-          );
-          setCourName(res.data.name);
-        } catch (err) {
-          setCourName("Unknown");
-        }
-      };
-      fetchCourtName();
-    }
-  }, [firstSelected, selectedCellDetails.courtDetails?.courtId]);
-
-  // Replace the existing useEffect around line 550
-  // Replace the existing useEffect around line 550
-  // Replace the existing useEffect around line 550
-  useEffect(() => {
-    if (filteredCourtId.length > 0 && !isModalOpen) {
-      // Defer polling until UI is fully interactive - wait 10 seconds instead of 3
-      const timeoutId = setTimeout(() => {
-        if (!isModalOpen) {
-          // Use requestIdleCallback to run during browser idle time
-          if (window.requestIdleCallback) {
-            window.requestIdleCallback(
-              () => {
-                startPollingForAllOccupiedCells();
-              },
-              { timeout: 5000 }
-            );
-          } else {
-            // Fallback for browsers without requestIdleCallback
-            setTimeout(() => {
-              startPollingForAllOccupiedCells();
-            }, 100);
-          }
-        }
-      }, 10000); // Increased from 3000 to 10000ms
-
-      // Increase interval to 3 minutes to reduce frequency
-      pollingInterval.current = setInterval(() => {
-        if (!isModalOpen) {
-          // Use requestIdleCallback here too
-          if (window.requestIdleCallback) {
-            window.requestIdleCallback(
-              () => {
-                startPollingForAllOccupiedCells();
-              },
-              { timeout: 5000 }
-            );
-          } else {
-            startPollingForAllOccupiedCells();
-          }
-        } else {
-          cleanupMessagePolling();
-        }
-      }, 180000); // Increased from 120000 to 180000ms (3 minutes)
-
-      return () => {
-        clearTimeout(timeoutId);
-        if (pollingInterval.current) {
-          clearInterval(pollingInterval.current);
-          pollingInterval.current = null;
-        }
-      };
-    }
-  }, [filteredCourtId.length, currentDate, activeTab]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      cleanupMessagePolling();
-    };
-  }, []);
-
-  // Add this useEffect after existing ones (around line 600)
-  // useEffect(() => {
-  //   if (!isModalOpen && filteredCourtId.length > 0) {
-  //     // Restart polling 1 minute after modal closes
-  //     const restartTimeout = setTimeout(() => {
-  //       console.log("🔄 Restarting CellGridLatest polling after modal close");
-  //       cleanupMessagePolling();
-  //       setTimeout(() => {
-  //         startPollingForAllOccupiedCells();
-  //       }, 60000);
-  //     }, 1000); // 1 minute delay
-
-  //     return () => clearTimeout(restartTimeout);
-  //   }
-  // }, [isModalOpen, filteredCourtId.length]);
-
-  // Add these functions after existing helper functions
 
   const fetchScheduledUsersForBooking = async (bookingId: string) => {
     try {
@@ -2764,6 +2571,87 @@ const CellGridLatestP1 = () => {
     setCellAblyRooms({});
   };
 
+  // Replace the useEffect around line 570 that controls loading screen
+  useEffect(() => {
+    // Only show loading screen during critical operations
+    if (isLoadingBookings || isLoadingCellDetails) {
+      setLoadingScreen(true);
+
+      // Set a maximum timeout for loading screen
+      const timer = setTimeout(() => {
+        setLoadingScreen(false);
+      }, 800); // Reduced from 1300ms
+
+      // Clear loading screen as soon as critical data is loaded
+      const checkDataLoaded = () => {
+        if (!isLoadingBookings && !isLoadingCellDetails && grid.length > 0) {
+          setLoadingScreen(false);
+          clearTimeout(timer);
+        }
+      };
+
+      // Use requestAnimationFrame to check without blocking
+      const intervalId = setInterval(checkDataLoaded, 100);
+
+      return () => {
+        clearTimeout(timer);
+        clearInterval(intervalId);
+      };
+    }
+  }, [isLoadingBookings, isLoadingCellDetails, grid.length]);
+
+  // Add this state to track sidebar width
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Add this useEffect to detect sidebar collapse state
+  useEffect(() => {
+    const checkSidebarCollapsed = () => {
+      const sidebar = document.querySelector(".sidebar");
+      if (sidebar) {
+        // Check if sidebar has the 'collapsed' class
+        setIsSidebarCollapsed(sidebar.classList.contains("collapsed"));
+      }
+    };
+
+    // Initial check
+    checkSidebarCollapsed();
+
+    // Use MutationObserver to watch for class changes on sidebar
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar) {
+      const observer = new MutationObserver(checkSidebarCollapsed);
+      observer.observe(sidebar, {
+        attributes: true,
+        attributeFilter: ["class"],
+      });
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+  }, []);
+
+  // Add this useEffect after your existing useEffects
+  useEffect(() => {
+    // Reset grid when tab changes (but not on initial load)
+    if (filteredCourtId.length > 0) {
+      const newGrid = Array.from({ length: filteredCourtId.length }, () =>
+        Array(cols).fill("available")
+      );
+      setGrid(newGrid);
+
+      // Clear selections
+      setSelected([]);
+      setSelectedCell(null);
+      setSelectedSportId("");
+
+      // Refetch bookings and blocked slots for filtered courts
+      fetchBookingsAndBlocked(currentDate);
+    }
+  }, [activeTab, filteredCourtId.length]); // Trigger when activeTab or filtered court count changes
+
+  const [courName, setCourName] = useState("Loading...");
+
   const getBookingIdForOccupiedCell = async (
     row: number,
     col: number
@@ -2803,7 +2691,94 @@ const CellGridLatestP1 = () => {
     }
   };
 
-  // Add this useEffect after existing ones
+  useEffect(() => {
+    const courtId = selectedCellDetails.courtDetails?.courtId;
+    if (firstSelected && courtId) {
+      const fetchCourtName = async () => {
+        try {
+          const res = await axios.get(
+            `${API_BASE_URL_Latest}/court/${courtId}`
+          );
+          setCourName(res.data.name);
+        } catch (err) {
+          setCourName("Unknown");
+        }
+      };
+      fetchCourtName();
+    }
+  }, [firstSelected, selectedCellDetails.courtDetails?.courtId]);
+
+  useEffect(() => {
+    if (filteredCourtId.length > 0 && !isModalOpen) {
+      // Defer polling until UI is fully interactive - wait 10 seconds instead of 3
+      const timeoutId = setTimeout(() => {
+        if (!isModalOpen) {
+          // Use requestIdleCallback to run during browser idle time
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(
+              () => {
+                startPollingForAllOccupiedCells();
+              },
+              { timeout: 5000 }
+            );
+          } else {
+            // Fallback for browsers without requestIdleCallback
+            setTimeout(() => {
+              startPollingForAllOccupiedCells();
+            }, 100);
+          }
+        }
+      }, 10000); // Increased from 3000 to 10000ms
+
+      // Increase interval to 3 minutes to reduce frequency
+      pollingInterval.current = setInterval(() => {
+        if (!isModalOpen) {
+          // Use requestIdleCallback here too
+          if (window.requestIdleCallback) {
+            window.requestIdleCallback(
+              () => {
+                startPollingForAllOccupiedCells();
+              },
+              { timeout: 5000 }
+            );
+          } else {
+            startPollingForAllOccupiedCells();
+          }
+        } else {
+          cleanupMessagePolling();
+        }
+      }, 180000); // Increased from 120000 to 180000ms (3 minutes)
+
+      return () => {
+        clearTimeout(timeoutId);
+        if (pollingInterval.current) {
+          clearInterval(pollingInterval.current);
+          pollingInterval.current = null;
+        }
+      };
+    }
+  }, [filteredCourtId.length, currentDate, activeTab]);
+
+  // Remove the old useEffect with [weekNumber] and replace with this
+  useEffect(() => {
+    let referenceDate = new Date(currentDate);
+
+    if (isNaN(referenceDate.getTime())) {
+      referenceDate = new Date();
+    }
+
+    const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
+
+    setWeekStartToEndDates(weekDates);
+
+    const currentDateStr = referenceDate.toISOString().split("T")[0];
+
+    const newActiveIndex = weekDates.findIndex(
+      (dateStr) => dateStr === currentDateStr
+    );
+
+    setActiveIndex(newActiveIndex !== -1 ? newActiveIndex : 0);
+  }, [currentDate]); // Dependency on currentDate to update week when it changes
 
   // if (loadingScreen) {
   //   return <LoadingScreen />;
@@ -2813,11 +2788,11 @@ const CellGridLatestP1 = () => {
     <div className="flex flex-col h-screen">
       {/* Top Nav - Fixed */}
       <TopBar />
-      <div className="flex items-center justify-center gap-10 py-2 bg-white shadow-sm shrink-0">
+      <div className="flex items-center justify-center gap-8 py-2 bg-white shadow-sm shrink-0 font-medium">
         <button
           onClick={() => {
             setCurrentDate(
-              (prev) => new Date(prev.getTime() - 24 * 60 * 60 * 1000)
+              (prev) => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000)
             );
             setSelected([]);
             setLoadingScreen(true);
@@ -2827,20 +2802,35 @@ const CellGridLatestP1 = () => {
           }}
           className="px-3 py-1 bg-gray-300 rounded"
         >
-          ← Prev
+          ← Prev Week
         </button>
+        <div>
+          <WeekPlanView
+            activeIndex={activeIndex}
+            setActiveIndex={setActiveIndex}
+            weekStartToEndDates={weekStartToEndDates}
+            onDateChange={(newDate) => {
+              setCurrentDate(newDate);
+              setSelected([]);
+              setLoadingScreen(true);
+              setTimeout(() => {
+                setLoadingScreen(false);
+              }, 1300);
+            }}
+          />
+        </div>
         <span className="text-xs font-semibold">
-          {currentDate.toLocaleDateString("en-IN", {
+          {/* {currentDate.toLocaleDateString("en-IN", {
             weekday: "short",
             year: "numeric",
             month: "short",
             day: "numeric",
-          })}
+          })} */}
           {isLoadingBookings && (
             <span className="ml-2 text-blue-500">Loading...</span>
           )}
         </span>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <input
             type="date"
             value={formatDateForInput(currentDate)}
@@ -2861,7 +2851,7 @@ const CellGridLatestP1 = () => {
         <button
           onClick={() => {
             setCurrentDate(
-              (prev) => new Date(prev.getTime() + 24 * 60 * 60 * 1000)
+              (prev) => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000)
             );
             setSelected([]);
             setLoadingScreen(true);
@@ -2871,7 +2861,7 @@ const CellGridLatestP1 = () => {
           }}
           className="px-3 py-1 bg-gray-300 rounded"
         >
-          Next →
+          Next Week→
         </button>
       </div>
 
@@ -2925,9 +2915,8 @@ const CellGridLatestP1 = () => {
                 scrollbarWidth: "none",
                 msOverflowStyle: "none",
                 background: "white",
-                // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
+                // // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
                 width: `calc(100% + ${4 * visibleStartSlot}rem)`,
-                // width: "100%",
                 height: "100%",
                 left: `calc(4rem * -${visibleStartSlot})`, // Shift left to hide first 12 columns (midnight to 6AM)
               }}
@@ -2998,7 +2987,7 @@ const CellGridLatestP1 = () => {
                 }
               }}
               style={{
-                // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
+                // // width: `calc(100vw - ${isSidebarCollapsed ? '38rem' : '24rem'})`,
                 width: `calc(100% + ${4 * visibleStartSlot}rem)`,
                 height: "100%",
                 left: `calc(4rem * -${visibleStartSlot})`,
@@ -3055,7 +3044,7 @@ const CellGridLatestP1 = () => {
                       // Find all selected cells in this row
                       const selectedInRow = selected
                         .filter(([r, _]) => r === rIdx)
-                        .map(([_, col]) => col);
+                        .map(([, col]) => col);
 
                       if (selectedInRow.length > 0) {
                         const minSelectedCol = Math.min(...selectedInRow);
@@ -3422,7 +3411,7 @@ const CellGridLatestP1 = () => {
         {/* Current Date - Full Width */}
         {/* <div className="text-xs text-gray-500 text-center mt-1 w-full"></div> */}
       </div>
-      <UserModal2
+      <UserModal3
         isOpen={isModalOpen}
         onClose={closeModal}
         cellData={
@@ -3441,4 +3430,4 @@ const CellGridLatestP1 = () => {
   );
 };
 
-export default CellGridLatestP1;
+export default CellGridLatestP2;
