@@ -32,12 +32,13 @@ import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
 interface User {
   userId: string;
   name: string;
-  status: "present" | "absent" | "completed";
+  status: "present" | "absent" | "completed" | "not_booked";
   bookings: {
     courtName: string;
     timeSlot: string;
     sportId?: string;
     bookingId: string;
+    sessionInstanceId?: string; // Added for not_booked sessions
   }[];
 }
 
@@ -102,6 +103,7 @@ const ChatBox = ({
   roomType,
   userName,
   setOpenHandleModal,
+  columnType, // Add columnType prop
 }: {
   roomName: string;
   onClose: () => void;
@@ -109,6 +111,7 @@ const ChatBox = ({
   roomType: string;
   userName: string;
   setOpenHandleModal: (data: { userId: string; userName: string }) => void;
+  columnType?: string;
 }) => {
   const [inputValue, setInputValue] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -330,7 +333,7 @@ const ChatBox = ({
 
   // Handle Chat function - Updated to use the prop
   const handleChatOpen = () => {
-    setOpenHandleModal({ userId, userName }); // Use the prop function correctly
+    setOpenHandleModal({ userId, userName, columnType }); // Use the prop function correctly
     onClose(); // Close chat when handle modal opens
   };
 
@@ -431,21 +434,47 @@ const HandleModal = ({
   onClose,
   onSave,
   userName,
+  userId, // Add userId to identify the user
+  columnType, // Add columnType to determine absent/not_booked
+  users, // Pass users array to access booking/session data
 }: {
   isOpen: boolean;
   onClose: () => void;
   onSave: (message: string) => void;
   userName: string;
+  userId: string;
+  columnType?: string;
+  users: User[];
 }) => {
-  // Move the state inside this component to prevent external re-renders
   const [localComment, setLocalComment] = useState("");
 
-  // Reset when modal opens/closes
+  // Log IDs and type when modal opens
   useEffect(() => {
     if (isOpen) {
       setLocalComment("");
+      console.log(`Handle modal opened for user: ${userName} (ID: ${userId}), columnType: ${columnType || 'none'}`);
+      
+      // Find the user and log relevant IDs and type
+      const user = users.find(u => u.userId === userId && u.status === columnType);
+      if (user && (columnType === "absent" || columnType === "not_booked")) {
+        let ids: string[] = [];
+        let handleType: string | undefined;
+        
+        if (columnType === "absent") {
+          ids = user.bookings.map(b => b.bookingId).filter(id => id);
+          handleType = "Absent";
+        } else if (columnType === "not_booked") {
+          ids = user.bookings.map(b => b.sessionInstanceId || "").filter(id => id);
+          handleType = "notBooked";
+        }
+        
+        console.log('Captured IDs on modal open:', ids.length > 0 ? ids : 'none');
+        console.log('Captured Type on modal open:', handleType || 'none');
+      } else {
+        console.log('No IDs or type to capture (not absent or not_booked)');
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, userId, columnType, users]);
 
   const handleSave = () => {
     if (localComment.trim() && localComment.length >= 20) {
@@ -543,11 +572,13 @@ const Attendance = () => {
     roomType: string;
     userName: string;
     roomName: string;
+    columnType?: string; // Add this
   } | null>(null);
 
   const [openHandleModal, setOpenHandleModal] = useState<{
     userId: string;
     userName: string;
+    columnType?: string;
   } | null>(null);
 
   const [handledUsers, setHandledUsers] = useState<Set<string>>(new Set());
@@ -576,7 +607,49 @@ const Attendance = () => {
 
     loadData();
   }, [currentDate]);
+// Add this function near your other utility functions
+const checkHandledStatusWithIds = (
+  handledHistory: any[],
+  targetIds: string[],
+  expectedType: string,
+  afterDateUnix: number
+): boolean => {
+  if (!handledHistory || handledHistory.length === 0) return false;
 
+  // First, check for entries with matching IDs and type
+  const hasSpecificHandling = handledHistory.some((entry) => {
+    // Check if this entry has the specific IDs we're looking for
+    const hasMatchingIds = entry.id && 
+      Array.isArray(entry.id) &&
+      targetIds.length > 0 &&
+      targetIds.some(targetId => entry.id.includes(targetId));
+    
+    // Check if this entry has the correct type and valid handled message
+    const hasCorrectTypeAndMessage = 
+      entry.type === expectedType &&
+      entry.handledMsg &&
+      entry.handledMsg.trim() !== "";
+
+    return (
+      entry.handledAt > 0 &&
+      hasCorrectTypeAndMessage &&
+      (hasMatchingIds || targetIds.length === 0) // Allow fallback if no specific IDs
+    );
+  });
+
+  if (hasSpecificHandling) return true;
+
+  // Fallback: check for any handling of the type after the date
+  return handledHistory.some((entry) => {
+    return (
+      entry.handledAt > 0 &&
+      entry.handledAt > afterDateUnix &&
+      entry.type === expectedType &&
+      entry.handledMsg &&
+      entry.handledMsg.trim() !== ""
+    );
+  });
+};
   // Convert UTC time to IST
   const convertToIST = (utcTimeString: string) => {
     const utcDate = new Date(utcTimeString);
@@ -928,21 +1001,20 @@ const Attendance = () => {
                 console.log("api = ", resp);
 
                 const plans = await resp.json();
-                const scheduledSessions: { title: string; time: string }[] = [];
+                const scheduledSessions: { title: string; time: string; sessionInstanceId: string }[] = [];
 
-                for (const plan of plans) {
-                  for (const session of plan.sessionInstances) {
-                    if (session.status === "SCHEDULED") {
-                      const time = formatTimeFromScheduledDate(
-                        session.scheduledDate
-                      );
-                      scheduledSessions.push({
-                        title: session.sessionTemplateTitle,
-                        time,
-                      });
-                    }
-                  }
-                }
+for (const plan of plans) {
+  for (const session of plan.sessionInstances) {
+    if (session.status === "SCHEDULED") {
+      const time = formatTimeFromScheduledDate(session.scheduledDate);
+      scheduledSessions.push({
+        title: session.sessionTemplateTitle,
+        time,
+        sessionInstanceId: session.sessionInstanceId, // Capture sessionInstanceId
+      });
+    }
+  }
+}
 
                 if (scheduledSessions.length > 0) {
                   // Fetch user name
@@ -974,6 +1046,7 @@ const Attendance = () => {
               timeSlot: s.time,
               sportId: "",
               bookingId: "",
+              sessionInstanceId: s.sessionInstanceId,
             })),
           }));
 
@@ -990,15 +1063,28 @@ const Attendance = () => {
       const nextDayStartUnix = getNextDayStartUnix(currentDate);
       const handledUserIds: string[] = [];
 
-      for (const user of allUsers.filter((u) => u.status === "absent")) {
-        const isHandledAfterDate = await fetchUserHandledStatus(
-          user.userId,
-          nextDayStartUnix
-        );
-        if (isHandledAfterDate) {
-          handledUserIds.push(user.userId);
-        }
-      }
+for (const user of allUsers.filter((u) => u.status === "absent" || u.status === "not_booked")) {
+  // Get the relevant IDs based on user status
+  const bookingIds = user.status === "absent" 
+    ? user.bookings.map(b => b.bookingId).filter(id => id)
+    : [];
+    
+  const sessionInstanceIds = user.status === "not_booked"
+    ? user.bookings.map(b => b.sessionInstanceId || "").filter(id => id)
+    : [];
+
+  const isHandledAfterDate = await fetchUserHandledStatus(
+    user.userId,
+    bookingIds,
+    sessionInstanceIds,
+    nextDayStartUnix,
+    user.status
+  );
+  
+  if (isHandledAfterDate) {
+    handledUserIds.push(user.userId);
+  }
+}
 
       if (handledUserIds.length > 0) {
         setHandledAfterDateUsers(new Set(handledUserIds));
@@ -1024,77 +1110,110 @@ const Attendance = () => {
     }
   };
   // Function to fetch user's handled status from the API
-  const fetchUserHandledStatus = async (
-    userId: string,
-    afterDateUnix: number
-  ): Promise<boolean> => {
-    try {
-      const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
-      );
+const fetchUserHandledStatus = async (
+  userId: string,
+  bookingIds: string[], // Add this parameter
+  sessionInstanceIds: string[], // Add this parameter
+  afterDateUnix: number,
+  userStatus: string // Add this to know if we're checking absent or not_booked
+): Promise<boolean> => {
+  try {
+    const response = await axios.get(
+      `https://play-os-backend.forgehub.in/human/human/${userId}`
+    );
 
-      const userData = Array.isArray(response.data)
-        ? response.data
-        : [response.data];
+    const userData = Array.isArray(response.data)
+      ? response.data
+      : [response.data];
 
-      // Find the RM room data
-      const rmRoom = userData.find((room: any) => room.roomType === "RM");
+    // Find the RM room data
+    const rmRoom = userData.find((room: any) => room.roomType === "RM");
 
-      if (rmRoom && rmRoom.handledHistory) {
-        return checkIfHandledAfterDate(rmRoom.handledHistory, afterDateUnix);
+    if (rmRoom && rmRoom.handledHistory) {
+      // Check based on user status
+      if (userStatus === "absent" && bookingIds.length > 0) {
+        return checkHandledStatusWithIds(
+          rmRoom.handledHistory,
+          bookingIds,
+          "Absent",
+          afterDateUnix
+        );
+      } else if (userStatus === "not_booked" && sessionInstanceIds.length > 0) {
+        return checkHandledStatusWithIds(
+          rmRoom.handledHistory,
+          sessionInstanceIds,
+          "notBooked",
+          afterDateUnix
+        );
       }
-
-      return false;
-    } catch (error) {
-      console.error(`Error fetching handled status for user ${userId}:`, error);
-      return false;
+      
+      // Fallback for users without specific IDs
+      return checkIfHandledAfterDate(rmRoom.handledHistory, afterDateUnix);
     }
-  };
+
+    return false;
+  } catch (error) {
+    console.error(`Error fetching handled status for user ${userId}:`, error);
+    return false;
+  }
+};
   // Function to check handled status for all absent users
-  const checkAllAbsentUsersHandledStatus = async () => {
-    const absentUsers = [
-      ...getFilteredUsers("absent"),
-      ...getFilteredUsers("not_booked"),
-    ];
-    if (absentUsers.length === 0) return;
+const checkAllAbsentUsersHandledStatus = async () => {
+  const absentUsers = [
+    ...getFilteredUsers("absent"),
+    ...getFilteredUsers("not_booked"),
+  ];
+  if (absentUsers.length === 0) return;
 
-    const nextDayStartUnix = getNextDayStartUnix(currentDate);
-    const handledUserIds: string[] = [];
+  const nextDayStartUnix = getNextDayStartUnix(currentDate);
+  const handledUserIds: string[] = [];
 
-    // Check each absent user
-    for (const user of absentUsers) {
-      const isHandledAfterDate = await fetchUserHandledStatus(
-        user.userId,
-        nextDayStartUnix
-      );
-      if (isHandledAfterDate) {
-        handledUserIds.push(user.userId);
-      }
+  // Check each absent user
+  for (const user of absentUsers) {
+    const bookingIds = user.status === "absent" 
+      ? user.bookings.map(b => b.bookingId).filter(id => id)
+      : [];
+      
+    const sessionInstanceIds = user.status === "not_booked"
+      ? user.bookings.map(b => b.sessionInstanceId || "").filter(id => id)
+      : [];
+
+    const isHandled = await fetchUserHandledStatus(
+      user.userId,
+      bookingIds,
+      sessionInstanceIds,
+      nextDayStartUnix,
+      user.status
+    );
+    
+    if (isHandled) {
+      handledUserIds.push(user.userId);
     }
+  }
 
-    if (handledUserIds.length > 0) {
-      // Update the handledAfterDateUsers state
-      setHandledAfterDateUsers(new Set(handledUserIds));
+  if (handledUserIds.length > 0) {
+    // Update the handledAfterDateUsers state
+    setHandledAfterDateUsers(new Set(handledUserIds));
 
-      // Move these users from absent to completed
-      setUsers((prevUsers) =>
-        prevUsers.map((user) => {
-          if (
-            handledUserIds.includes(user.userId) &&
-            user.status === "absent"
-          ) {
-            return { ...user, status: "completed" };
-          }
-          return user;
-        })
-      );
+    // Move these users from absent/not_booked to completed
+    setUsers((prevUsers) =>
+      prevUsers.map((user) => {
+        if (
+          handledUserIds.includes(user.userId) && 
+          (user.status === "absent" || user.status === "not_booked")
+        ) {
+          return { ...user, status: "completed" };
+        }
+        return user;
+      })
+    );
 
-      console.log(
-        `Moved ${handledUserIds.length} users from absent to completed:`,
-        handledUserIds
-      );
-    }
-  };
+    console.log(
+      `Moved ${handledUserIds.length} users from absent/not_booked to completed:`,
+      handledUserIds
+    );
+  }
+};
   const getFilteredUsers = (filter: string): User[] => {
     return users.filter((user) => user.status === filter);
   };
@@ -1208,53 +1327,49 @@ const Attendance = () => {
   };
 
   // Add this function to handle the mark-seen API call
-  const handleUserAction = async (userId: string, message: string) => {
-    try {
-      await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
-        {
-          userId: userId,
-          roomType: "RM",
-          userType: "team",
-          handledMsg: message,
+const handleUserAction = async (userId: string, message: string, columnType?: string) => {
+  try {
+    let payload: any = {
+      userId,
+      roomType: "RM",
+      userType: "team",
+      handledMsg: message,
+    };
+
+    if (columnType === "absent" || columnType === "not_booked") {
+      const user = users.find(u => u.userId === userId && u.status === columnType);
+      if (user) {
+        let ids: string[] = [];
+        let handleType: string | undefined;
+
+        if (columnType === "absent") {
+          ids = user.bookings.map(b => b.bookingId).filter(id => id);
+          handleType = "Absent";
+        } else if (columnType === "not_booked") {
+          ids = user.bookings.map(b => b.sessionInstanceId || "").filter(id => id);
+          handleType = "notBooked";
         }
-      );
 
-      // Mark handled locally for immediate handling
-      setHandledUsers((prev) => new Set([...prev, userId]));
-
-      // Also add to handledAfterDateUsers for consistency
-      setHandledAfterDateUsers((prev) => new Set([...prev, userId]));
-
-      // Update users list to move absent user to completed
-      setUsers((prevUsers) =>
-        prevUsers.map((u) =>
-          u.userId === userId && u.status === "absent"
-            ? { ...u, status: "completed" }
-            : u
-        )
-      );
-
-      // Reset new message count for this user
-      const userRooms = userChatRooms[userId] || [];
-      const updatedCounts = { ...newMessagesCount };
-      userRooms.forEach((room) => {
-        const roomKey = `${room.chatId}`;
-        updatedCounts[roomKey] = 0;
-      });
-      setNewMessagesCount(updatedCounts);
-
-      // Close modal
-      setOpenHandleModal(null);
-
-      console.log(
-        `User ${userId} handled successfully with message: ${message}`
-      );
-    } catch (error) {
-      console.error("Failed to handle user:", error);
+        if (ids.length > 0) {
+          payload = {
+            ...payload,
+            id: ids,
+            type: handleType,
+          };
+        }
+      }
     }
-  };
 
+    await axios.patch(
+      "https://play-os-backend.forgehub.in/human/human/mark-seen",
+      payload
+    );
+
+    // Rest of the function remains the same...
+  } catch (error) {
+    console.error("Failed to handle user:", error);
+  }
+};
   // Add this function to check if user is handled based on room data
   const checkUserHandledStatus = async (userId: string) => {
     try {
@@ -1285,36 +1400,31 @@ const Attendance = () => {
       return false;
     }
   };
-  const handleChatOpen = async (userId: string, userName: string) => {
-    try {
-      // Fetch user's chat rooms
-      const rooms = await fetchUserChatRooms(userId);
+const handleChatOpen = async (userId: string, userName: string, columnType?: string) => {
+  try {
+    // Fetch user's chat rooms
+    const rooms = await fetchUserChatRooms(userId);
 
-      // Find RM room (as you mentioned roomType should always be RM for this page)
-      const rmRoom = rooms.find((room: ChatRoom) => room.roomType === "RM");
+    // Find RM room (as you mentioned roomType should always be RM for this page)
+    const rmRoom = rooms.find((room: ChatRoom) => room.roomType === "RM");
 
-      if (rmRoom) {
-        const roomName = `${rmRoom.chatId}`;
+    if (rmRoom) {
+      const roomName = `${rmRoom.chatId}`;
 
-        // // Reset new messages count when opening chat
-        // setNewMessagesCount((prev) => ({
-        //   ...prev,
-        //   [roomName]: 0,
-        // }));
-
-        setOpenChat({
-          userId,
-          roomType: "RM",
-          userName,
-          roomName,
-        });
-      } else {
-        console.error("No RM room found for user");
-      }
-    } catch (error) {
-      console.error("Error opening chat:", error);
+      setOpenChat({
+        userId,
+        roomType: "RM",
+        userName,
+        roomName,
+        columnType, // Add columnType here
+      });
+    } else {
+      console.error("No RM room found for user");
     }
-  };
+  } catch (error) {
+    console.error("Error opening chat:", error);
+  }
+};
 
   // Add this function to start message polling for new message indicators
   // Update the startMessagePolling function to exclude your own messages
@@ -1570,7 +1680,6 @@ const UserItem = ({
 }) => {
   const newMsgCount = getNewMessagesForUser(user.userId);
 
-  // Show checkbox for Absent, Not Booked, and Completed columns
   const showCheckbox =
     columnType === "absent" ||
     columnType === "not_booked" ||
@@ -1616,7 +1725,7 @@ const UserItem = ({
             className={`w-4 h-4 border-2 rounded flex items-center justify-center transition-colors ${checkboxStyle}`}
             disabled={isCompleted}
             onClick={() =>
-              !isCompleted && handleChatOpen(user.userId, user.name)
+              !isCompleted && handleChatOpen(user.userId, user.name, columnType) // Add columnType here
             }
           >
             <Check className={`w-2 h-2 ${checkboxIconColor}`} />
@@ -1625,7 +1734,7 @@ const UserItem = ({
         <div className="relative">
           <button
             className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-            onClick={() => handleChatOpen(user.userId, user.name)}
+            onClick={() => handleChatOpen(user.userId, user.name, columnType)} // Add columnType here too
           >
             <TbMessage className="w-5 h-5" />
           </button>
@@ -1639,6 +1748,7 @@ const UserItem = ({
     </div>
   );
 };
+
 
   const columns = [
     {
@@ -1790,30 +1900,34 @@ const UserItem = ({
               </div>
             </div>
             {/* Chat Modal */}
-            {openChat && (
-              <ChatRoomProvider name={openChat.roomName}>
-                <ChatBox
-                  roomName={openChat.roomName}
-                  onClose={() => setOpenChat(null)}
-                  userId={openChat.userId}
-                  roomType={openChat.roomType}
-                  userName={openChat.userName}
-                  setOpenHandleModal={setOpenHandleModal} // ADD THIS LINE
-                />
-              </ChatRoomProvider>
-            )}
+{openChat && (
+  <ChatRoomProvider name={openChat.roomName}>
+    <ChatBox
+      roomName={openChat.roomName}
+      onClose={() => setOpenChat(null)}
+      userId={openChat.userId}
+      roomType={openChat.roomType}
+      userName={openChat.userName}
+      columnType={openChat.columnType} // Pass columnType to ChatBox
+      setOpenHandleModal={setOpenHandleModal}
+    />
+  </ChatRoomProvider>
+)}
 
             {/* Handle Modal */}
-            {openHandleModal && (
-              <HandleModal
-                isOpen={true}
-                onClose={() => setOpenHandleModal(null)}
-                onSave={(message) =>
-                  handleUserAction(openHandleModal.userId, message)
-                }
-                userName={openHandleModal.userName}
-              />
-            )}
+{openHandleModal && (
+  <HandleModal
+    isOpen={true}
+    onClose={() => setOpenHandleModal(null)}
+    onSave={(message) =>
+      handleUserAction(openHandleModal.userId, message, openHandleModal.columnType)
+    }
+    userName={openHandleModal.userName}
+    userId={openHandleModal.userId}
+    columnType={openHandleModal.columnType}
+    users={users} // Make sure to pass users array
+  />
+)}
           </div>
         </ChatClientProvider>
       </AblyProvider>
