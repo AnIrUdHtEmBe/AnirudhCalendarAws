@@ -424,50 +424,49 @@ useEffect(() => {
     <div className="flex flex-col h-screen font-semibold">
       {/* Top Bar */}
       <TopBar />
-      <div className="flex items-center bg-white shadow-sm shrink-0 rounded-b-lg p-2">
-        {/* Breadcrumb at extreme start */}
-        <div>
-          <Breadcrumb />
-        </div>
+      <div className="flex items-center bg-white shadow-sm shrink-0 rounded-b-lg p-2 gap-4">
+  {/* Breadcrumb */}
+  <div className="shrink-0">
+    <Breadcrumb />
+  </div>
 
-        {/* Centered navigation controls */}
-        <div className="flex items-center gap-5 absolute left-1/2 transform -translate-x-1/2">
-          <button
-            onClick={() => setSelectedDate(addDays(selectedDate, -7))}
-            className="px-3 py-1 bg-gray-300 rounded"
-          >
-            ← Prev
-          </button>
-          <div className="flex items-center gap-4">
-            {/* <span className="text-sm font-semibold">
-              {formatWeekLabel(getWeekStart(selectedDate))}
-            </span> */}
-            <WeekPlanView
-              activeIndex={activeIndex}
-              setActiveIndex={setActiveIndex}
-              weekStartToEndDates={weekStartToEndDates}
-              onDateChange={(newDate) => {
-                setSelectedDate(newDate);
-              }}
-            />
-            <input
-              type="date"
-              value={formatDateForInput(selectedDate)}
-              onChange={(e) => {
-                const newDate = new Date(e.target.value);
-                if (!isNaN(newDate.getTime())) setSelectedDate(newDate);
-              }}
-              className="px-2 py-1 border border-gray-300 rounded text-xs"
-            />
-          </div>
-          <button
-            onClick={() => setSelectedDate(addDays(selectedDate, 7))}
-            className="px-3 py-1 bg-gray-300 rounded"
-          >
-            Next →
-          </button>
-        </div>
+  {/* Navigation controls - now using flex-1 and justify-center */}
+  <div className="flex items-center gap-5 flex-1 justify-center min-w-0">
+    <button
+      onClick={() => setSelectedDate(addDays(selectedDate, -7))}
+      className="px-3 py-1 bg-gray-300 rounded shrink-0"
+    >
+      ← Prev
+    </button>
+    <div className="flex items-center gap-4 min-w-0">
+      <div className="min-w-0 flex-1">
+        <WeekPlanView
+          activeIndex={activeIndex}
+          setActiveIndex={setActiveIndex}
+          weekStartToEndDates={weekStartToEndDates}
+          onDateChange={(newDate) => {
+            setSelectedDate(newDate);
+          }}
+        />
       </div>
+      <input
+        type="date"
+        value={formatDateForInput(selectedDate)}
+        onChange={(e) => {
+          const newDate = new Date(e.target.value);
+          if (!isNaN(newDate.getTime())) setSelectedDate(newDate);
+        }}
+        className="px-2 py-1 border border-gray-300 rounded text-xs shrink-0"
+      />
+    </div>
+    <button
+      onClick={() => setSelectedDate(addDays(selectedDate, 7))}
+      className="px-3 py-1 bg-gray-300 rounded shrink-0"
+    >
+      Next →
+    </button>
+  </div>
+</div>
 
       {/* Main Content Area */}
       <div className="flex flex-1 overflow-hidden">
