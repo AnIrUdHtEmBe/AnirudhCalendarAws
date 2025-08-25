@@ -126,16 +126,16 @@ const filteredSessions = sessions_api_call.filter((plan) => {
   const matchesCategoryFilter = categoryFilter
     ? plan.category?.toLowerCase().includes(categoryFilter.toLowerCase())
     : true;
-  const matchesThemeFilter = theme
-    ? Array.isArray(plan.themes)
-      ? plan.themes.map(String).includes(theme)
-      : false
-    : true;
-  const matchesGoalFilter = goal
-    ? Array.isArray(plan.goals)
-      ? plan.goals.map(String).includes(goal)
-      : false
-    : true;
+const matchesThemeFilter = theme && theme !== "All"
+  ? Array.isArray(plan.themes)
+    ? plan.themes.map(String).includes(theme)
+    : false
+  : true; // Show all when theme is empty, "all", or "n/a"
+const matchesGoalFilter = goal && goal !== "All" 
+  ? Array.isArray(plan.goals)
+    ? plan.goals.map(String).includes(goal)
+    : false
+  : true; // Show all when goal is empty, "all", or "n/a"
   return (
     matchesSearchOrActiveFilter &&
     matchesPlanNameFilter &&
