@@ -1530,7 +1530,7 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
     if (users.length > 0) {
       checkAllHandledUsers();
     }
-  }, [users]);
+  }, [users.length]);
 
   // Add this useEffect to initialize message polling for absent users (add after your existing useEffects)
   useEffect(() => {
@@ -1580,7 +1580,7 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
         }
       });
     };
-  }, [users]);
+  }, [users.length]);
 
   useEffect(() => {
     let intervalId;
@@ -1650,7 +1650,7 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
       }
     };
 
-    intervalId = setInterval(pollNewMessageCounts, 10000);
+    intervalId = setInterval(pollNewMessageCounts, 20000);
 
     return () => {
       clearInterval(intervalId);
@@ -1723,10 +1723,7 @@ const UserItem = ({
         {showCheckbox && (
           <button
             className={`w-4 h-4 border-2 rounded flex items-center justify-center transition-colors ${checkboxStyle}`}
-            disabled={isCompleted}
-            onClick={() =>
-              !isCompleted && handleChatOpen(user.userId, user.name, columnType) // Add columnType here
-            }
+            disabled
           >
             <Check className={`w-2 h-2 ${checkboxIconColor}`} />
           </button>
@@ -1936,3 +1933,4 @@ const UserItem = ({
 };
 
 export default Attendance;
+//stashh
