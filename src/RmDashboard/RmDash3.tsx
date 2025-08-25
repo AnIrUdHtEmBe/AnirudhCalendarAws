@@ -139,6 +139,7 @@ import {
   useMessages,
 } from "@ably/chat/react";
 import { AblyProvider } from "ably/react";
+import UserChats from "../GoToChat/UserChats";
 
 // Types
 interface User {
@@ -460,8 +461,8 @@ const HandleChatModal = ({
         />
 
         <div className="text-xs text-gray-500 mt-1">
-            {comment.length}/20 characters minimum
-          </div>
+          {comment.length}/20 characters minimum
+        </div>
 
         <div className="flex space-x-2 mt-4">
           <button
@@ -474,10 +475,10 @@ const HandleChatModal = ({
             onClick={handleSave}
             disabled={comment.length < 20}
             className={`flex-1 py-2 rounded ${
-                comment.length >= 20
-                  ? "bg-blue-500 text-white hover:bg-blue-600"
-                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
-              }`}
+              comment.length >= 20
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
           >
             Save
           </button>
@@ -497,6 +498,13 @@ const RmDashNew3 = () => {
     roomType: string;
     userName: string;
     roomName: string;
+  } | null>(null);
+  // Change 2: Add new states at the top of RmDashNew3 component
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [selectedUser, setSelectedUser] = useState<{
+    userId: string;
+    name: string;
   } | null>(null);
   const [handleChatModal, setHandleChatModal] = useState<{
     isOpen: boolean;
@@ -578,7 +586,7 @@ const RmDashNew3 = () => {
             name: user.name,
             type: user.type || "play",
           }))
-          .slice(0, 38); // ✅ Limit to first 10 users
+          .slice(0, 100); // ✅ Limit to first 10 users
 
         setAllUsers(users);
       } catch (error) {
@@ -752,61 +760,71 @@ const RmDashNew3 = () => {
 
             // Set up always-on message listener
             // In RmDashNew, find the always-on connection setup useEffect and replace the messageListener with this:
-const messageListener = (messageEvent: { message: any; }) => {
-  const message = messageEvent.message || messageEvent;
-  const messageTimestamp = message.createdAt || message.timestamp;
-  
-  // Get fresh handledAt from current state instead of stale closure
-  setUsersWithRooms((prevUsersWithRooms) => {
-    const currentUserWithRooms = prevUsersWithRooms.find(
-      uwr => uwr.user.userId === userWithRooms.user.userId
-    );
-    
-    if (!currentUserWithRooms) return prevUsersWithRooms;
-    
-    const currentRoom = currentUserWithRooms.rooms.find(r => r.roomType === room.roomType);
-    if (!currentRoom) return prevUsersWithRooms;
-    
-    const currentSeenByTeamAtDate = new Date(currentRoom.handledAt * 1000);
+            const messageListener = (messageEvent: { message: any }) => {
+              const message = messageEvent.message || messageEvent;
+              const messageTimestamp = message.createdAt || message.timestamp;
 
-    console.log("📨 RmDash - New message received:", {
-      roomKey,
-      messageTimestamp: new Date(messageTimestamp),
-      currentHandledAt: currentSeenByTeamAtDate,
-      isNewer: messageTimestamp
-        ? new Date(messageTimestamp).getTime() > currentSeenByTeamAtDate.getTime()
-        : false,
-    });
+              // Get fresh handledAt from current state instead of stale closure
+              setUsersWithRooms((prevUsersWithRooms) => {
+                const currentUserWithRooms = prevUsersWithRooms.find(
+                  (uwr) => uwr.user.userId === userWithRooms.user.userId
+                );
 
-    if (messageTimestamp && new Date(messageTimestamp) > currentSeenByTeamAtDate) {
-      const msgTime = new Date(messageTimestamp).getTime();
+                if (!currentUserWithRooms) return prevUsersWithRooms;
 
-      console.log(`🔴 RmDash - Message is newer, updating state for ${roomKey}`);
+                const currentRoom = currentUserWithRooms.rooms.find(
+                  (r) => r.roomType === room.roomType
+                );
+                if (!currentRoom) return prevUsersWithRooms;
 
-      return prevUsersWithRooms.map((uwr) => {
-        if (uwr.user.userId === userWithRooms.user.userId) {
-          return {
-            ...uwr,
-            hasNewMessages: {
-              ...uwr.hasNewMessages,
-              [room.roomType]: true,
-            },
-            lastMessageTime: {
-              ...uwr.lastMessageTime,
-              [room.roomType]: Math.max(
-                uwr.lastMessageTime[room.roomType] || 0,
-                msgTime
-              ),
-            },
-          };
-        }
-        return uwr;
-      });
-    }
+                const currentSeenByTeamAtDate = new Date(
+                  currentRoom.handledAt * 1000
+                );
 
-    return prevUsersWithRooms;
-  });
-};
+                console.log("📨 RmDash - New message received:", {
+                  roomKey,
+                  messageTimestamp: new Date(messageTimestamp),
+                  currentHandledAt: currentSeenByTeamAtDate,
+                  isNewer: messageTimestamp
+                    ? new Date(messageTimestamp).getTime() >
+                      currentSeenByTeamAtDate.getTime()
+                    : false,
+                });
+
+                if (
+                  messageTimestamp &&
+                  new Date(messageTimestamp) > currentSeenByTeamAtDate
+                ) {
+                  const msgTime = new Date(messageTimestamp).getTime();
+
+                  console.log(
+                    `🔴 RmDash - Message is newer, updating state for ${roomKey}`
+                  );
+
+                  return prevUsersWithRooms.map((uwr) => {
+                    if (uwr.user.userId === userWithRooms.user.userId) {
+                      return {
+                        ...uwr,
+                        hasNewMessages: {
+                          ...uwr.hasNewMessages,
+                          [room.roomType]: true,
+                        },
+                        lastMessageTime: {
+                          ...uwr.lastMessageTime,
+                          [room.roomType]: Math.max(
+                            uwr.lastMessageTime[room.roomType] || 0,
+                            msgTime
+                          ),
+                        },
+                      };
+                    }
+                    return uwr;
+                  });
+                }
+
+                return prevUsersWithRooms;
+              });
+            };
 
             // Subscribe to real-time message events
             ablyRoom.messages.subscribe(messageListener);
@@ -887,7 +905,7 @@ const messageListener = (messageEvent: { message: any; }) => {
         const bTime = b.lastMessageTime[roomType] || 0;
         return bTime - aTime;
       })
-      .slice(0, 38); // Ensure we never show more than 10 users per column
+      .slice(0, 100); // Ensure we never show more than 10 users per column
   };
 
   const handleChatOpen = (
@@ -910,8 +928,8 @@ const messageListener = (messageEvent: { message: any; }) => {
     }
   };
 
-// Replace the existing handleChatSave function in RmDashNew with this:
-const handleChatSave = async (comment: any) => {
+  // Replace the existing handleChatSave function in RmDashNew with this:
+  const handleChatSave = async (comment: any) => {
     console.log("save is being called!");
     setHandleChatModal({
       isOpen: false,
@@ -919,155 +937,184 @@ const handleChatSave = async (comment: any) => {
       roomType: "",
       userName: "",
     });
-    setOpenChat(null)
-  try {
-    // Call the patch API to mark chat as handled
-    await axios.patch(
-      "https://play-os-backend.forgehub.in/human/human/mark-seen",
-      {
-        userId: handleChatModal.userId,
-        roomType: handleChatModal.roomType,
-        userType: "team",
-        handledMsg: comment,
-      }
-    );
+    setOpenChat(null);
+    try {
+      // Call the patch API to mark chat as handled
+      await axios.patch(
+        "https://play-os-backend.forgehub.in/human/human/mark-seen",
+        {
+          userId: handleChatModal.userId,
+          roomType: handleChatModal.roomType,
+          userType: "team",
+          handledMsg: comment,
+        }
+      );
 
-    // Close the handle chat modal
-    setHandleChatModal({
-      isOpen: false,
-      userId: "",
-      roomType: "",
-      userName: "",
-    });
+      // Close the handle chat modal
+      setHandleChatModal({
+        isOpen: false,
+        userId: "",
+        roomType: "",
+        userName: "",
+      });
 
-    // Keep the working setInterval logic
-    setInterval(async () => {
+      // Keep the working setInterval logic
+      setInterval(async () => {
         await refreshUserRoomDataAndRecalculate(
-      handleChatModal.userId,
-      handleChatModal.roomType
-    );
-    }, 10000)
-    
-  } catch (error) {
-    console.error("Failed to handle chat:", error);
-  }
-};
-
-// Add debounced refresh for handled chats
-const debouncedRefresh = useRef<{ [key: string]: NodeJS.Timeout }>({});
-
-const scheduleRefresh = useCallback((userId: string, roomType: string) => {
-  const key = `${userId}-${roomType}`;
-  
-  // Clear existing timeout
-  if (debouncedRefresh.current[key]) {
-    clearTimeout(debouncedRefresh.current[key]);
-  }
-  
-  // Schedule refresh after 5 seconds
-  debouncedRefresh.current[key] = setTimeout(() => {
-    refreshUserRoomDataAndRecalculate(userId, roomType);
-    delete debouncedRefresh.current[key];
-  }, 3000);
-}, []);
-
-// Cleanup timeouts on unmount
-useEffect(() => {
-  return () => {
-    Object.values(debouncedRefresh.current).forEach(clearTimeout);
+          handleChatModal.userId,
+          handleChatModal.roomType
+        );
+      }, 10000);
+    } catch (error) {
+      console.error("Failed to handle chat:", error);
+    }
   };
-}, []);
 
-// Replace the existing refreshUserRoomData function with this enhanced version:
-const refreshUserRoomDataAndRecalculate = async (userId: string, roomType: string) => {
-  try {
-    // Fetch updated room data for the specific user
-    const response = await axios.get(
-      `https://play-os-backend.forgehub.in/human/human/${userId}`
-    );
-    const updatedRooms = Array.isArray(response.data)
-      ? response.data
-      : response.data.rooms || [];
+  // Add debounced refresh for handled chats
+  const debouncedRefresh = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
-    // Find the updated room with new handledAt
-    const updatedRoom = updatedRooms.find((room: { roomType: any; }) => room.roomType === roomType);
-    if (!updatedRoom) {
-      console.warn(`Room type ${roomType} not found for user ${userId}`);
-      return;
+  const scheduleRefresh = useCallback((userId: string, roomType: string) => {
+    const key = `${userId}-${roomType}`;
+
+    // Clear existing timeout
+    if (debouncedRefresh.current[key]) {
+      clearTimeout(debouncedRefresh.current[key]);
     }
 
-    // Recalculate messages with updated handledAt
-    const roomKey = `${updatedRoom.chatId}`;
-    const roomConnection = roomConnections.current[roomKey];
-    
-    if (roomConnection) {
-      try {
-        const messageHistory = await roomConnection.messages.history({ limit: 60 });
-        const messages = messageHistory.items;
-        const newSeenByTeamAtDate = new Date(updatedRoom.handledAt * 1000);
-        
-        let hasNew = false;
-        let latestTimestamp = 0;
+    // Schedule refresh after 5 seconds
+    debouncedRefresh.current[key] = setTimeout(() => {
+      refreshUserRoomDataAndRecalculate(userId, roomType);
+      delete debouncedRefresh.current[key];
+    }, 3000);
+  }, []);
 
-        messages.forEach((message: { createdAt: any; timestamp: any; }) => {
-          const messageTimestamp = message.createdAt || message.timestamp;
-          if (messageTimestamp && new Date(messageTimestamp) > newSeenByTeamAtDate) {
-            hasNew = true;
-            const msgTime = new Date(messageTimestamp).getTime();
-            if (msgTime > latestTimestamp) {
-              latestTimestamp = msgTime;
-            }
-          }
-        });
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      Object.values(debouncedRefresh.current).forEach(clearTimeout);
+    };
+  }, []);
 
-        console.log(`🔄 Recalculated for ${roomKey}: hasNew=${hasNew}, count=${messages.length}`);
+  // Replace the existing refreshUserRoomData function with this enhanced version:
+  const refreshUserRoomDataAndRecalculate = async (
+    userId: string,
+    roomType: string
+  ) => {
+    try {
+      // Fetch updated room data for the specific user
+      const response = await axios.get(
+        `https://play-os-backend.forgehub.in/human/human/${userId}`
+      );
+      const updatedRooms = Array.isArray(response.data)
+        ? response.data
+        : response.data.rooms || [];
 
-        // Use functional update with a stable key to prevent re-rendering flicker
-        setUsersWithRooms((prev) => {
-          const userIndex = prev.findIndex(uwr => uwr.user.userId === userId);
-          if (userIndex === -1) return prev;
-          
-          const currentUser = prev[userIndex];
-          const updatedUser = {
-            ...currentUser,
-            rooms: updatedRooms,
-            hasNewMessages: {
-              ...currentUser.hasNewMessages,
-              [roomType]: hasNew,
-            },
-            lastMessageTime: {
-              ...currentUser.lastMessageTime,
-              [roomType]: latestTimestamp,
-            },
-          };
-          
-          // Only update if there's actually a change to prevent unnecessary re-renders
-          const hasMessagesChanged = currentUser.hasNewMessages[roomType] !== hasNew;
-          const hasTimeChanged = currentUser.lastMessageTime[roomType] !== latestTimestamp;
-          
-          if (!hasMessagesChanged && !hasTimeChanged) {
-            return prev; // No change, return same reference
-          }
-          
-          // Create new array with updated user at same position
-          const newArray = [...prev];
-          newArray[userIndex] = updatedUser;
-          return newArray;
-        });
-
-        console.log(`✅ Successfully recalculated messages for user ${userId}, room ${roomType}, hasNew: ${hasNew}`);
-        
-      } catch (error) {
-        console.error(`Failed to recalculate messages for ${roomKey}:`, error);
+      // Find the updated room with new handledAt
+      const updatedRoom = updatedRooms.find(
+        (room: { roomType: any }) => room.roomType === roomType
+      );
+      if (!updatedRoom) {
+        console.warn(`Room type ${roomType} not found for user ${userId}`);
+        return;
       }
-    } else {
-      console.warn(`No room connection found for ${roomKey}`);
-    }
 
-  } catch (error) {
-    console.error(`Failed to refresh room data for user ${userId}:`, error);
-  }
-};
+      // Recalculate messages with updated handledAt
+      const roomKey = `${updatedRoom.chatId}`;
+      const roomConnection = roomConnections.current[roomKey];
+
+      if (roomConnection) {
+        try {
+          const messageHistory = await roomConnection.messages.history({
+            limit: 60,
+          });
+          const messages = messageHistory.items;
+          const newSeenByTeamAtDate = new Date(updatedRoom.handledAt * 1000);
+
+          let hasNew = false;
+          let latestTimestamp = 0;
+
+          messages.forEach((message: { createdAt: any; timestamp: any }) => {
+            const messageTimestamp = message.createdAt || message.timestamp;
+            if (
+              messageTimestamp &&
+              new Date(messageTimestamp) > newSeenByTeamAtDate
+            ) {
+              hasNew = true;
+              const msgTime = new Date(messageTimestamp).getTime();
+              if (msgTime > latestTimestamp) {
+                latestTimestamp = msgTime;
+              }
+            }
+          });
+
+          console.log(
+            `🔄 Recalculated for ${roomKey}: hasNew=${hasNew}, count=${messages.length}`
+          );
+
+          // Use functional update with a stable key to prevent re-rendering flicker
+          setUsersWithRooms((prev) => {
+            const userIndex = prev.findIndex(
+              (uwr) => uwr.user.userId === userId
+            );
+            if (userIndex === -1) return prev;
+
+            const currentUser = prev[userIndex];
+            const updatedUser = {
+              ...currentUser,
+              rooms: updatedRooms,
+              hasNewMessages: {
+                ...currentUser.hasNewMessages,
+                [roomType]: hasNew,
+              },
+              lastMessageTime: {
+                ...currentUser.lastMessageTime,
+                [roomType]: latestTimestamp,
+              },
+            };
+
+            // Only update if there's actually a change to prevent unnecessary re-renders
+            const hasMessagesChanged =
+              currentUser.hasNewMessages[roomType] !== hasNew;
+            const hasTimeChanged =
+              currentUser.lastMessageTime[roomType] !== latestTimestamp;
+
+            if (!hasMessagesChanged && !hasTimeChanged) {
+              return prev; // No change, return same reference
+            }
+
+            // Create new array with updated user at same position
+            const newArray = [...prev];
+            newArray[userIndex] = updatedUser;
+            return newArray;
+          });
+
+          console.log(
+            `✅ Successfully recalculated messages for user ${userId}, room ${roomType}, hasNew: ${hasNew}`
+          );
+        } catch (error) {
+          console.error(
+            `Failed to recalculate messages for ${roomKey}:`,
+            error
+          );
+        }
+      } else {
+        console.warn(`No room connection found for ${roomKey}`);
+      }
+    } catch (error) {
+      console.error(`Failed to refresh room data for user ${userId}:`, error);
+    }
+  };
+
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = allUsers.filter((u) =>
+        u.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    } else {
+      setFilteredUsers([]);
+    }
+  }, [searchQuery, allUsers]);
 
   if (loading) {
     return (
@@ -1080,135 +1127,223 @@ const refreshUserRoomDataAndRecalculate = async (userId: string, roomType: strin
   return (
     <AblyProvider client={realtimeClient}>
       <ChatClientProvider client={chatClient}>
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                RM Dashboard
-              </h1>
-              <p className="text-gray-600">Chat monitoring and management</p>
-              <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
-                <span>
-                  Monitoring {usersWithRooms.length} users across 5 room types
-                </span>
-                <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
-                  🔗 {connectionCount} Live Connections
-                </span>
-              </div>
-            </div>
-
-            {/* Columns Grid */}
-            <div className="grid grid-cols-5 gap-6">
-              {columns.map((column) => {
-                const usersInColumn = getUsersForColumn(column.type);
-
-                return (
-                  <div
-                    key={column.type}
-                    className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
-                  >
-                    {/* Column Header */}
-                    <div className={`p-3 ${getColumnHeaderStyle(column.type)}`}>
-                      <div className="flex items-center justify-center space-x-2">
-                        {column.icon}
-                        <h2 className="text-lg font-bold">{column.title}</h2>
-                      </div>
-                      <div className="text-center text-sm mt-1 opacity-90">
-                        {usersInColumn.length} users
-                      </div>
+        {selectedUser ? (
+          <UserChats
+            userId={selectedUser.userId}
+            userName={selectedUser.name}
+            onBack={() => setSelectedUser(null)}
+          />
+        ) : (
+          <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
+            <div className="max-w-7xl mx-auto">
+              {/* Header */}
+              <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                  RM Dashboard
+                </h1>
+                <p className="text-gray-600">Chat monitoring and management</p>
+                <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+                  <span>
+                    Monitoring {usersWithRooms.length} users across 5 room types
+                  </span>
+                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full font-medium">
+                    🔗 {connectionCount} Live Connections
+                  </span>
+                </div>
+                {/* Add search bar here */}
+                <div className="mt-6 relative max-w-lg mx-auto">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
                     </div>
-
-                    {/* Users List with Virtual Scrolling */}
-                    <div className="max-h-96 overflow-y-auto">
-                      {usersInColumn.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
-                          No users in this category
-                        </div>
-                      ) : (
-                        usersInColumn.slice(0, 50).map((userWithRooms) => {
-                          // Limit to 50 for performance
-                          const hasNewMessages =
-                            userWithRooms.hasNewMessages[column.type] || false;
-
-                          return (
-                            <div
-                              key={`${userWithRooms.user.userId}-${column.type}`}
-                              className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-2 flex-1 min-w-0">
-                                  <span className="text-sm font-medium text-gray-800 truncate">
-                                    {userWithRooms.user.name}
-                                  </span>
-                                  {hasNewMessages && (
-                                    <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
-                                  )}
-                                </div>
-
-                                <button
-                                  onClick={() =>
-                                    handleChatOpen(
-                                      userWithRooms.user.userId,
-                                      column.type,
-                                      userWithRooms.user.name
-                                    )
-                                  }
-                                  className="cursor-pointer hover:bg-gray-200 p-1 rounded transition-colors flex-shrink-0"
-                                >
-                                  <TbMessage className="w-4 h-4 text-gray-600" />
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search user by name..."
+                      className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all text-sm"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setFilteredUsers([]);
+                        }}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
                   </div>
-                );
-              })}
+                  {filteredUsers.length > 0 && (
+                    <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-80 overflow-y-auto divide-y divide-gray-100">
+                      {filteredUsers.map((user) => (
+                        <div
+                          key={user.userId}
+                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors flex items-center space-x-3"
+                          onClick={() => {
+                            setSelectedUser({
+                              userId: user.userId,
+                              name: user.name,
+                            });
+                            setSearchQuery("");
+                            setFilteredUsers([]);
+                          }}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {user.name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.userId}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Columns Grid */}
+              <div className="grid grid-cols-5 gap-6">
+                {columns.map((column) => {
+                  const usersInColumn = getUsersForColumn(column.type);
+
+                  return (
+                    <div
+                      key={column.type}
+                      className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
+                    >
+                      {/* Column Header */}
+                      <div
+                        className={`p-3 ${getColumnHeaderStyle(column.type)}`}
+                      >
+                        <div className="flex items-center justify-center space-x-2">
+                          {column.icon}
+                          <h2 className="text-lg font-bold">{column.title}</h2>
+                        </div>
+                        <div className="text-center text-sm mt-1 opacity-90">
+                          {usersInColumn.length} users
+                        </div>
+                      </div>
+
+                      {/* Users List with Virtual Scrolling */}
+                      <div className="max-h-96 overflow-y-auto">
+                        {usersInColumn.length === 0 ? (
+                          <div className="p-4 text-center text-gray-500">
+                            No users in this category
+                          </div>
+                        ) : (
+                          usersInColumn.slice(0, 50).map((userWithRooms) => {
+                            // Limit to 50 for performance
+                            const hasNewMessages =
+                              userWithRooms.hasNewMessages[column.type] ||
+                              false;
+
+                            return (
+                              <div
+                                key={`${userWithRooms.user.userId}-${column.type}`}
+                                className="p-3 border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2 flex-1 min-w-0">
+                                    <span className="text-sm font-medium text-gray-800 truncate">
+                                      {userWithRooms.user.name}
+                                    </span>
+                                    {hasNewMessages && (
+                                      <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
+                                    )}
+                                  </div>
+
+                                  <button
+                                    onClick={() =>
+                                      handleChatOpen(
+                                        userWithRooms.user.userId,
+                                        column.type,
+                                        userWithRooms.user.name
+                                      )
+                                    }
+                                    className="cursor-pointer hover:bg-gray-200 p-1 rounded transition-colors flex-shrink-0"
+                                  >
+                                    <TbMessage className="w-4 h-4 text-gray-600" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Chat Modal */}
+              {openChat && (
+                <ChatRoomProvider name={openChat.roomName}>
+                  <ChatBox
+                    roomName={openChat.roomName}
+                    onClose={() => setOpenChat(null)}
+                    userId={openChat.userId}
+                    roomType={openChat.roomType}
+                    userName={openChat.userName}
+                    onHandleChat={() => {
+                      setHandleChatModal({
+                        isOpen: true,
+                        userId: openChat.userId,
+                        roomType: openChat.roomType,
+                        userName: openChat.userName,
+                      });
+                    }}
+                  />
+                </ChatRoomProvider>
+              )}
+
+              {/* Handle Chat Modal */}
+              <HandleChatModal
+                isOpen={handleChatModal.isOpen}
+                onClose={() => {
+                  setHandleChatModal({
+                    isOpen: false,
+                    userId: "",
+                    roomType: "",
+                    userName: "",
+                  });
+                }}
+                onSave={handleChatSave}
+                userName={handleChatModal.userName}
+              />
             </div>
-
-            {/* Chat Modal */}
-            {openChat && (
-              <ChatRoomProvider name={openChat.roomName}>
-                <ChatBox
-                  roomName={openChat.roomName}
-                  onClose={() => setOpenChat(null)}
-                  userId={openChat.userId}
-                  roomType={openChat.roomType}
-                  userName={openChat.userName}
-                  onHandleChat={() => {
-                    setHandleChatModal({
-                      isOpen: true,
-                      userId: openChat.userId,
-                      roomType: openChat.roomType,
-                      userName: openChat.userName,
-                    });
-                  }}
-                />
-              </ChatRoomProvider>
-            )}
-
-            {/* Handle Chat Modal */}
-            <HandleChatModal
-              isOpen={handleChatModal.isOpen}
-              onClose={() =>{
-                
-                setHandleChatModal({
-                  isOpen: false,
-                  userId: "",
-                  roomType: "",
-                  userName: "",
-                })
-                
-            }
-              }
-              onSave={handleChatSave}
-              userName={handleChatModal.userName}
-            />
           </div>
-        </div>
+        )}
       </ChatClientProvider>
     </AblyProvider>
   );
@@ -1216,4 +1351,4 @@ const refreshUserRoomDataAndRecalculate = async (userId: string, roomType: strin
 
 export default RmDashNew3;
 // git stash
-// git recommit
+// git recom

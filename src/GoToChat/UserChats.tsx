@@ -1,3 +1,5 @@
+// Modified UserChats component to support optional props while keeping existing logic
+
 import React, {
   useEffect,
   useState,
@@ -12,6 +14,7 @@ import {
   Utensils,
   Settings,
   Send,
+  ArrowLeft, // Added ArrowLeft
 } from "lucide-react";
 import * as Ably from "ably";
 import {
@@ -74,8 +77,6 @@ if(token){
   console.log("subsbu", payload.sub)
 }
 
-
-
 // Helper function to get client ID
 const getClientId = (): string => {
   try {
@@ -85,7 +86,6 @@ if (userId) {
       const payload = JSON.parse(atob(userId.split(".")[1]));
       return payload.sub || "Guest";
     }
-
 
     // Fallback to token parsing
     const token = sessionStorage.getItem("token");
@@ -372,7 +372,13 @@ const ChatRoomWrapper: React.FC<ChatRoomWrapperProps> = ({
   );
 };
 
-const UserChats: React.FC = () => {
+interface UserChatsProps {
+  userId?: string;
+  userName?: string;
+  onBack?: () => void;
+}
+
+const UserChats: React.FC<UserChatsProps> = ({ userId: propUserId, userName: propUserName, onBack }) => {
   const [selectedUser, setSelectedUser] = useState<{
     name: string;
     userId?: string;
@@ -398,7 +404,14 @@ const UserChats: React.FC = () => {
   }, [realtimeClient]);
 
   useEffect(() => {
-    // Get the selected customer from localStorage
+    // If props are provided, use them
+    if (propUserId && propUserName) {
+      setSelectedUser({ name: propUserName, userId: propUserId });
+      setUserId(propUserId);
+      return;
+    }
+
+    // Otherwise, fallback to original localStorage logic
     const userString = localStorage.getItem("user");
     if (userString) {
       try {
@@ -432,7 +445,7 @@ const UserChats: React.FC = () => {
     }
 
     console.log("🔑 Current client ID (logged in user):", currentClientId);
-  }, [currentClientId]);
+  }, [currentClientId, propUserId, propUserName]);
 
   useEffect(() => {
     if (!userId) return;
@@ -551,6 +564,17 @@ const UserChats: React.FC = () => {
           {/* Header with customer name */}
           
           <div className="text-center mb-8">
+            {onBack && (
+              <div className="flex justify-center mb-4">
+                <button
+                  onClick={onBack}
+                  className="flex items-center text-blue-500 hover:text-blue-600 text-sm"
+                >
+                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  Back to RM Dashboard
+                </button>
+              </div>
+            )}
             <h1 className="text-4xl font-bold text-gray-800 mb-2">
               {selectedUser
                 ? `${selectedUser.name}'s Chat Rooms`
