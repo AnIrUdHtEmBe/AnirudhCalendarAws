@@ -30,7 +30,9 @@ import {
 } from "@ably/chat/react";
 
 import { TbMessage } from "react-icons/tb";
-import Breadcrumb from '../Breadcrumbs/Breadcrumb';
+import Breadcrumb from "../Breadcrumbs/Breadcrumb";
+// Add these imports at the top of the UserChats component file
+import axios from "axios";
 
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
 
@@ -42,6 +44,13 @@ interface RoomData {
   seenByTeamAt: number;
   handledHistory: any[];
   handledAt: number;
+}
+
+// Add this interface definition near the top, after existing interfaces
+interface User {
+  userId: string;
+  name: string;
+  type: string;
 }
 
 interface Message {
@@ -72,9 +81,9 @@ interface ChatRoomWrapperProps {
 }
 
 const token = localStorage.getItem("token");
-if(token){
+if (token) {
   const payload = JSON.parse(atob(token.split(".")[1]));
-  console.log("subsbu", payload.sub)
+  console.log("subsbu", payload.sub);
 }
 
 // Helper function to get client ID
@@ -82,7 +91,7 @@ const getClientId = (): string => {
   try {
     // First try localStorage userId
     const userId = sessionStorage.getItem("token");
-if (userId) {
+    if (userId) {
       const payload = JSON.parse(atob(userId.split(".")[1]));
       return payload.sub || "Guest";
     }
@@ -378,7 +387,11 @@ interface UserChatsProps {
   onBack?: () => void;
 }
 
-const UserChats: React.FC<UserChatsProps> = ({ userId: propUserId, userName: propUserName, onBack }) => {
+const UserChats: React.FC<UserChatsProps> = ({
+  userId: propUserId,
+  userName: propUserName,
+  onBack,
+}) => {
   const [selectedUser, setSelectedUser] = useState<{
     name: string;
     userId?: string;
@@ -388,6 +401,10 @@ const UserChats: React.FC<UserChatsProps> = ({ userId: propUserId, userName: pro
   const [roomsData, setRoomsData] = useState<RoomData[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  // Add these state variables inside the UserChats component, after existing states
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
 
   // Get current client ID (logged in user)
   const currentClientId = useMemo(() => getClientId(), []);
@@ -523,6 +540,41 @@ const UserChats: React.FC<UserChatsProps> = ({ userId: propUserId, userName: pro
     "RM",
   ];
 
+  // Add this useEffect after the existing useEffects, for fetching all users
+  useEffect(() => {
+    const fetchAllUsers = async () => {
+      try {
+        const response = await axios.get(
+          "https://play-os-backend.forgehub.in/human/all?type=forge"
+        );
+        const users = response.data
+          .map((user: any) => ({
+            userId: user.userId,
+            name: user.name,
+            type: user.type || "play",
+          }))
+          .slice(0, 100); // Limit to first 100 users
+        setAllUsers(users);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+      }
+    };
+
+    fetchAllUsers();
+  }, []);
+
+  // Add this useEffect after the previous one, for filtering users based on search
+  useEffect(() => {
+    if (searchQuery) {
+      const filtered = allUsers.filter((u) =>
+        u.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredUsers(filtered);
+    } else {
+      setFilteredUsers([]);
+    }
+  }, [searchQuery, allUsers]);
+
   const getRoomDataByType = (roomType: string): RoomData | null => {
     return roomsData.find((room) => room.roomType === roomType) || null;
   };
@@ -559,16 +611,16 @@ const UserChats: React.FC<UserChatsProps> = ({ userId: propUserId, userName: pro
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 relative">
         <div className="absolute top-4 left-4 z-50">
           <Breadcrumb />
-          </div>
+        </div>
         <div className="max-w-7xl mx-auto">
           {/* Header with customer name */}
-          
+
           <div className="text-center mb-8">
             {onBack && (
-              <div className="flex justify-center mb-4">
+              <div className="flex mb-4">
                 <button
                   onClick={onBack}
-                  className="flex items-center text-blue-500 hover:text-blue-600 text-sm"
+                  className="flex text-blue-500 hover:text-blue-600 text-sm"
                 >
                   <ArrowLeft className="w-5 h-5 mr-2" />
                   Back to RM Dashboard
@@ -584,6 +636,87 @@ const UserChats: React.FC<UserChatsProps> = ({ userId: propUserId, userName: pro
             <p className="text-sm text-gray-500 mt-2">
               {/* Logged in as: {hostName} */}
             </p>
+          </div>
+
+          <div className="mt-6 mb-6 relative max-w-lg mx-auto">
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-gray-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search user by name..."
+                className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all text-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery("");
+                    setFilteredUsers([]);
+                  }}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {filteredUsers.length > 0 && (
+              <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-80 overflow-y-auto divide-y divide-gray-100">
+                {filteredUsers.map((user) => (
+                  <div
+                    key={user.userId}
+                    className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors flex items-center space-x-3"
+                    onClick={() => {
+                      setSelectedUser({
+                        name: user.name,
+                        userId: user.userId,
+                      });
+                      setUserId(user.userId);
+                      setSearchQuery("");
+                      setFilteredUsers([]);
+                    }}
+                  >
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
+                      {user.name.charAt(0).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        {user.userId}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* 5 Column Chat Layout */}

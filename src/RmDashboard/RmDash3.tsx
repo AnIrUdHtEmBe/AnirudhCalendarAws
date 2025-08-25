@@ -1,112 +1,3 @@
-// import React, { useEffect, useState } from 'react';
-// import { Dumbbell, Heart, Trophy, Utensils, Calendar } from 'lucide-react';
-// import { TbMessage } from "react-icons/tb";
-
-// const RmDash = () => {
-//   const [loggedInUser, setLoggedInUser] = useState(""); // This is the logged-in user
-
-//   useEffect(() => {
-//     // Get the logged-in user from sessionStorage
-//     const hostName = sessionStorage.getItem("hostName");
-//     if (hostName) {
-//       setLoggedInUser(hostName);
-//     } else {
-//       // Fallback for demo
-//       setLoggedInUser("user not found");
-//     }
-//   }, []);
-
-//   const getColumnHeaderStyle = (type: string) => {
-//     switch (type) {
-//       case 'fitness':
-//         return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white';
-//       case 'wellness':
-//         return 'bg-gradient-to-r from-green-500 to-green-600 text-white';
-//       case 'sports':
-//         return 'bg-gradient-to-r from-red-500 to-red-600 text-white';
-//       case 'nutrition':
-//         return 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white';
-//       case 'events':
-//         return 'bg-gradient-to-r from-purple-500 to-purple-600 text-white';
-//       default:
-//         return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white';
-//     }
-//   };
-
-//   const columns = [
-//     {
-//       title: 'Fitness',
-//       type: 'fitness',
-//       icon: <Dumbbell className="w-5 h-5" />
-//     },
-//     {
-//       title: 'Wellness',
-//       type: 'wellness',
-//       icon: <Heart className="w-5 h-5" />
-//     },
-//     {
-//       title: 'Sports',
-//       type: 'sports',
-//       icon: <Trophy className="w-5 h-5" />
-//     },
-//     {
-//       title: 'Nutrition',
-//       type: 'nutrition',
-//       icon: <Utensils className="w-5 h-5" />
-//     },
-//     {
-//       title: 'Events',
-//       type: 'events',
-//       icon: <Calendar className="w-5 h-5" />
-//     },
-//   ];
-
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
-//       <div className="max-w-7xl mx-auto">
-//         {/* Header with customer name */}
-//         <div className="text-center mb-8">
-//           <h1 className="text-4xl font-bold text-gray-800 mb-2">
-//             {loggedInUser ? `${loggedInUser}'s Chat` : "RM Chat"}
-//           </h1>
-//           <p className="text-gray-600">Chat categories and conversations</p>
-//         </div>
-
-//         {/* Compact Grid - 5 columns */}
-//         <div className="grid grid-cols-5 gap-6">
-//           {columns.map((column) => (
-//             <div key={column.type} className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
-//               {/* Column Header */}
-//               <div className={`p-3 ${getColumnHeaderStyle(column.type)}`}>
-//                 <div className="flex items-center justify-center space-x-2">
-//                   {column.icon}
-//                   <h2 className="text-lg font-bold">{column.title}</h2>
-//                 </div>
-//               </div>
-
-//               {/* User Chat Box */}
-//               <div className="p-4">
-//                 <div className="bg-gray-50 hover:bg-gray-100 rounded-lg p-3 cursor-pointer transition-colors border border-gray-200">
-//                   <div className="flex items-center justify-center space-x-3">
-//                     <span className="text-gray-800 font-medium">
-//                       {loggedInUser}
-//                     </span>
-//                     <button className='cursor-pointer'>
-//                       <TbMessage className='size-6' />
-//                     </button>
-//                   </div>
-//                 </div>
-//               </div>
-//             </div>
-//           ))}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default RmDash;
-
 import React, {
   useEffect,
   useState,
@@ -534,6 +425,8 @@ const RmDashNew3 = () => {
   // Polling refs
   const pollingIntervals = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const roomConnections = useRef<{ [key: string]: any }>({});
+  const monitoringChatClients = useRef<ChatClient[]>([]);
+  const roomsPerClient = useRef<number[]>([]);
   const [connectionCount, setConnectionCount] = useState(0);
 
   const columns = [
@@ -652,11 +545,12 @@ const RmDashNew3 = () => {
   }, [allUsers]);
 
   // Start message polling
+  // Start message polling
   useEffect(() => {
     if (usersWithRooms.length === 0) return;
 
     const setupAlwaysOnConnections = async () => {
-      // Properly cleanup existing connections first
+      // Cleanup existing monitoring clients and rooms
       for (const [roomKey, room] of Object.entries(roomConnections.current)) {
         try {
           if (room) {
@@ -681,6 +575,17 @@ const RmDashNew3 = () => {
       }
       roomConnections.current = {};
 
+      // Close all monitoring realtime connections
+      monitoringChatClients.current.forEach((client) => {
+        try {
+          client.realtime.close();
+        } catch (error) {
+          console.error("Error closing monitoring realtime:", error);
+        }
+      });
+      monitoringChatClients.current = [];
+      roomsPerClient.current = [];
+
       // Add a small delay to ensure cleanup is complete
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -694,6 +599,26 @@ const RmDashNew3 = () => {
             continue;
           }
 
+          // Find or create a monitoring client with capacity (<150 rooms)
+          let clientIndex = roomsPerClient.current.findIndex(
+            (count) => count < 100
+          );
+          if (clientIndex === -1) {
+            // Create new realtime and chat client
+            const newRealtime = new Ably.Realtime({
+              key: API_KEY,
+              clientId: loggedInUser || "RM_Dashboard",
+            });
+            const newChatClient = new ChatClient(newRealtime, {
+              logLevel: LogLevel.Info,
+            });
+            monitoringChatClients.current.push(newChatClient);
+            roomsPerClient.current.push(0);
+            clientIndex = monitoringChatClients.current.length - 1;
+          }
+
+          const chatClient = monitoringChatClients.current[clientIndex];
+
           try {
             const ablyRoom = await chatClient.rooms.get(roomKey);
 
@@ -703,6 +628,7 @@ const RmDashNew3 = () => {
             }
 
             roomConnections.current[roomKey] = ablyRoom;
+            roomsPerClient.current[clientIndex]++;
 
             // Initial message check
             const checkInitialMessages = async () => {
@@ -877,11 +803,22 @@ const RmDashNew3 = () => {
         }
         roomConnections.current = {};
         updateConnectionCount();
+
+        // Close all monitoring realtime connections
+        monitoringChatClients.current.forEach((client) => {
+          try {
+            client.realtime.close();
+          } catch (error) {
+            console.error("Error closing monitoring realtime:", error);
+          }
+        });
+        monitoringChatClients.current = [];
+        roomsPerClient.current = [];
       };
 
       cleanup();
     };
-  }, [usersWithRooms.length, chatClient]);
+  }, [usersWithRooms.length]);
 
   const updateConnectionCount = () => {
     const count = Object.keys(roomConnections.current).length;
@@ -964,7 +901,7 @@ const RmDashNew3 = () => {
           handleChatModal.userId,
           handleChatModal.roomType
         );
-      }, 10000);
+      }, 30000);
     } catch (error) {
       console.error("Failed to handle chat:", error);
     }
