@@ -479,6 +479,7 @@ const HandleModal = ({
   const handleSave = () => {
     if (localComment.trim() && localComment.length >= 20) {
       onSave(localComment.trim());
+      onClose();
       setLocalComment("");
     }
   };
@@ -612,43 +613,82 @@ const checkHandledStatusWithIds = (
   handledHistory: any[],
   targetIds: string[],
   expectedType: string,
-  afterDateUnix: number
-): boolean => {
-  if (!handledHistory || handledHistory.length === 0) return false;
+  afterDateUnix: number,
+  bookingEndTimes?: { [bookingId: string]: number } // Optional: booking-specific end times
+): { handledIds: string[], unhandledIds: string[] } => {
+  if (!handledHistory || handledHistory.length === 0) {
+    return { handledIds: [], unhandledIds: targetIds };
+  }
 
-  // First, check for entries with matching IDs and type
-  const hasSpecificHandling = handledHistory.some((entry) => {
-    // Check if this entry has the specific IDs we're looking for
-    const hasMatchingIds = entry.id && 
-      Array.isArray(entry.id) &&
-      targetIds.length > 0 &&
-      targetIds.some(targetId => entry.id.includes(targetId));
+  const handledIds: string[] = [];
+  const unhandledIds: string[] = [];
+
+  for (const targetId of targetIds) {
+    let isHandled = false;
+
+    // Primary check: Look for specific handling of this booking ID
+    const specificHandling = handledHistory.find((entry) => {
+      const hasMatchingId = entry.targets && 
+        Array.isArray(entry.targets) &&
+        entry.targets.includes(targetId);
+      
+      const hasCorrectTypeAndMessage = 
+        entry.markingType === expectedType &&
+        entry.handledMsg &&
+        entry.handledMsg.trim() !== "";
+
+      return (
+        entry.handledAt > 0 &&
+        hasCorrectTypeAndMessage &&
+        hasMatchingId
+      );
+    });
     
-    // Check if this entry has the correct type and valid handled message
-    const hasCorrectTypeAndMessage = 
-      entry.type === expectedType &&
-      entry.handledMsg &&
-      entry.handledMsg.trim() !== "";
 
-    return (
-      entry.handledAt > 0 &&
-      hasCorrectTypeAndMessage &&
-      (hasMatchingIds || targetIds.length === 0) // Allow fallback if no specific IDs
-    );
-  });
+    if (specificHandling) {
+      isHandled = true;
+    } else if (expectedType === "absent" && bookingEndTimes && bookingEndTimes[targetId]) {
+      // Secondary check for absent bookings: Check if handled after booking's endTime + 30min
+      const bookingEndTimePlus30 = bookingEndTimes[targetId];
+      
+      const fallbackHandling = handledHistory.find((entry) => {
+        return (
+          entry.handledAt > 0 &&
+          entry.handledAt > bookingEndTimePlus30 &&
+          entry.markingType === expectedType &&
+          entry.handledMsg &&
+          entry.handledMsg.trim() !== ""
+        );
+      });
 
-  if (hasSpecificHandling) return true;
+      if (fallbackHandling) {
+        isHandled = true;
+      }
+    } else if (expectedType === "notbooked") {
+      // For not_booked, keep the existing fallback logic
+      const fallbackHandling = handledHistory.find((entry) => {
+        return (
+          entry.handledAt > 0 &&
+          entry.handledAt > afterDateUnix &&
+          entry.markingType === expectedType &&
+          entry.handledMsg &&
+          entry.handledMsg.trim() !== ""
+        );
+      });
 
-  // Fallback: check for any handling of the type after the date
-  return handledHistory.some((entry) => {
-    return (
-      entry.handledAt > 0 &&
-      entry.handledAt > afterDateUnix &&
-      entry.type === expectedType &&
-      entry.handledMsg &&
-      entry.handledMsg.trim() !== ""
-    );
-  });
+      if (fallbackHandling) {
+        isHandled = true;
+      }
+    }
+
+    if (isHandled) {
+      handledIds.push(targetId);
+    } else {
+      unhandledIds.push(targetId);
+    }
+  }
+
+  return { handledIds, unhandledIds };
 };
   // Convert UTC time to IST
   const convertToIST = (utcTimeString: string) => {
@@ -895,76 +935,120 @@ const checkHandledStatusWithIds = (
       const completedUsers: User[] = [];
 
       // API 3: Get user names and process the data
-      await Promise.all(
-        Array.from(userBookingsMap.entries()).map(
-          async ([userId, userEntry]) => {
-            try {
-              const userResponse = await fetch(
-                `https://play-os-backend.forgehub.in/human/${userId}`
-              );
-              const userData = await userResponse.json();
-              const userName = userData.name || "Unknown User";
+     await Promise.all(
+  Array.from(userBookingsMap.entries()).map(
+    async ([userId, userEntry]) => {
+      try {
+        const userResponse = await fetch(
+          `https://play-os-backend.forgehub.in/human/${userId}`
+        );
+        const userData = await userResponse.json();
+        const userName = userData.name || "Unknown User";
 
-              // Create present user entry if they have present bookings
-              if (userEntry.presentBookings.length > 0) {
-                presentUsers.push({
-                  userId,
-                  name: userName,
-                  status: "present",
-                  bookings: userEntry.presentBookings,
-                });
-              }
+        // Create present user entry if they have present bookings (unchanged)
+        if (userEntry.presentBookings.length > 0) {
+          presentUsers.push({
+            userId,
+            name: userName,
+            status: "present",
+            bookings: userEntry.presentBookings,
+          });
+        }
 
-              // Create absent user entry if they have absent bookings
-              if (userEntry.absentBookings.length > 0) {
-                absentUsers.push({
-                  userId,
-                  name: userName,
-                  status: "absent",
-                  bookings: userEntry.absentBookings,
-                });
-              }
-
-              // Create completed user entry if they have completed bookings
-              if (userEntry.completedBookings.length > 0) {
-                completedUsers.push({
-                  userId,
-                  name: userName,
-                  status: "completed",
-                  bookings: userEntry.completedBookings,
-                });
-              }
-            } catch (error) {
-              console.error(`Error fetching user data for ${userId}:`, error);
-              // Handle error case with unknown user name
-              if (userEntry.presentBookings.length > 0) {
-                presentUsers.push({
-                  userId,
-                  name: "Unknown User",
-                  status: "present",
-                  bookings: userEntry.presentBookings,
-                });
-              }
-              if (userEntry.absentBookings.length > 0) {
-                absentUsers.push({
-                  userId,
-                  name: "Unknown User",
-                  status: "absent",
-                  bookings: userEntry.absentBookings,
-                });
-              }
-              if (userEntry.completedBookings.length > 0) {
-                completedUsers.push({
-                  userId,
-                  name: "Unknown User",
-                  status: "completed",
-                  bookings: userEntry.completedBookings,
-                });
-              }
+        // Handle absent bookings with individual tracking
+        if (userEntry.absentBookings.length > 0) {
+          // Create booking end times map for absent bookings
+          const bookingEndTimes: { [bookingId: string]: number } = {};
+          userEntry.absentBookings.forEach(booking => {
+            const bookingData = activeBookingData.find(b => b.booking.bookingId === booking.bookingId);
+            if (bookingData) {
+              const endTimeIST = convertToIST(bookingData.booking.endTime);
+              const endTimePlus30Min = new Date(endTimeIST.getTime() + 30 * 60 * 1000);
+              bookingEndTimes[booking.bookingId] = Math.floor(endTimePlus30Min.getTime() / 1000);
             }
+          });
+
+          const nextDayStartUnix = getNextDayStartUnix(currentDate);
+          const bookingIds = userEntry.absentBookings.map(b => b.bookingId);
+
+          const { handledIds, unhandledIds } = await fetchUserHandledStatus(
+            userId,
+            bookingIds,
+            [],
+            nextDayStartUnix,
+            "absent",
+            bookingEndTimes
+          );
+
+          // Create absent user entry for unhandled bookings
+          if (unhandledIds.length > 0) {
+            const unhandledBookings = userEntry.absentBookings.filter(b => 
+              unhandledIds.includes(b.bookingId)
+            );
+            
+            absentUsers.push({
+              userId,
+              name: userName,
+              status: "absent",
+              bookings: unhandledBookings,
+            });
           }
-        )
-      );
+
+          // Create completed user entry for handled bookings
+          if (handledIds.length > 0) {
+            const handledBookings = userEntry.absentBookings.filter(b => 
+              handledIds.includes(b.bookingId)
+            );
+            
+            completedUsers.push({
+              userId,
+              name: userName,
+              status: "completed",
+              bookings: handledBookings,
+            });
+          }
+        }
+
+        // Create completed user entry if they have completed bookings (unchanged)
+        if (userEntry.completedBookings.length > 0) {
+          completedUsers.push({
+            userId,
+            name: userName,
+            status: "completed",
+            bookings: userEntry.completedBookings,
+          });
+        }
+      } catch (error) {
+        console.error(`Error fetching user data for ${userId}:`, error);
+        // Handle error case with unknown user name
+        if (userEntry.presentBookings.length > 0) {
+          presentUsers.push({
+            userId,
+            name: "Unknown User",
+            status: "present",
+            bookings: userEntry.presentBookings,
+          });
+        }
+        if (userEntry.absentBookings.length > 0) {
+          absentUsers.push({
+            userId,
+            name: "Unknown User",
+            status: "absent",
+            bookings: userEntry.absentBookings,
+          });
+        }
+        if (userEntry.completedBookings.length > 0) {
+          completedUsers.push({
+            userId,
+            name: "Unknown User",
+            status: "completed",
+            bookings: userEntry.completedBookings,
+          });
+        }
+      }
+    }
+  )
+);
 
       // Combine all users for the state FIRST
       let allUsers = [...presentUsers, ...absentUsers, ...completedUsers];
@@ -1073,17 +1157,17 @@ for (const user of allUsers.filter((u) => u.status === "absent" || u.status === 
     ? user.bookings.map(b => b.sessionInstanceId || "").filter(id => id)
     : [];
 
-  const isHandledAfterDate = await fetchUserHandledStatus(
-    user.userId,
-    bookingIds,
-    sessionInstanceIds,
-    nextDayStartUnix,
-    user.status
-  );
-  
-  if (isHandledAfterDate) {
-    handledUserIds.push(user.userId);
-  }
+const handleResult = await fetchUserHandledStatus(
+  user.userId,
+  bookingIds,
+  sessionInstanceIds,
+  nextDayStartUnix,
+  user.status
+);
+
+if (handleResult.handledIds.length > 0) {
+  handledUserIds.push(user.userId);
+}
 }
 
       if (handledUserIds.length > 0) {
@@ -1093,7 +1177,7 @@ for (const user of allUsers.filter((u) => u.status === "absent" || u.status === 
         allUsers = allUsers.map((user) => {
           if (
             handledUserIds.includes(user.userId) &&
-            user.status === "absent"
+            (user.status === "absent" || user.status === "not_booked")  // Add this
           ) {
             return { ...user, status: "completed" };
           }
@@ -1112,11 +1196,12 @@ for (const user of allUsers.filter((u) => u.status === "absent" || u.status === 
   // Function to fetch user's handled status from the API
 const fetchUserHandledStatus = async (
   userId: string,
-  bookingIds: string[], // Add this parameter
-  sessionInstanceIds: string[], // Add this parameter
+  bookingIds: string[],
+  sessionInstanceIds: string[],
   afterDateUnix: number,
-  userStatus: string // Add this to know if we're checking absent or not_booked
-): Promise<boolean> => {
+  userStatus: string,
+  bookingEndTimes?: { [bookingId: string]: number } // Optional: for absent bookings
+): Promise<{ handledIds: string[], unhandledIds: string[] }> => {
   try {
     const response = await axios.get(
       `https://play-os-backend.forgehub.in/human/human/${userId}`
@@ -1126,93 +1211,130 @@ const fetchUserHandledStatus = async (
       ? response.data
       : [response.data];
 
-    // Find the RM room data
     const rmRoom = userData.find((room: any) => room.roomType === "RM");
 
     if (rmRoom && rmRoom.handledHistory) {
-      // Check based on user status
       if (userStatus === "absent" && bookingIds.length > 0) {
         return checkHandledStatusWithIds(
           rmRoom.handledHistory,
           bookingIds,
-          "Absent",
-          afterDateUnix
+          "absent",
+          afterDateUnix,
+          bookingEndTimes
         );
       } else if (userStatus === "not_booked" && sessionInstanceIds.length > 0) {
         return checkHandledStatusWithIds(
           rmRoom.handledHistory,
           sessionInstanceIds,
-          "notBooked",
+          "notbooked",
           afterDateUnix
         );
       }
-      
-      // Fallback for users without specific IDs
-      return checkIfHandledAfterDate(rmRoom.handledHistory, afterDateUnix);
     }
 
-    return false;
+    // If no room or history found, all IDs are unhandled
+    const allIds = userStatus === "absent" ? bookingIds : sessionInstanceIds;
+    return { handledIds: [], unhandledIds: allIds };
   } catch (error) {
     console.error(`Error fetching handled status for user ${userId}:`, error);
-    return false;
+    const allIds = userStatus === "absent" ? bookingIds : sessionInstanceIds;
+    return { handledIds: [], unhandledIds: allIds };
   }
 };
   // Function to check handled status for all absent users
 const checkAllAbsentUsersHandledStatus = async () => {
-  const absentUsers = [
-    ...getFilteredUsers("absent"),
-    ...getFilteredUsers("not_booked"),
-  ];
-  if (absentUsers.length === 0) return;
+  const absentUsers = getFilteredUsers("absent");
+  const notBookedUsers = getFilteredUsers("not_booked");
+  
+  if (absentUsers.length === 0 && notBookedUsers.length === 0) return;
 
   const nextDayStartUnix = getNextDayStartUnix(currentDate);
-  const handledUserIds: string[] = [];
+  const updatedUsers: User[] = [];
 
-  // Check each absent user
+  // Process absent users with individual booking tracking
   for (const user of absentUsers) {
-    const bookingIds = user.status === "absent" 
-      ? user.bookings.map(b => b.bookingId).filter(id => id)
-      : [];
-      
-    const sessionInstanceIds = user.status === "not_booked"
-      ? user.bookings.map(b => b.sessionInstanceId || "").filter(id => id)
-      : [];
-
-    const isHandled = await fetchUserHandledStatus(
+    const bookingIds = user.bookings.map(b => b.bookingId).filter(id => id);
+    
+    // Create booking end times map
+    const bookingEndTimes: { [bookingId: string]: number } = {};
+    // You'll need to reconstruct this from your booking data
+    
+    const { handledIds, unhandledIds } = await fetchUserHandledStatus(
       user.userId,
       bookingIds,
-      sessionInstanceIds,
+      [],
       nextDayStartUnix,
-      user.status
+      "absent",
+      bookingEndTimes
     );
-    
-    if (isHandled) {
-      handledUserIds.push(user.userId);
+
+    // Keep unhandled bookings in absent
+    if (unhandledIds.length > 0) {
+      const unhandledBookings = user.bookings.filter(b => 
+        unhandledIds.includes(b.bookingId)
+      );
+      updatedUsers.push({
+        ...user,
+        bookings: unhandledBookings
+      });
+    }
+
+    // Move handled bookings to completed
+    if (handledIds.length > 0) {
+      const handledBookings = user.bookings.filter(b => 
+        handledIds.includes(b.bookingId)
+      );
+      updatedUsers.push({
+        ...user,
+        status: "completed",
+        bookings: handledBookings
+      });
     }
   }
 
-  if (handledUserIds.length > 0) {
-    // Update the handledAfterDateUsers state
-    setHandledAfterDateUsers(new Set(handledUserIds));
-
-    // Move these users from absent/not_booked to completed
-    setUsers((prevUsers) =>
-      prevUsers.map((user) => {
-        if (
-          handledUserIds.includes(user.userId) && 
-          (user.status === "absent" || user.status === "not_booked")
-        ) {
-          return { ...user, status: "completed" };
-        }
-        return user;
-      })
+  // Process not_booked users (keep existing logic)
+  for (const user of notBookedUsers) {
+    const sessionInstanceIds = user.bookings.map(b => b.sessionInstanceId || "").filter(id => id);
+    
+    const { handledIds, unhandledIds } = await fetchUserHandledStatus(
+      user.userId,
+      [],
+      sessionInstanceIds,
+      nextDayStartUnix,
+      "not_booked"
     );
 
-    console.log(
-      `Moved ${handledUserIds.length} users from absent/not_booked to completed:`,
-      handledUserIds
-    );
+    if (unhandledIds.length > 0) {
+      const unhandledBookings = user.bookings.filter(b => 
+        unhandledIds.includes(b.sessionInstanceId || "")
+      );
+      updatedUsers.push({
+        ...user,
+        bookings: unhandledBookings
+      });
+    }
+
+    if (handledIds.length > 0) {
+      const handledBookings = user.bookings.filter(b => 
+        handledIds.includes(b.sessionInstanceId || "")
+      );
+      updatedUsers.push({
+        ...user,
+        status: "completed",
+        bookings: handledBookings
+      });
+    }
   }
+
+  // Update users state with the new structure
+  setUsers(prevUsers => {
+    // Remove old absent and not_booked users, keep present and existing completed
+    const otherUsers = prevUsers.filter(u => 
+      u.status !== "absent" && u.status !== "not_booked"
+    );
+    
+    return [...otherUsers, ...updatedUsers];
+  });
 };
   const getFilteredUsers = (filter: string): User[] => {
     return users.filter((user) => user.status === filter);
@@ -1344,17 +1466,17 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
 
         if (columnType === "absent") {
           ids = user.bookings.map(b => b.bookingId).filter(id => id);
-          handleType = "Absent";
+          handleType = "absent";
         } else if (columnType === "not_booked") {
           ids = user.bookings.map(b => b.sessionInstanceId || "").filter(id => id);
-          handleType = "notBooked";
+          handleType = "notbooked";
         }
 
         if (ids.length > 0) {
           payload = {
             ...payload,
-            id: ids,
-            type: handleType,
+            handledTargetIDs: ids,
+            markingType: handleType,
           };
         }
       }
@@ -1364,8 +1486,13 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
       "https://play-os-backend.forgehub.in/human/human/mark-seen",
       payload
     );
-
-    // Rest of the function remains the same...
+    setUsers((prev) =>
+      prev.map((u) =>
+        u.userId === userId && u.status === columnType
+          ? { ...u, status: "completed" }
+          : u
+      )
+    );
   } catch (error) {
     console.error("Failed to handle user:", error);
   }
