@@ -1,4 +1,4 @@
-//CHECK git stash
+//CHECK
 import React, {
   useState,
   useEffect,
