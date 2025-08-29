@@ -111,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       text: "Question Bank",
       path: "/question-bank",
     },
-    { icon: <Calendar size={20} />, text: "Sessions", path: "/sessions" },
+    { icon: <Calendar size={20} />, text: "Sessions & Activities", path: "/sessions" },
     { icon: <Utensils size={20} />, text: "Nutrition", path: "/nutrition_sessions" },
     { icon: <FileText size={20} />, text: "Plans", path: "/plans" },
     {

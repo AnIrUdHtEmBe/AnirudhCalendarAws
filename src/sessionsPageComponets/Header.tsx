@@ -10,11 +10,21 @@ function Header() {
   }
   const { selectComponent, setSelectComponent } = context;
 
+  // Map selectComponent values to titles
+  const headerTitles = {
+    "/sessions": "Session Creation",
+    "dashboard": "Session Creation",
+    "AllSessions": "All Sessions",
+    "AllActivities": "All Activities",
+  };
+
+  const headerTitle = headerTitles[selectComponent] || "All Sessions";
+
   return (
     <div className="header-containerrr">
       <div className="header-topper">
         <FileText size={35} />
-        <span className="header-titler">{selectComponent === "/sessions" || selectComponent === "dashboard" ? "Session Creation" : "All Sessions"}</span>
+        <span className="header-titler">{headerTitle}</span>
       </div>
       <div className="header-tabsss">
         <button
@@ -26,6 +36,9 @@ function Header() {
         <button className={`text-xl font-medium ${ selectComponent === "AllSessions" ? "border-b-3 " : ""}`}
          onClick={() => setSelectComponent("AllSessions")}
         >All Sessions</button>
+        <button className={`text-xl font-medium ${ selectComponent === "AllActivities" ? "border-b-3 " : ""}`}
+         onClick={() => setSelectComponent("AllActivities")}
+        >All Activities</button>
       </div>
     </div>
   );

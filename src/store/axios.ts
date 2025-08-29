@@ -100,6 +100,28 @@ export const useApiCalls = () => {
     }
   };
 
+  //NEW EDIT CUSTOMER FUCNTION 
+const patch_customer = async (userId: string, customerData: any) => {
+  try {
+    const res = await axios.patch(`${API_BASE_URL2}/human/${userId}`, customerData);
+    
+    enqueueSnackbar("Customer updated successfully!", {
+      variant: "success",
+      autoHideDuration: 3000,
+    });
+    
+    customers_fetching(); // Refresh the customer list after update
+    return res;
+    
+  } catch (error) {
+    console.error("❌ Error updating customer:", error);
+    enqueueSnackbar("Failed to update customer. Please try again.", {
+      variant: "error",
+      autoHideDuration: 3000,
+    });
+  }
+};
+
   const customers_fetching = async () => {
     try {
       const res = await axios.get(`${API_BASE_URL2}/human/all?type=forge`);
@@ -919,6 +941,7 @@ const AddActivityToSession=async(
     getAllSessions,
     getAllNutrition,
     addSessionFromCalendar,
-    getTags
+    getTags,
+    patch_customer
   };
 };

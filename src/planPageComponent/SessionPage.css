@@ -167,7 +167,7 @@
 }
 
 /* Table container */
-.table-container {
+.table-container1 {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden !important;

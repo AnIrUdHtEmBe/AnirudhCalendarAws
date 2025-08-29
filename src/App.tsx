@@ -75,6 +75,7 @@ import RmDashNew3 from "./RmDashboard/RmDash3";
 import CellNewArena from "./BookingCalendarComponent/CellNewArena";
 import CellGridLatestP1 from "./BookingCalendarComponent/Performance1";
 import CellGridLatestP2 from "./BookingCalendarComponent/Performance2";
+import AllActivities from "./sessionsPageComponets/AllActivities";
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
@@ -122,6 +123,8 @@ function App() {
               element={
                 selectComponent === "AllSessions" ? (
                   <AllSessionsPage />
+                ) : selectComponent === "AllActivities" ? (
+                  <AllActivities />
                 ) : (
                   <SessionsPage />
                 )

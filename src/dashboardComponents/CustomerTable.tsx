@@ -111,7 +111,8 @@ const CustomerTable = () => {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedUserIDs, setSelectedUserIDs] = useState<Array<string>>([]);
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
-
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [loadingAdmins, setLoadingAdmins] = useState(false);
   // console.log("Customers API Call:", customers_Api_call);
 
   const [formData, setFormData] = useState({
@@ -129,6 +130,7 @@ const CustomerTable = () => {
     membershipType: "",
     startDate: "",
     endDate: "",
+    assignedRM: "",
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -146,7 +148,41 @@ const CustomerTable = () => {
     membershipType: "",
     startDate: "",
     endDate: "",
+    assignedRM: "",
   });
+
+  const fetchAdminUsers = async () => {
+    setLoadingAdmins(true);
+    try {
+      // Fetch both admin and RM users in parallel
+      const [adminResponse, rmResponse] = await Promise.all([
+        fetch("https://play-os-backend.forgehub.in/human/all?type=admin"),
+        fetch("https://play-os-backend.forgehub.in/human/all?type=RM"),
+      ]);
+
+      const adminData = await adminResponse.json();
+      const rmData = await rmResponse.json();
+
+      // Add type property to each user
+      const adminUsers = adminData.map((user) => ({
+        ...user,
+        userType: "admin",
+      }));
+      const rmUsers = rmData.map((user) => ({ ...user, userType: "RM" }));
+
+      // Combine both arrays
+      const combinedUsers = [...adminUsers, ...rmUsers];
+      setAdminUsers(combinedUsers);
+    } catch (error) {
+      console.error("Failed to fetch admin users:", error);
+      enqueueSnackbar("Failed to load admin users", {
+        variant: "error",
+        autoHideDuration: 3000,
+      });
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
 
   // Function to calculate age from DOB
   const calculateAge = (dob: string) => {
@@ -252,7 +288,35 @@ const CustomerTable = () => {
       return newData;
     });
   };
-
+const assignUserToRM = async (rmId: string, userId: string) => {
+  try {
+    const response = await fetch('https://play-os-backend.forgehub.in/human/rm/assignusers', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rmId: rmId,
+        userIds: [userId]
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to assign user to RM');
+    }
+    
+    enqueueSnackbar('Successfully assigned user to RM', { 
+      variant: 'success', 
+      autoHideDuration: 3000 
+    });
+  } catch (error) {
+    console.error('Error assigning user to RM:', error);
+    enqueueSnackbar('Failed to assign user to RM', { 
+      variant: 'error', 
+      autoHideDuration: 3000 
+    });
+  }
+};
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Convert numeric fields
@@ -286,6 +350,10 @@ const CustomerTable = () => {
 
     const res = await customer_creation(payload); // assuming this returns a promise
     if (res) {
+    if (formData.assignedRM) {
+      // The user ID should be available in res.data.userId based on your customer_creation function
+      await assignUserToRM(formData.assignedRM, res.data.userId);
+    }
       setModalOpen(false);
       // Clear the form by resetting formData to initial empty values
       setFormData({
@@ -302,6 +370,7 @@ const CustomerTable = () => {
         membershipType: "",
         startDate: "",
         endDate: "",
+        assignedRM: "",
       });
     }
     // Optionally, reset form fields here
@@ -319,8 +388,10 @@ const CustomerTable = () => {
     };
 
     console.log("Edit payload:", payload);
-    // TODO: Add edit API call here
-
+    const res = await patch_customer(editingCustomer.userId, payload);
+ if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
+    await assignUserToRM(editFormData.assignedRM, editingCustomer.userId);
+  }
     setEditModalOpen(false);
     setEditingCustomer(null);
     // Clear the edit form
@@ -338,6 +409,7 @@ const CustomerTable = () => {
       membershipType: "",
       startDate: "",
       endDate: "",
+      assignedRM: "",
     });
   };
 
@@ -359,6 +431,7 @@ const CustomerTable = () => {
       membershipType: "",
       startDate: "",
       endDate: "",
+      assignedRM: "",
     });
   };
 
@@ -366,6 +439,7 @@ const CustomerTable = () => {
     customers_fetching,
     customer_creation,
     patch_user,
+    patch_customer,
     getPlanInstanceByPlanID,
   } = useApiCalls();
 
@@ -411,6 +485,7 @@ const CustomerTable = () => {
       membershipType: customer.membershipType || "",
       startDate: customer.startDate || "",
       endDate: customer.endDate || "",
+      assignedRM: customer.assignedRM || "",
     });
     console.log("Opening edit modal");
     setEditModalOpen(true);
@@ -598,6 +673,9 @@ const CustomerTable = () => {
 
     setFilteredRows(filtered);
   }, [selectedDate, rows]);
+  useEffect(() => {
+    fetchAdminUsers();
+  }, []);
 
   const handleExport = () => {
     const csvContent =
@@ -973,6 +1051,22 @@ const CustomerTable = () => {
                   value={formData.weight}
                   onChange={handleInputChange}
                 />
+                <FormControl fullWidth>
+                  <InputLabel>Assign RM</InputLabel>
+                  <Select
+                    name="assignedRM"
+                    value={formData.assignedRM}
+                    label="Assign RM"
+                    onChange={handleInputChange}
+                    disabled={loadingAdmins}
+                  >
+                    {adminUsers.map((admin) => (
+                      <MenuItem key={admin.userId} value={admin.userId}>
+                        {admin.name} ({admin.userType})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <TextField
                   label="Health Condition"
                   name="healthCondition"
@@ -1046,13 +1140,6 @@ const CustomerTable = () => {
                   gap: 2,
                 }}
               >
-                <TextField
-                  label="Name"
-                  name="name"
-                  value={editFormData.name}
-                  onChange={handleEditInputChange}
-                  required
-                />
                 <TextField
                   label="Name"
                   name="name"
@@ -1189,6 +1276,22 @@ const CustomerTable = () => {
                   value={editFormData.weight}
                   onChange={handleEditInputChange}
                 />
+                <FormControl fullWidth>
+                  <InputLabel>Assign RM</InputLabel>
+                  <Select
+                    name="assignedRM"
+                    value={editFormData.assignedRM}
+                    label="Assign RM"
+                    onChange={handleEditInputChange}
+                    disabled={loadingAdmins}
+                  >
+                    {adminUsers.map((admin) => (
+                      <MenuItem key={admin.userId} value={admin.userId}>
+                        {admin.name} ({admin.userType})
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 <TextField
                   label="Health Condition"
                   name="healthCondition"

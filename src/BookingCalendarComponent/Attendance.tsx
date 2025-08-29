@@ -95,6 +95,109 @@ interface Message {
   createdAt: Date;
   [key: string]: any;
 }
+// Add this new component after the HandleModal component
+interface HandledMessagesModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  userId: string;
+  userName: string;
+  columnType: string;
+  currentDate: Date;
+  handledHistory: any[];
+  isFromNotBooked: boolean; // Add this to indicate user origin
+}
+
+const HandledMessagesModal = ({
+  isOpen,
+  onClose,
+  userId,
+  userName,
+  columnType,
+  currentDate,
+  handledHistory,
+  isFromNotBooked,
+}: HandledMessagesModalProps) => {
+  // Determine marking type based on user origin
+  const markingType = isFromNotBooked ? "notbooked" : "absent";
+
+  // Filter and get latest 5 messages of the specific type
+  const filteredMessages = useMemo(() => {
+    if (!handledHistory || handledHistory.length === 0) return [];
+
+    return handledHistory
+      .filter((entry) => {
+        const hasValidMsg = entry.handledMsg && entry.handledMsg.trim() !== "";
+        const hasValidType = entry.markingType === markingType;
+        return hasValidMsg && hasValidType;
+      })
+      .sort((a, b) => b.handledAt - a.handledAt) // Latest first
+      .slice(0, 5); // Get only latest 5
+  }, [handledHistory, markingType]);
+
+  if (!isOpen) return null;
+
+  console.log(`Filtered messages for ${userName} (${columnType}):`, filteredMessages);
+
+  return (
+    <div className="fixed inset-0 backdrop-blur bg-opacity-30 flex items-center justify-center z-[80]">
+      <div className="bg-white rounded-lg w-96 p-4 shadow-xl max-h-[80vh] flex flex-col">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-medium">
+            Handled Messages - {userName} (
+            {isFromNotBooked ? "Not Booked" : "Absent"})
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {filteredMessages.length === 0 ? (
+            <div className="text-center text-gray-500 py-4">
+              No handled messages for this day
+            </div>
+          ) : (
+            filteredMessages.map((entry, index) => {
+              const date = new Date(entry.handledAt * 1000);
+              const timestamp = `${date.toLocaleDateString("en-US", {
+                day: "numeric",
+                month: "short",
+              })} - ${date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`;
+              return (
+                <div
+                  key={`${userId}-${entry.handledAt}-${index}`}
+                  className="p-3 bg-gray-50 rounded border border-gray-200"
+                >
+                  <div className="text-xs text-gray-600 mb-1">
+                    {timestamp} (Type: {entry.markingType})
+                  </div>
+                  <div className="text-sm text-gray-800 break-words">
+                    {entry.handledMsg}
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="mt-4">
+          <button
+            onClick={onClose}
+            className="w-full bg-gray-300 text-gray-700 py-2 rounded hover:bg-gray-400"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 //ably chat part
 const ChatBox = ({
   roomName,
@@ -362,10 +465,21 @@ const ChatBox = ({
           ) : (
             sortedMessages.map((msg, idx) => {
               const isMine = msg.clientId === currentClientId;
-              const timestamp = new Date(msg.timestamp).toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              });
+              const date = new Date(msg.timestamp || msg.createdAt || 0);
+
+                  const day = date.getDate(); // 25
+                  const month = date.toLocaleString("en-US", {
+                    month: "short",
+                  }); // Aug
+
+                  const time = date.toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  });
+
+                  const timestamp = `${day} ${month} - ${time}`;
+
+                  console.log(timestamp);
               const displayName = clientNames[msg.clientId] || msg.clientId;
 
               return (
@@ -598,17 +712,135 @@ const Attendance = () => {
   const [handledAfterDateUsers, setHandledAfterDateUsers] = useState<
     Set<string>
   >(new Set());
-
+const [userHandledMessages, setUserHandledMessages] = useState<{
+  [userId: string]: {
+    absent?: string;
+    notbooked?: string;
+  }
+}>({});
   useEffect(() => {
     const loadData = async () => {
+      setUserHandledMessages({});
       await fetchAttendanceData();
       // Immediately check for handled users without delay
       checkAllAbsentUsersHandledStatus();
+
     };
 
     loadData();
   }, [currentDate]);
 // Add this function near your other utility functions
+const extractDailyHandledMessages = (
+  handledHistory: any[],
+  targetDate: Date,
+  markingType: string
+): string | null => {
+  if (!handledHistory || handledHistory.length === 0) return null;
+
+  // Get start and end of the target date in Unix timestamps
+  const dayStart = new Date(targetDate);
+  dayStart.setHours(0, 0, 0, 0);
+  const dayEnd = new Date(targetDate);
+  dayEnd.setHours(23, 59, 59, 999);
+  
+  const dayStartUnix = Math.floor(dayStart.getTime() / 1000);
+  const dayEndUnix = Math.floor(dayEnd.getTime() / 1000);
+
+  // Filter entries for the target date with specific marking type
+  const dayEntries = handledHistory.filter((entry) => {
+    const hasValidTime = entry.handledAt > 0 && 
+                        entry.handledAt >= dayStartUnix && 
+                        entry.handledAt <= dayEndUnix;
+    const hasValidMsg = entry.handledMsg && entry.handledMsg.trim() !== "";
+    const hasValidType = entry.markingType === markingType;
+    
+    return hasValidTime && hasValidMsg && hasValidType;
+  });
+
+  if (dayEntries.length === 0) return null;
+
+  // Sort by handledAt (latest first) and return the latest message
+  dayEntries.sort((a, b) => b.handledAt - a.handledAt);
+  return dayEntries[0].handledMsg;
+};
+
+const findNextClosestMessage = (
+  handledHistory: any[],
+  targetDate: Date,
+  markingType: string
+): { message: string; daysLate: number } | null => {
+  if (!handledHistory || handledHistory.length === 0) return null;
+
+  const targetDateStart = new Date(targetDate);
+  targetDateStart.setHours(0, 0, 0, 0);
+  const targetDateUnix = Math.floor(targetDateStart.getTime() / 1000);
+
+  // Filter entries after target date with specific marking type
+  const futureEntries = handledHistory.filter((entry) => {
+    const hasValidTime = entry.handledAt > 0 && entry.handledAt >= targetDateUnix;
+    const hasValidMsg = entry.handledMsg && entry.handledMsg.trim() !== "";
+    const hasValidType = entry.markingType === markingType;
+    
+    return hasValidTime && hasValidMsg && hasValidType;
+  });
+
+  if (futureEntries.length === 0) return null;
+
+  // Sort by handledAt (earliest first)
+  futureEntries.sort((a, b) => a.handledAt - b.handledAt);
+  const closestEntry = futureEntries[0];
+  
+  // Calculate days late with 1-day buffer
+  const handledDate = new Date(closestEntry.handledAt * 1000);
+  const daysDifference = Math.floor((handledDate.getTime() - targetDateStart.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Apply 1-day buffer - only count as late if handled 2+ days after target date
+  const daysLate = daysDifference > 1 ? daysDifference - 1 : 0;
+  
+  return {
+    message: closestEntry.handledMsg,
+    daysLate: daysLate
+  };
+};
+// Add this function after the extractDailyHandledMessages function
+// Replace the existing fetchHandledMessagesForCompletedUsers function
+// Update the fetchHandledMessagesForCompletedUsers function
+const fetchHandledMessagesForCompletedUsers = async (completedUsers: User[], targetDate: Date) => {
+  if (completedUsers.length === 0) return;
+
+  console.log("fetchHandledMessagesForCompletedUsers called with:", completedUsers.length, "users");
+  const handledMessagesMap: { [userId: string]: { history: any[] } } = {};
+
+  await Promise.all(
+    completedUsers.map(async (user) => {
+      try {
+        console.log(`Fetching handled messages for user: ${user.userId} (${user.name})`);
+        const response = await axios.get(
+          `https://play-os-backend.forgehub.in/human/human/${user.userId}`
+        );
+        const userData = Array.isArray(response.data) ? response.data : [response.data];
+        const rmRoom = userData.find((room: any) => room.roomType === "RM");
+
+        if (rmRoom && rmRoom.handledHistory) {
+          console.log(`Found handledHistory for ${user.userId}, entries:`, rmRoom.handledHistory.length);
+          
+          // Store the full history for each user
+          handledMessagesMap[user.userId] = {
+            history: rmRoom.handledHistory,
+          };
+        } else {
+          console.log(`No handledHistory found for ${user.userId}`);
+        }
+      } catch (error) {
+        console.error(`Error fetching handled messages for user ${user.userId}:`, error);
+      }
+    })
+  );
+
+  console.log("Final handledMessagesMap:", handledMessagesMap);
+  setUserHandledMessages(handledMessagesMap);
+};
+
 const checkHandledStatusWithIds = (
   handledHistory: any[],
   targetIds: string[],
@@ -869,6 +1101,8 @@ const hasCorrectTypeAndMessage =
             timeSlot,
             sportId: sportId || "Unknown Sport",
             bookingId,
+            st_unix: booking.st_unix,
+            endTime: booking.endTime,
           };
 
           // Determine booking status
@@ -882,7 +1116,71 @@ const hasCorrectTypeAndMessage =
           // If current time is before endTime + 30 min, do nothing (booking stays hidden)
         });
       });
+      // Process handled for absent bookings per individual booking
+await Promise.all(
+  Array.from(userBookingsMap.entries()).map(async ([userId, userEntry]) => {
+    if (userEntry.absentBookings.length === 0) return;
 
+    try {
+      const response = await axios.get(
+        `https://play-os-backend.forgehub.in/human/human/${userId}`
+      );
+      const userData = Array.isArray(response.data)
+        ? response.data
+        : [response.data];
+      const rmRoom = userData.find((room) => room.roomType === "RM");
+      const handledHistory = rmRoom?.handledHistory || [];
+
+      const completedFromAbsent = [];
+      const remainingAbsent = [];
+      //const nextDayStartUnix = getNextDayStartUnix(currentDate);
+      for (const booking of userEntry.absentBookings) {
+  const isHandled = handledHistory.some((entry) => {
+    const hasMatchingIds = entry.targets && 
+      Array.isArray(entry.targets) &&
+      entry.targets.includes(booking.bookingId);
+    
+    const hasCorrectTypeAndMessage = 
+      entry.markingType === "absent" &&
+      entry.handledMsg &&
+      entry.handledMsg.trim() !== "";
+    
+    // Specific check
+    if (
+      entry.handledAt > 0 &&
+      hasCorrectTypeAndMessage &&
+      hasMatchingIds
+    ) {
+      return true;
+    }
+    
+    // Fallback check (if no specific ID match): any absent handling after the booking's start time
+    return (
+      entry.handledAt > 0 &&
+     entry.handledAt > Math.floor((convertToIST(booking.endTime).getTime() + 30 * 60 * 1000) / 1000) &&  // Use booking.st_unix; or swap to nextDayStartUnix if global
+      hasCorrectTypeAndMessage &&
+      !hasMatchingIds  // Optional: ensure it's fallback (no IDs matched)
+    );
+  });
+
+  if (isHandled) {
+    completedFromAbsent.push(booking);
+  } else {
+    remainingAbsent.push(booking);
+  }
+}
+
+      userEntry.absentBookings = remainingAbsent;
+      userEntry.completedBookings = [
+        ...userEntry.completedBookings,
+        ...completedFromAbsent,
+      ];
+    } catch (error) {
+      console.error(`Error processing handled bookings for user ${userId}:`, error);
+      // On error, leave all in absent (fail-safe)
+    }
+  })
+);
       console.log(
         "Final userBookingsMap:",
         Array.from(userBookingsMap.entries())
@@ -1063,19 +1361,15 @@ for (const plan of plans) {
       const nextDayStartUnix = getNextDayStartUnix(currentDate);
       const handledUserIds: string[] = [];
 
-for (const user of allUsers.filter((u) => u.status === "absent" || u.status === "not_booked")) {
-  // Get the relevant IDs based on user status
-  const bookingIds = user.status === "absent" 
-    ? user.bookings.map(b => b.bookingId).filter(id => id)
-    : [];
-    
+for (const user of allUsers.filter((u) => u.status === "not_booked")) {
+  // Get the relevant IDs based on user status 
   const sessionInstanceIds = user.status === "not_booked"
     ? user.bookings.map(b => b.sessionInstanceId || "").filter(id => id)
     : [];
 
   const isHandledAfterDate = await fetchUserHandledStatus(
     user.userId,
-    bookingIds,
+    [],
     sessionInstanceIds,
     nextDayStartUnix,
     user.status
@@ -1103,6 +1397,11 @@ for (const user of allUsers.filter((u) => u.status === "absent" || u.status === 
 
       // Set the final users state ONCE with all users included
       setUsers(allUsers);
+ const completedUsersForMessages = allUsers.filter(u => u.status === "completed");
+if (completedUsersForMessages.length > 0) {
+  console.log("Fetching handled messages for completed users:", completedUsersForMessages.length);
+  await fetchHandledMessagesForCompletedUsers(completedUsersForMessages, currentDate);
+}
     } catch (error) {
       console.error("Error fetching attendance data:", error);
     } finally {
@@ -1131,14 +1430,15 @@ const fetchUserHandledStatus = async (
 
     if (rmRoom && rmRoom.handledHistory) {
       // Check based on user status
-      if (userStatus === "absent" && bookingIds.length > 0) {
-        return checkHandledStatusWithIds(
-          rmRoom.handledHistory,
-          bookingIds,
-          "absent",
-          afterDateUnix
-        );
-      } else if (userStatus === "not_booked" && sessionInstanceIds.length > 0) {
+      // if (userStatus === "absent" && bookingIds.length > 0) {
+      //   return checkHandledStatusWithIds(
+      //     rmRoom.handledHistory,
+      //     bookingIds,
+      //     "absent",
+      //     afterDateUnix
+      //   );
+      // } else 
+        if (userStatus === "not_booked" && sessionInstanceIds.length > 0) {
         return checkHandledStatusWithIds(
           rmRoom.handledHistory,
           sessionInstanceIds,
@@ -1160,7 +1460,7 @@ const fetchUserHandledStatus = async (
   // Function to check handled status for all absent users
 const checkAllAbsentUsersHandledStatus = async () => {
   const absentUsers = [
-    ...getFilteredUsers("absent"),
+    //...getFilteredUsers("absent"),
     ...getFilteredUsers("not_booked"),
   ];
   if (absentUsers.length === 0) return;
@@ -1677,15 +1977,19 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
   };
 
   // Update your UserItem component to include the handle functionality
+
+// In UserItem component (replace the existing UserItem component)
 const UserItem = ({
   user,
   columnType,
+  currentDate,
 }: {
   user: User;
   columnType: string;
+  currentDate: Date;
 }) => {
   const newMsgCount = getNewMessagesForUser(user.userId);
-
+  const [showHandledMessagesModal, setShowHandledMessagesModal] = useState(false);
   const showCheckbox =
     columnType === "absent" ||
     columnType === "not_booked" ||
@@ -1696,8 +2000,73 @@ const UserItem = ({
     : "border-blue-500 hover:bg-blue-50";
   const checkboxIconColor = isCompleted ? "text-green-500" : "text-blue-500";
 
+ // In the UserItem component, update the message extraction logic
+// Determine if user is from not_booked based on sessionInstanceId presence
+const isFromNotBooked = user.bookings.some(booking => booking.sessionInstanceId);
+const markingType = isFromNotBooked ? "notbooked" : "absent";
+
+const getSessionDate = (user: User): Date => {
+  // For not_booked users, we need to parse the sessionInstanceId to get the date
+  if (user.status === "not_booked" && user.bookings.length > 0 && user.bookings[0].sessionInstanceId) {
+    // SessionInstanceId format: "session_20250828_xxxxxx"
+    const sessionId = user.bookings[0].sessionInstanceId;
+    const dateMatch = sessionId.match(/session_(\d{4})(\d{2})(\d{2})/);
+    
+    if (dateMatch) {
+      const year = parseInt(dateMatch[1]);
+      const month = parseInt(dateMatch[2]) - 1; // Months are 0-indexed in JavaScript
+      const day = parseInt(dateMatch[3]);
+      return new Date(year, month, day);
+    }
+  }
+  
+  // For absent users, we need to get the date from the booking
+  // This would require additional API calls or storing the booking date
+  // For now, return the current date as a fallback
+  return currentDate;
+};
+
+// Then in the UserItem component:
+const sessionDate = getSessionDate(user);
+
+// Get handled message for session date
+const currentDateMessage = userHandledMessages[user.userId]?.history
+  ? extractDailyHandledMessages(userHandledMessages[user.userId].history, sessionDate, markingType)
+  : null;
+
+// If no message for session date, find next closest
+const nextClosestMessage = currentDateMessage 
+  ? null 
+  : userHandledMessages[user.userId]?.history
+    ? findNextClosestMessage(userHandledMessages[user.userId].history, sessionDate, markingType)
+    : null;
+
+// Determine which message to show and its styling
+let handledMessageToShow = "";
+let messageStyle = "";
+let daysLate = 0;
+
+if (currentDateMessage) {
+  handledMessageToShow = currentDateMessage;
+  messageStyle = "bg-green-50 border-green-200 text-green-700";
+} else if (nextClosestMessage) {
+  daysLate = nextClosestMessage.daysLate;
+  
+  if (daysLate === 0) {
+    // Within 1-day buffer - show as green (on time)
+    handledMessageToShow = nextClosestMessage.message;
+    messageStyle = "bg-green-50 border-green-200 text-green-700";
+  } else {
+    // Actually late (beyond 1-day buffer) - show as red with days late
+    handledMessageToShow = `${nextClosestMessage.message} (${daysLate} day${daysLate !== 1 ? 's' : ''} late)`;
+    messageStyle = "bg-red-50 border-red-200 text-red-700";
+  }
+}
+
+  console.log(`UserItem for ${user.name} (${user.userId}), columnType: ${columnType}, isFromNotBooked: ${isFromNotBooked}, handledMessageToShow: ${handledMessageToShow}`);
+
   return (
-    <div className="flex items-center p-3 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow justify-between">
+    <div className="flex items-center p-1 bg-white rounded-lg border border-gray-200 hover:shadow-sm transition-shadow justify-between gap-1">
       <div className="flex items-center space-x-3 flex-1 min-w-0">
         {user.status === "absent" && !isCompleted && (
           <div className="w-6 h-6 bg-red-100 rounded-full flex items-center justify-center">
@@ -1717,11 +2086,44 @@ const UserItem = ({
                 <div className="font-medium break-words">
                   {booking.courtName}
                 </div>
-                {columnType !== "not_booked" && (
+                {columnType !== "not_booked" && !isFromNotBooked && (
                   <div>{booking.timeSlot}</div>
                 )}
               </div>
             ))}
+            {/* Show handled message for completed users */}
+            {isCompleted && handledMessageToShow && (
+        <div className={`mt-2 p-2 rounded border ${messageStyle}`}>
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs font-medium">
+              Remark:
+            </div>
+            <button
+              onClick={() => setShowHandledMessagesModal(true)}
+              className="hover:opacity-70"
+              title="View all handled messages"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </button>
+          </div>
+          <div className="text-xs break-words">
+            {handledMessageToShow}
+          </div>
+        </div>
+      )}
           </div>
         </div>
       </div>
@@ -1737,7 +2139,7 @@ const UserItem = ({
         <div className="relative">
           <button
             className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
-            onClick={() => handleChatOpen(user.userId, user.name, columnType)} // Add columnType here too
+            onClick={() => handleChatOpen(user.userId, user.name, columnType)}
           >
             <TbMessage className="w-5 h-5" />
           </button>
@@ -1748,6 +2150,19 @@ const UserItem = ({
           )}
         </div>
       </div>
+      {/* Handled Messages Modal */}
+      {showHandledMessagesModal && (
+        <HandledMessagesModal
+          isOpen={showHandledMessagesModal}
+          onClose={() => setShowHandledMessagesModal(false)}
+          userId={user.userId}
+          userName={user.name}
+          columnType={columnType}
+          currentDate={currentDate}
+          handledHistory={userHandledMessages[user.userId]?.history || []}
+          isFromNotBooked={isFromNotBooked} // Pass isFromNotBooked
+        />
+      )}
     </div>
   );
 };
@@ -1859,48 +2274,42 @@ const UserItem = ({
               </div>
 
               {/* Main Grid - Flexible */}
-              <div className="grid grid-cols-4 gap-6 flex-1 min-h-0 mb-6">
-                {columns.map((column) => (
-                  <div
-                    key={column.type}
-                    className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col"
-                  >
-                    {/* Column Header */}
-                    <div
-                      className={`p-4 flex-shrink-0 ${getColumnHeaderStyle(
-                        column.type
-                      )}`}
-                    >
-                      <div className="flex items-center space-x-2">
-                        {column.icon}
-                        <h2 className="text-lg font-bold">{column.title}</h2>
-                        <span className="bg-white/20 px-2 py-1 rounded-full text-sm font-medium">
-                          {column.users.length}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Column Content - Scrollable */}
-                    <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
-                      {column.users.length > 0 ? (
-                        column.users.map((user, index) => (
-                          <UserItem
-                            key={`${user.userId}-${index}`}
-                            user={user}
-                            columnType={column.type} // Pass columnType
-                          />
-                        ))
-                      ) : (
-                        <div className="text-center py-8">
-                          <p className="text-gray-500 text-sm">
-                            No users in this category
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
+<div className="grid grid-cols-4 gap-6 flex-1 min-h-0 mb-6">
+  {columns.map((column) => (
+    <div
+      key={column.type}
+      className="bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden flex flex-col"
+    >
+      <div
+        className={`p-4 flex-shrink-0 ${getColumnHeaderStyle(column.type)}`}
+      >
+        <div className="flex items-center space-x-2">
+          {column.icon}
+          <h2 className="text-lg font-bold">{column.title}</h2>
+          <span className="bg-white/20 px-2 py-1 rounded-full text-sm font-medium">
+            {column.users.length}
+          </span>
+        </div>
+      </div>
+      <div className="p-4 space-y-3 flex-1 overflow-y-auto custom-scrollbar">
+        {column.users.length > 0 ? (
+          column.users.map((user, index) => (
+            <UserItem
+              key={`${user.userId}-${index}`}
+              user={user}
+              columnType={column.type}
+              currentDate={currentDate} // Pass currentDate to UserItem
+            />
+          ))
+        ) : (
+          <div className="text-center py-8">
+            <p className="text-gray-500 text-sm">No users in this category</p>
+          </div>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
             </div>
             {/* Chat Modal */}
 {openChat && (
