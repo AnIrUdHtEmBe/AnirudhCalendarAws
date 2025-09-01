@@ -76,6 +76,9 @@ import CellNewArena from "./BookingCalendarComponent/CellNewArena";
 import CellGridLatestP1 from "./BookingCalendarComponent/Performance1";
 import CellGridLatestP2 from "./BookingCalendarComponent/Performance2";
 import AllActivities from "./sessionsPageComponets/AllActivities";
+import CellGridLatestP3 from "./BookingCalendarComponent/Performance3";
+
+import RmDashNew4 from "./RmDashboard/FilteredDashboard";
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
 // import CellGridArena from "./BookingCalendarComponent/CellGridWithArena";
@@ -149,7 +152,7 @@ function App() {
             <Route element={<PrivateRoute />}>
               <Route
                 path="/bookingCalendar"
-                element={<CellGridLatestP2 />}
+                element={<CellGridLatestP3 />}
               />
             </Route>
 

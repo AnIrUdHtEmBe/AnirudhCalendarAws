@@ -232,10 +232,17 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   };
 
   const formatTimestamp = (timestamp: number): string => {
-    return new Date(timestamp).toLocaleTimeString("en-US", {
+    const date = new Date(timestamp);
+
+    const day = date.getDate(); // e.g. 25
+    const month = date.toLocaleString("en-US", { month: "short" }); // e.g. Aug
+
+    const time = date.toLocaleTimeString("en-US", {
       hour: "2-digit",
       minute: "2-digit",
     });
+
+    return `${day} ${month} - ${time}`;
   };
 
   if (!roomData) {

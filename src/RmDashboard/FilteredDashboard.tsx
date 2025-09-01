@@ -14,6 +14,7 @@ import {
   Send,
   X,
   Check,
+  ArrowLeft,
 } from "lucide-react";
 import { TbMessage } from "react-icons/tb";
 import axios from "axios";
@@ -31,9 +32,8 @@ import {
 } from "@ably/chat/react";
 import { AblyProvider } from "ably/react";
 import UserChats from "../GoToChat/UserChats";
-import FilteredDashboard from "./FilteredDashboard";
 
-// Types
+// Types (duplicated from main for isolation)
 interface User {
   userId: string;
   name: string;
@@ -65,7 +65,12 @@ interface Message {
   [key: string]: any;
 }
 
-// Chat Component
+interface RM {
+  userId: string;
+  name: string;
+}
+
+// ChatBox component (duplicated for isolation)
 const ChatBox = ({
   roomName,
   onClose,
@@ -143,13 +148,11 @@ const ChatBox = ({
     [clientNames]
   );
 
-  // Load only new messages since seenByTeamAt
   useEffect(() => {
     if (historyBeforeSubscribe && loading) {
       historyBeforeSubscribe({ limit: 60 }).then(async (result) => {
         const allMessages: Message[] = result.items as unknown as Message[];
 
-        // Get user's room data to find seenByTeamAt
         try {
           const userRes = await axios.get(
             `https://play-os-backend.forgehub.in/human/human/${userId}`
@@ -161,7 +164,6 @@ const ChatBox = ({
 
           if (currentRoom) {
             const seenByTeamAtDate = new Date(currentRoom.handledAt * 1000);
-            // Filter messages newer than seenByTeamAt
             const newMessages = allMessages.filter((msg) => {
               const msgDate = new Date(msg.timestamp || msg.createdAt);
               return msgDate > seenByTeamAtDate;
@@ -169,7 +171,6 @@ const ChatBox = ({
 
             setMessages(newMessages);
 
-            // Fetch names for unique client IDs
             const uniqueClientIds = [
               ...new Set(newMessages.map((msg) => msg.clientId)),
             ];
@@ -220,12 +221,10 @@ const ChatBox = ({
         new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
     );
   }, [messages]);
-  console.log("body of the msgs", messages);
 
   return (
     <div className="fixed inset-0 backdrop-blur bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-96 h-96 flex flex-col shadow-xl">
-        {/* Header */}
         <div className="bg-blue-500 text-white p-3 rounded-t-lg flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <span className="font-medium">{userName}</span>
@@ -238,7 +237,6 @@ const ChatBox = ({
           </button>
         </div>
 
-        {/* Messages */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {loading ? (
             <div className="text-center text-gray-500">Loading messages...</div>
@@ -247,8 +245,8 @@ const ChatBox = ({
               const isMine = msg.clientId === currentClientId;
               const date = new Date(msg.timestamp);
 
-              const day = date.getDate(); // 25
-              const month = date.toLocaleString("en-US", { month: "short" }); // 2025
+              const day = date.getDate();
+              const month = date.toLocaleString("en-US", { month: "short" });
 
               const time = date.toLocaleTimeString([], {
                 hour: "2-digit",
@@ -256,8 +254,6 @@ const ChatBox = ({
               });
 
               const timestamp = `${day} ${month} - ${time}`;
-
-              console.log(timestamp);
               const displayName = clientNames[msg.clientId] || msg.clientId;
 
               return (
@@ -287,7 +283,6 @@ const ChatBox = ({
           <div ref={bottomRef} />
         </div>
 
-        {/* Input */}
         <div className="p-3 border-t flex space-x-2">
           <input
             value={inputValue}
@@ -304,7 +299,6 @@ const ChatBox = ({
           </button>
         </div>
 
-        {/* Handle Chat Button */}
         <div className="p-3 border-t">
           <button
             onClick={onHandleChat}
@@ -319,7 +313,7 @@ const ChatBox = ({
   );
 };
 
-// Handle Chat Modal
+// HandleChatModal (duplicated for isolation)
 const HandleChatModal = ({
   isOpen,
   onClose,
@@ -390,23 +384,41 @@ const HandleChatModal = ({
   );
 };
 
-const RmDashNew3 = () => {
+const FilteredDashboard = ({ 
+  onBack, 
+  initialSelectedRm = "all",
+  initialFromDate = "",
+  initialFromTime = "",
+  initialToDate = "",
+  initialToTime = "",
+  initialApply = false 
+}: { 
+  onBack: () => void; 
+  initialSelectedRm?: string;
+  initialFromDate?: string;
+  initialFromTime?: string;
+  initialToDate?: string;
+  initialToTime?: string;
+  initialApply?: boolean;
+}) => {
   const [loggedInUser, setLoggedInUser] = useState("");
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersWithRooms, setUsersWithRooms] = useState<UserWithRooms[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showFilteredView, setShowFilteredView] = useState(false);
+  const [isFiltersApplied, setIsFiltersApplied] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredUsersForSearch, setFilteredUsersForSearch] = useState<User[]>(
+    []
+  );
+  const [selectedUser, setSelectedUser] = useState<{
+    userId: string;
+    name: string;
+  } | null>(null);
   const [openChat, setOpenChat] = useState<{
     userId: string;
     roomType: string;
     userName: string;
     roomName: string;
-  } | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<{
-    userId: string;
-    name: string;
   } | null>(null);
   const [handleChatModal, setHandleChatModal] = useState<{
     isOpen: boolean;
@@ -414,25 +426,38 @@ const RmDashNew3 = () => {
     roomType: string;
     userName: string;
   }>({ isOpen: false, userId: "", roomType: "", userName: "" });
-  // New: Add filter states
   const [rms, setRms] = useState<RM[]>([]);
-  const [selectedRm, setSelectedRm] = useState("all");
-const today = new Date().toISOString().split("T")[0];
-const [fromDate, setFromDate] = useState(today);
-const [fromTime, setFromTime] = useState("00:00");
-const [toDate, setToDate] = useState(today);
-const [toTime, setToTime] = useState("12:00");
-  // New: Add loggedInType and loggedInUserId
-  const [loggedInType, setLoggedInType] = useState("");
-  const [loggedInUserId, setLoggedInUserId] = useState("");
+  const [selectedRm, setSelectedRm] = useState<string>(initialSelectedRm); // Use initial prop
+  const [fromDate, setFromDate] = useState<string>(initialFromDate); // Use initial prop
+  const [fromTime, setFromTime] = useState<string>(initialFromTime); // Use initial prop
+  const [toDate, setToDate] = useState<string>(initialToDate); // Use initial prop
+  const [toTime, setToTime] = useState<string>(initialToTime); // Use initial prop
 
-  // Ably setup
+  const fromDateTime = useMemo(() => {
+    if (fromDate && fromTime) return new Date(`${fromDate}T${fromTime}`);
+    return null;
+  }, [fromDate, fromTime]);
+
+  const toDateTime = useMemo(() => {
+    if (toDate && toTime) return new Date(`${toDate}T${toTime}`);
+    return null;
+  }, [toDate, toTime]);
+
+  const hasDatesSet = useMemo(
+    () => !!fromDateTime && !!toDateTime,
+    [fromDateTime, toDateTime]
+  );
+  useEffect(() => {
+    setIsFiltersApplied(false); // Reset until Apply button is clicked
+  }, [selectedRm, fromDate, fromTime, toDate, toTime]);
+
+  // Ably setup (independent)
   const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
   const realtimeClient = useMemo(
     () =>
       new Ably.Realtime({
         key: API_KEY,
-        clientId: loggedInUser || "RM_Dashboard",
+        clientId: loggedInUser || "RM_Dashboard_Filtered",
       }),
     [loggedInUser]
   );
@@ -444,7 +469,6 @@ const [toTime, setToTime] = useState("12:00");
     [realtimeClient]
   );
 
-  // Polling refs
   const pollingIntervals = useRef<{ [key: string]: NodeJS.Timeout }>({});
   const roomConnections = useRef<{ [key: string]: any }>({});
   const monitoringChatClients = useRef<ChatClient[]>([]);
@@ -488,148 +512,157 @@ const [toTime, setToTime] = useState("12:00");
     }
   };
 
+  // Fetch RMs on mount
   useEffect(() => {
-  const fetchRms = async () => {
-    try {
-      const response = await axios.get(
-        "https://play-os-backend.forgehub.in/human/all?type=RM"
-      );
-      setRms(
-        response.data.map((rm: any) => ({ userId: rm.userId, name: rm.name }))
-      );
-    } catch (error) {
-      console.error("Failed to fetch RMs:", error);
-    }
-  };
-  fetchRms();
-
-  const t = sessionStorage.getItem("token");
-  if (t) {
-    try {
-      const payload = JSON.parse(atob(t.split(".")[1]));
-      console.log(payload, "token Payload");
-      
-      setLoggedInUser(payload.name || "RM Dashboard");
-      setLoggedInType(payload.type || "");
-      setLoggedInUserId(payload.sub || "");
-    } catch (error) {
-      console.error("Failed to parse token:", error);
-    }
-  }
-}, []);
-
-  // Fetch all users on mount
-useEffect(() => {
-  const fetchAllUsers = async () => {
-    try {
-      if (loggedInType === "RM" && loggedInUserId) {
+    const fetchRms = async () => {
+      try {
         const response = await axios.get(
-          `https://play-os-backend.forgehub.in/human/rm/getassignedusers?userID=${loggedInUserId}`
+          "https://play-os-backend.forgehub.in/human/all?type=RM"
+        );
+        setRms(
+          response.data.map((rm: any) => ({ userId: rm.userId, name: rm.name }))
+        );
+      } catch (error) {
+        console.error("Failed to fetch RMs:", error);
+      }
+    };
+    fetchRms();
+
+    const hostName = sessionStorage.getItem("hostName");
+    setLoggedInUser(hostName || "RM Dashboard Filtered");
+  }, []);
+
+  // Fetch users based on selected RM (all if "all", assigned if specific)
+  useEffect(() => {
+    if (!isFiltersApplied || selectedRm === "all") {
+      setAllUsers([]);
+      return;
+    }
+
+    const fetchUsers = async () => {
+      try {
+        const response = await axios.get(
+          `https://play-os-backend.forgehub.in/human/rm/getassignedusers?userID=${selectedRm}`
         );
         const users = response.data.assignedUsers.map((u: any) => ({
           userId: u.userId,
           name: u.name,
           type: u.type || "forge",
         }));
-        console.log("specific users", users);
-        
         setAllUsers(users);
-      } else {
-        const response = await axios.get(
-          "https://play-os-backend.forgehub.in/human/all?type=forge"
-        );
-        const users = response.data
-          .map((user: any) => ({
-            userId: user.userId,
-            name: user.name,
-            type: user.type || "play",
-          }))
-          .slice(0, 100);
-          console.log("All users data", users);
-          
-        setAllUsers(users);
+      } catch (error) {
+        console.error("Failed to fetch assigned users:", error);
+        setAllUsers([]);
       }
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
-    }
-  };
+    };
+    fetchUsers();
+  }, [isFiltersApplied, selectedRm]);
 
-  
-    if (loggedInType) {
-    fetchAllUsers();
-  }
-  
-}, [loggedInType, loggedInUserId]);
-
-  // Fetch room data for all users
-useEffect(() => {
-  if (allUsers.length === 0) return;
-
-  const fetchAllUserRooms = async () => {
-    setLoading(true);
-    const usersWithRoomsData: UserWithRooms[] = [];
-
-    const batchSize = 10;
-    for (let i = 0; i < allUsers.length; i += batchSize) {
-      const batch = allUsers.slice(i, i + batchSize);
-      const batchPromises = batch.map(async (user) => {
-        try {
-          const response = await axios.get(
-            `https://play-os-backend.forgehub.in/human/human/${user.userId}`
-          );
-          const rooms = Array.isArray(response.data)
-            ? response.data
-            : response.data.rooms || [];
-
-          return {
-            user,
-            rooms,
-            hasNewMessages: {},
-            lastMessageTime: {},
-          };
-        } catch (error) {
-          console.error(
-            `Failed to fetch rooms for user ${user.userId}:`,
-            error
-          );
-          return {
-            user,
-            rooms: [],
-            hasNewMessages: {},
-            lastMessageTime: {},
-          };
-        }
-      });
-
-      const batchResults = await Promise.all(batchPromises);
-      usersWithRoomsData.push(...batchResults);
-    }
-
-    setUsersWithRooms(usersWithRoomsData);
-    setLoading(false);
-  };
-
-  fetchAllUserRooms();
-}, [allUsers]);
-
-  // Start message polling
-  // Start message polling
+  // Fetch room data for users (same as main)
   useEffect(() => {
-    if (usersWithRooms.length === 0 ) return;
+    if (allUsers.length === 0) {
+      setUsersWithRooms([]);
+      return;
+    }
+
+    const fetchAllUserRooms = async () => {
+      setLoading(true);
+      const usersWithRoomsData: UserWithRooms[] = [];
+
+      const batchSize = 10;
+      for (let i = 0; i < allUsers.length; i += batchSize) {
+        const batch = allUsers.slice(i, i + batchSize);
+        const batchPromises = batch.map(async (user) => {
+          try {
+            const response = await axios.get(
+              `https://play-os-backend.forgehub.in/human/human/${user.userId}`
+            );
+            const rooms = Array.isArray(response.data)
+              ? response.data
+              : response.data.rooms || [];
+
+            return {
+              user,
+              rooms,
+              hasNewMessages: {},
+              lastMessageTime: {},
+            };
+          } catch (error) {
+            console.error(
+              `Failed to fetch rooms for user ${user.userId}:`,
+              error
+            );
+            return {
+              user,
+              rooms: [],
+              hasNewMessages: {},
+              lastMessageTime: {},
+            };
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        usersWithRoomsData.push(...batchResults);
+      }
+
+      setUsersWithRooms(usersWithRoomsData);
+      setLoading(false);
+    };
+
+    fetchAllUserRooms();
+  }, [allUsers]);
+
+  // Setup always-on connections (modified for date filter)
+  useEffect(() => {
+    if (usersWithRooms.length === 0 || !isFiltersApplied) {
+      // Cleanup if filters not applied
+      const cleanup = async () => {
+        for (const [roomKey, room] of Object.entries(roomConnections.current)) {
+          try {
+            if (room) {
+              if (room.messages?.unsubscribeAll) {
+                await room.messages.unsubscribeAll();
+              } else if (room.messages?.unsubscribe) {
+                room.messages.unsubscribe();
+              }
+              if (room.detach) {
+                await room.detach();
+              }
+              if (room.release) {
+                await room.release();
+              }
+            }
+          } catch (error) {
+            console.error(`Error cleaning up room ${roomKey}:`, error);
+          }
+        }
+        roomConnections.current = {};
+
+        monitoringChatClients.current.forEach((client) => {
+          try {
+            client.realtime.close();
+          } catch (error) {
+            console.error("Error closing monitoring realtime:", error);
+          }
+        });
+        monitoringChatClients.current = [];
+        roomsPerClient.current = [];
+        updateConnectionCount();
+      };
+      cleanup();
+      return;
+    }
 
     const setupAlwaysOnConnections = async () => {
-      // Cleanup existing monitoring clients and rooms
+      // Cleanup existing (to ensure independence)
       for (const [roomKey, room] of Object.entries(roomConnections.current)) {
         try {
           if (room) {
-            // Unsubscribe from all message listeners
             if (room.messages?.unsubscribeAll) {
               await room.messages.unsubscribeAll();
             } else if (room.messages?.unsubscribe) {
               room.messages.unsubscribe();
             }
-
-            // Detach and release room
             if (room.detach) {
               await room.detach();
             }
@@ -643,7 +676,6 @@ useEffect(() => {
       }
       roomConnections.current = {};
 
-      // Close all monitoring realtime connections
       monitoringChatClients.current.forEach((client) => {
         try {
           client.realtime.close();
@@ -654,28 +686,23 @@ useEffect(() => {
       monitoringChatClients.current = [];
       roomsPerClient.current = [];
 
-      // Add a small delay to ensure cleanup is complete
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       for (const userWithRooms of usersWithRooms) {
         for (const room of userWithRooms.rooms) {
           const roomKey = `${room.chatId}`;
 
-          // Skip if room already exists and is connected
           if (roomConnections.current[roomKey]) {
-            console.log(`⏭️ Skipping ${roomKey} - already connected`);
             continue;
           }
 
-          // Find or create a monitoring client with capacity (<150 rooms)
           let clientIndex = roomsPerClient.current.findIndex(
             (count) => count < 100
           );
           if (clientIndex === -1) {
-            // Create new realtime and chat client
             const newRealtime = new Ably.Realtime({
               key: API_KEY,
-              clientId: loggedInUser || "RM_Dashboard",
+              clientId: loggedInUser || "RM_Dashboard_Filtered",
             });
             const newChatClient = new ChatClient(newRealtime, {
               logLevel: LogLevel.Info,
@@ -689,8 +716,6 @@ useEffect(() => {
 
           try {
             const ablyRoom = await chatClient.rooms.get(roomKey);
-
-            // Ensure room is attached before setting up listeners
             if (ablyRoom.status !== "attached") {
               await ablyRoom.attach();
             }
@@ -698,7 +723,6 @@ useEffect(() => {
             roomConnections.current[roomKey] = ablyRoom;
             roomsPerClient.current[clientIndex]++;
 
-            // Initial message check
             const checkInitialMessages = async () => {
               try {
                 const messageHistory = await ablyRoom.messages.history({
@@ -713,19 +737,25 @@ useEffect(() => {
                 messages.forEach((message: any) => {
                   const messageTimestamp =
                     message.createdAt || message.timestamp;
+                  const msgDate = new Date(messageTimestamp);
+
+                  const inRange =
+                    (!fromDateTime || msgDate >= fromDateTime) &&
+                    (!toDateTime || msgDate <= toDateTime);
+
                   if (
                     messageTimestamp &&
-                    new Date(messageTimestamp) > seenByTeamAtDate
+                    msgDate > seenByTeamAtDate &&
+                    inRange
                   ) {
                     hasNew = true;
-                    const msgTime = new Date(messageTimestamp).getTime();
+                    const msgTime = msgDate.getTime();
                     if (msgTime > latestTimestamp) {
                       latestTimestamp = msgTime;
                     }
                   }
                 });
 
-                // Update state for initial check
                 setUsersWithRooms((prev) =>
                   prev.map((uwr) => {
                     if (uwr.user.userId === userWithRooms.user.userId) {
@@ -752,13 +782,11 @@ useEffect(() => {
               }
             };
 
-            // Set up always-on message listener
-            // In RmDashNew, find the always-on connection setup useEffect and replace the messageListener with this:
             const messageListener = (messageEvent: { message: any }) => {
               const message = messageEvent.message || messageEvent;
               const messageTimestamp = message.createdAt || message.timestamp;
+              const msgDate = new Date(messageTimestamp);
 
-              // Get fresh handledAt from current state instead of stale closure
               setUsersWithRooms((prevUsersWithRooms) => {
                 const currentUserWithRooms = prevUsersWithRooms.find(
                   (uwr) => uwr.user.userId === userWithRooms.user.userId
@@ -775,25 +803,16 @@ useEffect(() => {
                   currentRoom.handledAt * 1000
                 );
 
-                console.log("📨 RmDash - New message received:", {
-                  roomKey,
-                  messageTimestamp: new Date(messageTimestamp),
-                  currentHandledAt: currentSeenByTeamAtDate,
-                  isNewer: messageTimestamp
-                    ? new Date(messageTimestamp).getTime() >
-                      currentSeenByTeamAtDate.getTime()
-                    : false,
-                });
+                const inRange =
+                  (!fromDateTime || msgDate >= fromDateTime) &&
+                  (!toDateTime || msgDate <= toDateTime);
 
                 if (
                   messageTimestamp &&
-                  new Date(messageTimestamp) > currentSeenByTeamAtDate
+                  msgDate > currentSeenByTeamAtDate &&
+                  inRange
                 ) {
-                  const msgTime = new Date(messageTimestamp).getTime();
-
-                  console.log(
-                    `🔴 RmDash - Message is newer, updating state for ${roomKey}`
-                  );
+                  const msgTime = msgDate.getTime();
 
                   return prevUsersWithRooms.map((uwr) => {
                     if (uwr.user.userId === userWithRooms.user.userId) {
@@ -820,13 +839,8 @@ useEffect(() => {
               });
             };
 
-            // Subscribe to real-time message events
             ablyRoom.messages.subscribe(messageListener);
-
-            // Perform initial check
             await checkInitialMessages();
-
-            console.log(`✅ Always-on connection established for ${roomKey}`);
             updateConnectionCount();
           } catch (error) {
             console.error(
@@ -840,27 +854,19 @@ useEffect(() => {
 
     setupAlwaysOnConnections();
 
-    // Cleanup on unmount
     return () => {
       const cleanup = async () => {
         for (const [roomKey, room] of Object.entries(roomConnections.current)) {
           try {
             if (room) {
-              console.log(`🧹 Cleaning up ${roomKey}`);
-
-              // Unsubscribe from all message listeners
               if (room.messages?.unsubscribeAll) {
                 await room.messages.unsubscribeAll();
               } else if (room.messages?.unsubscribe) {
                 room.messages.unsubscribe();
               }
-
-              // Detach room connection
               if (room.detach && room.status === "attached") {
                 await room.detach();
               }
-
-              // Release room
               if (room.release) {
                 await room.release();
               }
@@ -872,7 +878,6 @@ useEffect(() => {
         roomConnections.current = {};
         updateConnectionCount();
 
-        // Close all monitoring realtime connections
         monitoringChatClients.current.forEach((client) => {
           try {
             client.realtime.close();
@@ -886,17 +891,32 @@ useEffect(() => {
 
       cleanup();
     };
-  }, [usersWithRooms.length, loggedInType]);
+  }, [usersWithRooms.length, fromDateTime, toDateTime, isFiltersApplied]); // Re-run if dates change
 
   const updateConnectionCount = () => {
     const count = Object.keys(roomConnections.current).length;
     setConnectionCount(count);
   };
 
+  // const applyFilters = () => {
+  //   if (selectedRm !== "all" && hasDatesSet) {
+  //     setIsFiltersApplied(true);
+  //   } else {
+  //     alert("Please select an RM and set both from and to date/time.");
+  //   }
+  // };
+
+const applyFilters = () => {
+  if (selectedRm !== "all" && hasDatesSet) {
+    setIsFiltersApplied(true);
+  } else {
+    alert("Please select an RM and set both from and to date/time.");
+  }
+};
+
   const getUsersForColumn = (roomType: string) => {
     return usersWithRooms
       .filter((uwr) => {
-        // Only show users who have new messages in this specific room type
         const hasNewMessagesInThisRoom = uwr.hasNewMessages[roomType] || false;
         const hasRoomOfThisType = uwr.rooms.some(
           (room) => room.roomType === roomType
@@ -905,12 +925,11 @@ useEffect(() => {
         return hasRoomOfThisType && hasNewMessagesInThisRoom;
       })
       .sort((a, b) => {
-        // Sort by latest message time
         const aTime = a.lastMessageTime[roomType] || 0;
         const bTime = b.lastMessageTime[roomType] || 0;
         return bTime - aTime;
       })
-      .slice(0, 100); // Ensure we never show more than 10 users per column
+      .slice(0, 100);
   };
 
   const handleChatOpen = (
@@ -918,10 +937,8 @@ useEffect(() => {
     roomType: string,
     userName: string
   ) => {
-    // Close any existing chat
     setOpenChat(null);
 
-    // Find the room
     const userWithRooms = usersWithRooms.find(
       (uwr) => uwr.user.userId === userId
     );
@@ -933,9 +950,7 @@ useEffect(() => {
     }
   };
 
-  // Replace the existing handleChatSave function in RmDashNew with this:
   const handleChatSave = async (comment: any) => {
-    console.log("save is being called!");
     setHandleChatModal({
       isOpen: false,
       userId: "",
@@ -944,7 +959,6 @@ useEffect(() => {
     });
     setOpenChat(null);
     try {
-      // Call the patch API to mark chat as handled
       await axios.patch(
         "https://play-os-backend.forgehub.in/human/human/mark-seen",
         {
@@ -955,15 +969,6 @@ useEffect(() => {
         }
       );
 
-      // Close the handle chat modal
-      setHandleChatModal({
-        isOpen: false,
-        userId: "",
-        roomType: "",
-        userName: "",
-      });
-
-      // Keep the working setInterval logic
       setInterval(async () => {
         await refreshUserRoomDataAndRecalculate(
           handleChatModal.userId,
@@ -975,38 +980,32 @@ useEffect(() => {
     }
   };
 
-  // Add debounced refresh for handled chats
   const debouncedRefresh = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
   const scheduleRefresh = useCallback((userId: string, roomType: string) => {
     const key = `${userId}-${roomType}`;
 
-    // Clear existing timeout
     if (debouncedRefresh.current[key]) {
       clearTimeout(debouncedRefresh.current[key]);
     }
 
-    // Schedule refresh after 5 seconds
     debouncedRefresh.current[key] = setTimeout(() => {
       refreshUserRoomDataAndRecalculate(userId, roomType);
       delete debouncedRefresh.current[key];
     }, 3000);
   }, []);
 
-  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       Object.values(debouncedRefresh.current).forEach(clearTimeout);
     };
   }, []);
 
-  // Replace the existing refreshUserRoomData function with this enhanced version:
   const refreshUserRoomDataAndRecalculate = async (
     userId: string,
     roomType: string
   ) => {
     try {
-      // Fetch updated room data for the specific user
       const response = await axios.get(
         `https://play-os-backend.forgehub.in/human/human/${userId}`
       );
@@ -1014,7 +1013,6 @@ useEffect(() => {
         ? response.data
         : response.data.rooms || [];
 
-      // Find the updated room with new handledAt
       const updatedRoom = updatedRooms.find(
         (room: { roomType: any }) => room.roomType === roomType
       );
@@ -1023,7 +1021,6 @@ useEffect(() => {
         return;
       }
 
-      // Recalculate messages with updated handledAt
       const roomKey = `${updatedRoom.chatId}`;
       const roomConnection = roomConnections.current[roomKey];
 
@@ -1040,23 +1037,21 @@ useEffect(() => {
 
           messages.forEach((message: { createdAt: any; timestamp: any }) => {
             const messageTimestamp = message.createdAt || message.timestamp;
-            if (
-              messageTimestamp &&
-              new Date(messageTimestamp) > newSeenByTeamAtDate
-            ) {
+            const msgDate = new Date(messageTimestamp);
+
+            const inRange =
+              (!fromDateTime || msgDate >= fromDateTime) &&
+              (!toDateTime || msgDate <= toDateTime);
+
+            if (messageTimestamp && msgDate > newSeenByTeamAtDate && inRange) {
               hasNew = true;
-              const msgTime = new Date(messageTimestamp).getTime();
+              const msgTime = msgDate.getTime();
               if (msgTime > latestTimestamp) {
                 latestTimestamp = msgTime;
               }
             }
           });
 
-          console.log(
-            `🔄 Recalculated for ${roomKey}: hasNew=${hasNew}, count=${messages.length}`
-          );
-
-          // Use functional update with a stable key to prevent re-rendering flicker
           setUsersWithRooms((prev) => {
             const userIndex = prev.findIndex(
               (uwr) => uwr.user.userId === userId
@@ -1077,76 +1072,58 @@ useEffect(() => {
               },
             };
 
-            // Only update if there's actually a change to prevent unnecessary re-renders
             const hasMessagesChanged =
               currentUser.hasNewMessages[roomType] !== hasNew;
             const hasTimeChanged =
               currentUser.lastMessageTime[roomType] !== latestTimestamp;
 
             if (!hasMessagesChanged && !hasTimeChanged) {
-              return prev; // No change, return same reference
+              return prev;
             }
 
-            // Create new array with updated user at same position
             const newArray = [...prev];
             newArray[userIndex] = updatedUser;
             return newArray;
           });
-
-          console.log(
-            `✅ Successfully recalculated messages for user ${userId}, room ${roomType}, hasNew: ${hasNew}`
-          );
         } catch (error) {
           console.error(
             `Failed to recalculate messages for ${roomKey}:`,
             error
           );
         }
-      } else {
-        console.warn(`No room connection found for ${roomKey}`);
       }
     } catch (error) {
       console.error(`Failed to refresh room data for user ${userId}:`, error);
     }
   };
 
+  // Add this useEffect for search functionality:
   useEffect(() => {
     if (searchQuery) {
       const filtered = allUsers.filter((u) =>
         u.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
-      setFilteredUsers(filtered);
+      setFilteredUsersForSearch(filtered);
     } else {
-      setFilteredUsers([]);
+      setFilteredUsersForSearch([]);
     }
   }, [searchQuery, allUsers]);
 
-
-
-useEffect(() => {
-  if (loggedInType === "RM" && loggedInUserId && rms.length > 0) {
-    setSelectedRm(loggedInUserId);
-    // setShowFilteredView(true);
+  useEffect(() => {
+  if (initialApply && selectedRm !== "all" && hasDatesSet) {
+    setIsFiltersApplied(true);
   }
-}, [loggedInType, loggedInUserId, rms]);
+}, [initialApply, selectedRm, hasDatesSet]);
 
+  // if (loading) {
+  //   return (
+  //     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+  //       <div className="text-xl text-gray-600">Loading filtered dashboard...</div>
+  //     </div>
+  //   );
+  // }
 
-// In RmDashNew3, add this useEffect after the existing useEffects:
-useEffect(() => {
-  if (loggedInType === "RM") {
-    setLoading(false);
-  }
-}, [loggedInType]);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-        <div className="text-xl text-gray-600">Loading dashboard...</div>
-      </div>
-    );
-  }
-
-return (
+  return (
     <AblyProvider client={realtimeClient}>
       <ChatClientProvider client={chatClient}>
         {selectedUser ? (
@@ -1155,26 +1132,27 @@ return (
             userName={selectedUser.name}
             onBack={() => setSelectedUser(null)}
           />
-        ) : showFilteredView ? (
-          <FilteredDashboard 
-            onBack={() => setShowFilteredView(false)} 
-            initialSelectedRm={selectedRm}
-            initialFromDate={fromDate}
-            initialFromTime={fromTime}
-            initialToDate={toDate}
-            initialToTime={toTime}
-            initialApply={true} // Auto-apply on show
-          />
         ) : (
           <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
             <div className="max-w-7xl mx-auto">
-              {/* Header */}
+              {/* Filtered Header */}
               <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                  RM Dashboard
-                </h1>
-                <p className="text-gray-600">Chat monitoring and management</p>
-                <div className="flex items-center justify-center space-x-4 text-sm text-gray-500">
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={onBack}
+                    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center space-x-2"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    <span>Back</span>
+                  </button>
+                  <h1 className="text-4xl font-bold text-gray-800">
+                    Filtered RM Dashboard
+                  </h1>
+                  <div className="w-24" />{" "}
+                  {/* Spacer replaced with fixed-width div */}
+                </div>
+                <p className="text-gray-600 mt-2">Filtered chat monitoring</p>
+                <div className="flex items-center justify-center space-x-4 text-sm text-gray-500 mt-2">
                   <span>
                     Monitoring {usersWithRooms.length} users across 5 room types
                   </span>
@@ -1182,7 +1160,89 @@ return (
                     🔗 {connectionCount} Live Connections
                   </span>
                 </div>
-                {/* New: Filters UI instead of button */}
+
+                {/* Search Bar */}
+                <div className="mt-6 relative max-w-lg mx-auto">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <svg
+                        className="h-5 w-5 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search user by name..."
+                      className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all text-sm"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setFilteredUsersForSearch([]);
+                        }}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                      >
+                        <svg
+                          className="h-5 w-5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                  {filteredUsersForSearch.length > 0 && (
+                    <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-80 overflow-y-auto divide-y divide-gray-100">
+                      {filteredUsersForSearch.map((user) => (
+                        <div
+                          key={user.userId}
+                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors flex items-center space-x-3"
+                          onClick={() => {
+                            setSelectedUser({
+                              userId: user.userId,
+                              name: user.name,
+                            });
+                            setSearchQuery("");
+                            setFilteredUsersForSearch([]);
+                          }}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
+                            {user.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {user.name}
+                            </p>
+                            <p className="text-xs text-gray-500 truncate">
+                              {user.userId}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Filters */}
                 <div className="mt-6 flex justify-center space-x-4 items-end">
                   <select
                     value={selectedRm}
@@ -1229,106 +1289,35 @@ return (
                     className="border rounded px-3 py-2"
                   />
                   <button
-  onClick={() => setShowFilteredView(true)}
-  disabled={selectedRm === "all" || !fromDate || !fromTime || !toDate || !toTime}
-  className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ${(selectedRm === "all" || !fromDate || !fromTime || !toDate || !toTime) ? 'opacity-50 cursor-not-allowed' : ''}`}
->
-  Apply Filter
-</button>
+                    onClick={applyFilters}
+                    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  >
+                    Apply Filter
+                  </button>
                 </div>
-                {/* Search Bar */}
-                <div className="mt-6 relative max-w-lg mx-auto">
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <svg
-                        className="h-5 w-5 text-gray-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search user by name..."
-                      className="w-full pl-10 pr-10 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all text-sm"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => {
-                          setSearchQuery('');
-                          setFilteredUsers([]);
-                        }}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                      >
-                        <svg
-                          className="h-5 w-5"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M6 18L18 6M6 6l12 12"
-                          />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                  {filteredUsers.length > 0 && (
-                    <div className="absolute z-10 w-full bg-white border border-gray-200 rounded-xl shadow-xl mt-2 max-h-80 overflow-y-auto divide-y divide-gray-100">
-                      {filteredUsers.map((user) => (
-                        <div
-                          key={user.userId}
-                          className="px-4 py-3 hover:bg-blue-50 cursor-pointer transition-colors flex items-center space-x-3"
-                          onClick={() => {
-                            setSelectedUser({
-                              userId: user.userId,
-                              name: user.name,
-                            });
-                            setSearchQuery('');
-                            setFilteredUsers([]);
-                          }}
-                        >
-                          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium text-sm">
-                            {user.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
-                              {user.name}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">
-                              {user.userId}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {!hasDatesSet && selectedRm !== "all" && (
+                  <p className="text-red-500 mt-2">
+                    Please select from and to date/time (compulsory for
+                    filtering).
+                  </p>
+                )}
               </div>
 
               {/* Columns Grid */}
               <div className="grid grid-cols-5 gap-6">
                 {columns.map((column) => {
-                  const usersInColumn = getUsersForColumn(column.type);
+                  const usersInColumn = isFiltersApplied
+                    ? getUsersForColumn(column.type)
+                    : [];
 
                   return (
                     <div
                       key={column.type}
                       className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden"
                     >
-                      <div className={`p-3 ${getColumnHeaderStyle(column.type)}`}>
+                      <div
+                        className={`p-3 ${getColumnHeaderStyle(column.type)}`}
+                      >
                         <div className="flex items-center justify-center space-x-2">
                           {column.icon}
                           <h2 className="text-lg font-bold">{column.title}</h2>
@@ -1339,14 +1328,19 @@ return (
                       </div>
 
                       <div className="max-h-96 overflow-y-auto">
-                        {usersInColumn.length === 0 ? (
+                        {!isFiltersApplied ? (
+                          <div className="p-4 text-center text-gray-500">
+                            Select RM and set dates to view users
+                          </div>
+                        ) : usersInColumn.length === 0 ? (
                           <div className="p-4 text-center text-gray-500">
                             No users in this category
                           </div>
                         ) : (
                           usersInColumn.slice(0, 50).map((userWithRooms) => {
                             const hasNewMessages =
-                              userWithRooms.hasNewMessages[column.type] || false;
+                              userWithRooms.hasNewMessages[column.type] ||
+                              false;
 
                             return (
                               <div
@@ -1413,9 +1407,9 @@ return (
                 onClose={() => {
                   setHandleChatModal({
                     isOpen: false,
-                    userId: '',
-                    roomType: '',
-                    userName: '',
+                    userId: "",
+                    roomType: "",
+                    userName: "",
                   });
                 }}
                 onSave={handleChatSave}
@@ -1429,49 +1423,4 @@ return (
   );
 };
 
-export default RmDashNew3;
-// git stash
-// git recommit
-
-//0
-// :
-// _L
-// action
-// :
-// "message.create"
-// clientId
-// :
-// "USER_PTUW42"
-// createdAt
-// :
-// Mon Aug 25 2025 15:15:19 GMT+0530 (India Standard Time) {}
-// headers
-// :
-// {}
-// metadata
-// :
-// {}
-// operation
-// :
-// undefined
-// reactions
-// :
-// {unique: {…}, distinct: {…}, multiple: {…}}
-// serial
-// :
-// "01756115119858-000@e7dAafwrgBsp1V84990705:000"
-// text
-// :
-// "fitness"
-// timestamp
-// :
-// Mon Aug 25 2025 15:15:19 GMT+0530 (India Standard Time) {}
-// version
-// :
-// "01756115119858-000@e7dAafwrgBsp1V84990705:000"
-// deletedAt
-// :
-// (...)
-// deletedBy
-// :
-// (...)
+export default FilteredDashboard;

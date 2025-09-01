@@ -355,12 +355,21 @@ console.log(
             )
             .map((msg: Message, idx) => {
               const isMine = msg.clientId === getClientId();
-              const timestamp = msg.timestamp
-                ? new Date(msg.timestamp).toLocaleTimeString([], {
+              const date = new Date(msg.timestamp || msg.createdAt || 0);
+
+                  const day = date.getDate(); // 25
+                  const month = date.toLocaleString("en-US", {
+                    month: "short",
+                  }); // Aug
+
+                  const time = date.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
-                  })
-                : "";
+                  });
+
+                  const timestamp = `${day} ${month} - ${time}`;
+
+                  
 
               // Avatar (static or with msg.avatarUrl if you have per-user photo)
               const avatarUrl =

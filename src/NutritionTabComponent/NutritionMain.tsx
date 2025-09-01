@@ -347,13 +347,21 @@ const ChatBox = ({
                 idx: any
               ) => {
                 const isMine = msg.clientId === currentClientId;
-                const timestamp = new Date(msg.timestamp).toLocaleTimeString(
-                  [],
-                  {
+                const date = new Date(msg.timestamp);
+
+                  const day = date.getDate(); // 25
+                  const month = date.toLocaleString("en-US", {
+                    month: "short",
+                  }); // Aug
+
+                  const time = date.toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
-                  }
-                );
+                  });
+
+                  const timestamp = `${day} ${month} - ${time}`;
+
+                  console.log(timestamp);
                 const displayName = clientNames[msg.clientId] || msg.clientId;
 
                 return (
