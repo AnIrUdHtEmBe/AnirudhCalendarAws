@@ -1227,56 +1227,58 @@ const CellGridLatestP3 = () => {
     return blockedMap;
   };
 
-  const fetchBookingsAndBlocked = async (date: Date) => {
-    if (filteredCourtId.length === 0) return;
+const fetchBookingsAndBlocked = async (date: Date) => {
+  if (filteredCourtId.length === 0) return;
 
-    setIsLoadingBookings(true);
-    setLoadingScreen(true);
-    setTimeout(() => {
-      setLoadingScreen(false);
-    }, 1300);
-    const dateStr = date.toISOString().split("T")[0];
+  setIsLoadingBookings(true);
+  setLoadingScreen(true);
+  setTimeout(() => {
+    setLoadingScreen(false);
+  }, 1300);
+  const dateStr = date.toISOString().split("T")[0];
 
-    try {
-      const [bookingData, newBlocked] = await Promise.all([
-        fetchBukings(dateStr),
-        fetchBlockedSlots(dateStr),
-      ]);
+  try {
+    const [bookingData, newBlocked] = await Promise.all([
+      fetchBukings(dateStr),
+      fetchBlockedSlots(dateStr),
+    ]);
 
-      // Destructure the returned object
-      const { bookingsMap, cancelledBookingsMap, bookBookingsMap } =
-        bookingData;
+    // Destructure the returned object
+    const { bookingsMap, cancelledBookingsMap, bookBookingsMap } =
+      bookingData;
 
-      // console.log(newBlocked, "newBlocked");
-      // console.log("All Bookings:", bookingsMap);
-      // console.log("Cancelled Bookings:", cancelledBookingsMap);
+    // console.log(newBlocked, "newBlocked");
+    // console.log("All Bookings:", bookingsMap);
+    // console.log("Cancelled Bookings:", cancelledBookingsMap);
 
-      setBookings(bookingsMap);
-      updateGridWithBookings(
-        filteredCourtId,
-        bookingsMap,
-        newBlocked,
-        cancelledBookingsMap,
-        bookBookingsMap,
-        date
-      );
+    setBookings(bookingsMap);
+    updateGridWithBookings(
+      filteredCourtId,
+      bookingsMap,
+      newBlocked,
+      cancelledBookingsMap,
+      bookBookingsMap,
+      date
+    );
 
-      await calculateBookingSpans(filteredCourtId, date);
+    await calculateBookingSpans(filteredCourtId, date);
 
-      // Clear any cached cell details to force refresh
-      setSelectedCellDetails({
-        courtDetails: null,
-        bookings: [],
-        gameName: "",
-        availableSports: [],
-        currentBooking: null,
-      });
-    } catch (error) {
-      // console.error("Failed to fetch bookings and blocked slots:", error);
-    } finally {
-      setIsLoadingBookings(false);
-    }
-  };
+    // Clear any cached cell details to force refresh
+    setSelectedCellDetails({
+      courtDetails: null,
+      bookings: [],
+      gameName: "",
+      availableSports: [],
+      currentBooking: null,
+    });
+
+    await fetchSlotsForCourts();
+  } catch (error) {
+    // console.error("Failed to fetch bookings and blocked slots:", error);
+  } finally {
+    setIsLoadingBookings(false);
+  }
+};
 
   // Fetch bookings when courts or date changes
   useEffect(() => {
@@ -1743,337 +1745,425 @@ const CellGridLatestP3 = () => {
   }
 
   // Modify applyAction to handle multiple selected cells for booking
-  const applyAction = async (action: CellState) => {
-    if (selected.length === 0) return;
+const applyAction = async (action: CellState) => {
+  if (selected.length === 0) return;
 
-    if (
-      action === "occupied" ||
-      action === "blocked" ||
-      action === "unblock" ||
-      action === "unbook" ||
-      action === "booking"
-    ) {
+  if (
+    action === "occupied" ||
+    action === "blocked" ||
+    action === "unblock" ||
+    action === "unbook" ||
+    action === "booking"
+  ) {
+    // if (!selectedSportId) {
+    //   alert("Please select a sport first");
+    //   return;
+    // }
+
+    if (action === "blocked") {
+      // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
+      const rowsSet = new Set(selected.map(([r]) => r));
+      if (rowsSet.size > 1) {
+        showToast(
+          "Please select cells in the same court (row) for blocking."
+        );
+        return;
+      }
+
+      const [row] = selected[0];
+      const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
+
+      // Validate consecutive columns
+      for (let i = 1; i < colsSelected.length; i++) {
+        if (colsSelected[i] !== colsSelected[i - 1] + 1) {
+          showToast("Please select consecutive time slots for blocking.");
+          return;
+        }
+      }
+
+      // Find the slotId for this court and selected time range from courtSlots state
+      const courtSlotsForCourt =
+        courtSlots[getFilteredCourtByIndex(row).courtId] || [];
+      let matchedSlot: any = null;
+
+      // Calculate start and end time of selected cells
+      const firstCol = colsSelected[0];
+      const lastCol = colsSelected[colsSelected.length - 1];
+      const startHour = Math.floor(firstCol / 2);
+      const startMinute = firstCol % 2 === 0 ? 0 : 30;
+      const endHour = Math.floor(lastCol / 2);
+      const endMinute = lastCol % 2 === 0 ? 0 : 30;
+      const startTime = new Date(currentDate);
+      startTime.setHours(startHour, startMinute, 0, 0);
+      const endTime = new Date(currentDate);
+      endTime.setHours(endHour, endMinute, 0, 0);
+      endTime.setTime(endTime.getTime() + 30 * 60 * 1000); // add 30 mins
+
+      const overlappingSlots = courtSlotsForCourt.filter((slot) => {
+        const slotStart = new Date(slot.startTime).getTime();
+        const slotEnd = new Date(slot.endTime).getTime();
+
+        return slotStart < endTime.getTime() && slotEnd > startTime.getTime();
+      });
+
+      if (overlappingSlots.length === 0) {
+        showToast("No matching slot found for selected cells.");
+        return;
+      }
+      // console.log("overlapping slots", overlappingSlots);
+
+      // PATCH request to update timeslot as blocked
+      try {
+        await Promise.all(
+          overlappingSlots.map((slot) =>
+            axios.post(
+              `${API_BASE_URL_Latest}/court/courts/${slot.courtId}/timeslots/action`,
+              {
+                startTime: Math.floor(
+                  new Date(slot.startTime).getTime() / 1000
+                ),
+                endTime: Math.floor(new Date(slot.endTime).getTime() / 1000),
+
+                action: "BLOCK",
+              }
+            )
+          )
+        );
+        showToast("Slots successfully blocked.");
+
+        await fetchBookingsAndBlocked(currentDate);
+
+        setSelected([]);
+        setSelectedSportId("");
+      } catch (error) {
+        // console.error("Failed to block slots:", error);
+        showToast("Failed to block slots. Please try again.");
+      }
+    } else if (action === "booking") {
       // if (!selectedSportId) {
-      //   alert("Please select a sport first");
+      //   showToast("Please select a sport first");
       //   return;
       // }
+      const rowsSet = new Set(selected.map(([r]) => r));
+      if (rowsSet.size > 1) {
+        showToast("Please select cells in the same court (row) for booking.");
+        return;
+      }
 
-      if (action === "blocked") {
-        // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
-        const rowsSet = new Set(selected.map(([r]) => r));
-        if (rowsSet.size > 1) {
-          showToast(
-            "Please select cells in the same court (row) for blocking."
-          );
+      const [row] = selected[0];
+      const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
+
+      // Validate consecutive columns
+      for (let i = 1; i < colsSelected.length; i++) {
+        if (colsSelected[i] !== colsSelected[i - 1] + 1) {
+          showToast("Please select consecutive time slots for booking.");
           return;
         }
+      }
 
-        const [row] = selected[0];
-        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
+      // Calculate startTime from first selected cell
+      const firstCol = colsSelected[0];
+      const hour = Math.floor(firstCol / 2);
+      const minute = firstCol % 2 === 0 ? 0 : 30;
+      const startTime = new Date(currentDate);
+      startTime.setHours(hour, minute, 0, 0);
 
-        // Validate consecutive columns
-        for (let i = 1; i < colsSelected.length; i++) {
-          if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            showToast("Please select consecutive time slots for blocking.");
-            return;
-          }
-        }
+      // Calculate endTime from last selected cell + 30 minutes
+      const lastCol = colsSelected[colsSelected.length - 1];
+      const endHour = Math.floor(lastCol / 2);
+      const endMinute = lastCol % 2 === 0 ? 0 : 30;
+      const endTime = new Date(currentDate);
+      endTime.setHours(endHour, endMinute, 0, 0);
+      endTime.setTime(endTime.getTime() + 30 * 60 * 1000);
+      const userId = getUserNameFromToken();
+      const bookingData = {
+        type: "booking",
+        courtId: getFilteredCourtByIndex(row).courtId,
+        bookedBy: userId,
+        sportId: "",
+        startTime: toLocalISOString(startTime),
+        endTime: toLocalISOString(endTime),
+        status: "active",
+        joinedUsers: [],
+        scheduledPlayers: [""],
+        priceType: "",
+        rackPrice: 0,
+        quotePrice: 0,
+        capacity: 10,
+        st_unix: Math.floor(startTime.getTime() / 1000),
+        et_unix: Math.floor(endTime.getTime() / 1000),
+      };
 
-        // Find the slotId for this court and selected time range from courtSlots state
-        const courtSlotsForCourt =
-          courtSlots[getFilteredCourtByIndex(row).courtId] || [];
-        let matchedSlot: any = null;
+      try {
+        const response = await axios.post(
+          `${API_BASE_URL_Latest}/court/${bookingData.courtId}/bookings/create`,
+          bookingData
+        );
+        showToast("Slots successfully booked.");
 
-        // Calculate start and end time of selected cells
-        const firstCol = colsSelected[0];
-        const lastCol = colsSelected[colsSelected.length - 1];
-        const startHour = Math.floor(firstCol / 2);
-        const startMinute = firstCol % 2 === 0 ? 0 : 30;
-        const endHour = Math.floor(lastCol / 2);
-        const endMinute = lastCol % 2 === 0 ? 0 : 30;
-        const startTime = new Date(currentDate);
-        startTime.setHours(startHour, startMinute, 0, 0);
-        const endTime = new Date(currentDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        endTime.setTime(endTime.getTime() + 30 * 60 * 1000); // add 30 mins
+        // Refresh bookings after successful creation
+        await fetchBookingsAndBlocked(currentDate);
+        console.log("booking create response", response);
 
-        const overlappingSlots = courtSlotsForCourt.filter((slot) => {
-          const slotStart = new Date(slot.startTime).getTime();
-          const slotEnd = new Date(slot.endTime).getTime();
+        // Clear selection and reset sport
+        setSelected([]);
+        setSelectedSportId("");
+      } catch (error) {
+        console.error("Failed to create booking:", error);
+        showToast("Failed to create booking. Please try again.");
+      }
+    } else if (action === "unblock") {
+      // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
+      const rowsSet = new Set(selected.map(([r]) => r));
+      if (rowsSet.size > 1) {
+        showToast(
+          "Please select cells in the same court (row) for blocking."
+        );
+        return;
+      }
 
-          return slotStart < endTime.getTime() && slotEnd > startTime.getTime();
-        });
+      const [row] = selected[0];
+      const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
 
-        if (overlappingSlots.length === 0) {
-          showToast("No matching slot found for selected cells.");
+      // Validate consecutive columns
+      for (let i = 1; i < colsSelected.length; i++) {
+        if (colsSelected[i] !== colsSelected[i - 1] + 1) {
+          showToast("Please select consecutive time slots for blocking.");
           return;
         }
-        // console.log("overlapping slots", overlappingSlots);
+      }
 
-        // PATCH request to update timeslot as blocked
-        try {
-          await Promise.all(
-            overlappingSlots.map((slot) =>
-              axios.post(
-                `${API_BASE_URL_Latest}/court/courts/${slot.courtId}/timeslots/action`,
-                {
-                  startTime: Math.floor(
-                    new Date(slot.startTime).getTime() / 1000
-                  ),
-                  endTime: Math.floor(new Date(slot.endTime).getTime() / 1000),
+      // Find the slotId for this court and selected time range from courtSlots state
+      const courtSlotsForCourt =
+        courtSlots[getFilteredCourtByIndex(row).courtId] || [];
+      let matchedSlot: any = null;
 
-                  action: "BLOCK",
-                }
-              )
+      // Calculate start and end time of selected cells
+      const firstCol = colsSelected[0];
+      const lastCol = colsSelected[colsSelected.length - 1];
+      const startHour = Math.floor(firstCol / 2);
+      const startMinute = firstCol % 2 === 0 ? 0 : 30;
+      const endHour = Math.floor(lastCol / 2);
+      const endMinute = lastCol % 2 === 0 ? 0 : 30;
+      const startTime = new Date(currentDate);
+      startTime.setHours(startHour, startMinute, 0, 0);
+      const endTime = new Date(currentDate);
+      endTime.setHours(endHour, endMinute, 0, 0);
+      endTime.setTime(endTime.getTime() + 30 * 60 * 1000); // add 30 mins
+
+      const overlappingSlots = courtSlotsForCourt.filter((slot) => {
+        const slotStart = new Date(slot.startTime).getTime();
+        const slotEnd = new Date(slot.endTime).getTime();
+
+        return slotStart < endTime.getTime() && slotEnd > startTime.getTime();
+      });
+
+      if (overlappingSlots.length === 0) {
+        showToast("No matching slot found for selected cells.");
+        return;
+      }
+
+      // PATCH request to update timeslot as blocked
+      try {
+        await Promise.all(
+          overlappingSlots.map((slot) =>
+            axios.post(
+              `${API_BASE_URL_Latest}/court/courts/${slot.courtId}/timeslots/action`,
+              {
+                startTime: Math.floor(
+                  new Date(slot.startTime).getTime() / 1000
+                ),
+                endTime: Math.floor(new Date(slot.endTime).getTime() / 1000),
+
+                action: "UNBLOCK",
+              }
             )
-          );
-          showToast("Slots successfully blocked.");
+          )
+        );
+        showToast("Slots successfully cancelled.");
 
-          await fetchBookingsAndBlocked(currentDate);
-
-          setSelected([]);
-          setSelectedSportId("");
-        } catch (error) {
-          // console.error("Failed to block slots:", error);
-          showToast("Failed to block slots. Please try again.");
-        }
-      } else if (action === "booking") {
-        // if (!selectedSportId) {
-        //   showToast("Please select a sport first");
-        //   return;
-        // }
-        const rowsSet = new Set(selected.map(([r]) => r));
-        if (rowsSet.size > 1) {
-          showToast("Please select cells in the same court (row) for booking.");
-          return;
-        }
-
-        const [row] = selected[0];
-        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
-
-        // Validate consecutive columns
-        for (let i = 1; i < colsSelected.length; i++) {
-          if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            showToast("Please select consecutive time slots for booking.");
-            return;
-          }
-        }
-
-        // Calculate startTime from first selected cell
-        const firstCol = colsSelected[0];
-        const hour = Math.floor(firstCol / 2);
-        const minute = firstCol % 2 === 0 ? 0 : 30;
-        const startTime = new Date(currentDate);
-        startTime.setHours(hour, minute, 0, 0);
-
-        // Calculate endTime from last selected cell + 30 minutes
-        const lastCol = colsSelected[colsSelected.length - 1];
-        const endHour = Math.floor(lastCol / 2);
-        const endMinute = lastCol % 2 === 0 ? 0 : 30;
-        const endTime = new Date(currentDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        endTime.setTime(endTime.getTime() + 30 * 60 * 1000);
-        const userId = getUserNameFromToken();
-        const bookingData = {
-          type: "booking",
-          courtId: getFilteredCourtByIndex(row).courtId,
-          bookedBy: userId,
-          sportId: "",
-          startTime: toLocalISOString(startTime),
-          endTime: toLocalISOString(endTime),
-          status: "active",
-          joinedUsers: [],
-          scheduledPlayers: [""],
-          priceType: "",
-          rackPrice: 0,
-          quotePrice: 0,
-          capacity: 10,
-          st_unix: Math.floor(startTime.getTime() / 1000),
-          et_unix: Math.floor(endTime.getTime() / 1000),
-        };
-
-        try {
-          const response = await axios.post(
-            `${API_BASE_URL_Latest}/court/${bookingData.courtId}/bookings/create`,
-            bookingData
-          );
-          showToast("Slots successfully booked.");
-
-          // Refresh bookings after successful creation
-          await fetchBookingsAndBlocked(currentDate);
-          console.log("booking create response", response);
-
-          // Clear selection and reset sport
-          setSelected([]);
-          setSelectedSportId("");
-        } catch (error) {
-          console.error("Failed to create booking:", error);
-          showToast("Failed to create booking. Please try again.");
-        }
-      } else if (action === "unblock") {
-        // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
-        const rowsSet = new Set(selected.map(([r]) => r));
-        if (rowsSet.size > 1) {
-          showToast(
-            "Please select cells in the same court (row) for blocking."
-          );
-          return;
-        }
-
-        const [row] = selected[0];
-        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
-
-        // Validate consecutive columns
-        for (let i = 1; i < colsSelected.length; i++) {
-          if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            showToast("Please select consecutive time slots for blocking.");
-            return;
-          }
-        }
-
-        // Find the slotId for this court and selected time range from courtSlots state
-        const courtSlotsForCourt =
-          courtSlots[getFilteredCourtByIndex(row).courtId] || [];
-        let matchedSlot: any = null;
-
-        // Calculate start and end time of selected cells
-        const firstCol = colsSelected[0];
-        const lastCol = colsSelected[colsSelected.length - 1];
-        const startHour = Math.floor(firstCol / 2);
-        const startMinute = firstCol % 2 === 0 ? 0 : 30;
-        const endHour = Math.floor(lastCol / 2);
-        const endMinute = lastCol % 2 === 0 ? 0 : 30;
-        const startTime = new Date(currentDate);
-        startTime.setHours(startHour, startMinute, 0, 0);
-        const endTime = new Date(currentDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        endTime.setTime(endTime.getTime() + 30 * 60 * 1000); // add 30 mins
-
-        const overlappingSlots = courtSlotsForCourt.filter((slot) => {
-          const slotStart = new Date(slot.startTime).getTime();
-          const slotEnd = new Date(slot.endTime).getTime();
-
-          return slotStart < endTime.getTime() && slotEnd > startTime.getTime();
+        // Update local grid immediately for all affected cells
+        setGrid((prev) => {
+          const newG = prev.map((r) => [...r]);
+          colsSelected.forEach((c) => {
+            newG[row][c] = "available";
+          });
+          return newG;
         });
 
-        if (overlappingSlots.length === 0) {
-          showToast("No matching slot found for selected cells.");
-          return;
-        }
-
-        // PATCH request to update timeslot as blocked
-        try {
-          await Promise.all(
-            overlappingSlots.map((slot) =>
-              axios.post(
-                `${API_BASE_URL_Latest}/court/courts/${slot.courtId}/timeslots/action`,
-                {
-                  startTime: Math.floor(
-                    new Date(slot.startTime).getTime() / 1000
-                  ),
-                  endTime: Math.floor(new Date(slot.endTime).getTime() / 1000),
-
-                  action: "UNBLOCK",
-                }
+        // Update bookingSpans to remove the unblocked span
+        setBookingSpans((prev) => {
+          const newSpans = { ...prev };
+          newSpans[`${row}`] = newSpans[`${row}`].filter(
+            (span) =>
+              !(
+                span.startCol <= Math.min(...colsSelected) &&
+                span.endCol >= Math.max(...colsSelected)
               )
-            )
           );
-          showToast("Slots successfully cancelled.");
-
-          await fetchBookingsAndBlocked(currentDate);
-
-          setSelected([]);
-          setSelectedSportId("");
-        } catch (error) {
-          // console.error("Failed to cancel slots:", error);
-          showToast("Failed to cancel slots. Please try again.");
-        }
-      } else if (action === "unbook") {
-        // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
-        const rowsSet = new Set(selected.map(([r]) => r));
-        if (rowsSet.size > 1) {
-          showToast(
-            "Please select cells in the same court (row) for blocking."
-          );
-          return;
-        }
-
-        const [row] = selected[0];
-        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
-
-        // Validate consecutive columns
-        for (let i = 1; i < colsSelected.length; i++) {
-          if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            showToast("Please select consecutive time slots for blocking.");
-            return;
-          }
-        }
-
-        // Find the slotId for this court and selected time range from courtSlots state
-        const courtSlotsForCourt =
-          courtSlots[getFilteredCourtByIndex(row).courtId] || [];
-        let matchedSlot: any = null;
-
-        // Calculate start and end time of selected cells
-        const firstCol = colsSelected[0];
-        const lastCol = colsSelected[colsSelected.length - 1];
-        const startHour = Math.floor(firstCol / 2);
-        const startMinute = firstCol % 2 === 0 ? 0 : 30;
-        const endHour = Math.floor(lastCol / 2);
-        const endMinute = lastCol % 2 === 0 ? 0 : 30;
-        const startTime = new Date(currentDate);
-        startTime.setHours(startHour, startMinute, 0, 0);
-        const endTime = new Date(currentDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        endTime.setTime(endTime.getTime() + 30 * 60 * 1000); // add 30 mins
-
-        const overlappingSlots = courtSlotsForCourt.filter((slot) => {
-          const slotStart = new Date(slot.startTime).getTime();
-          const slotEnd = new Date(slot.endTime).getTime();
-
-          return slotStart < endTime.getTime() && slotEnd > startTime.getTime();
+          return newSpans;
         });
 
-        if (overlappingSlots.length === 0) {
-          showToast("No matching slot found for selected cells.");
+        // Small delay to allow backend propagation
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        await fetchBookingsAndBlocked(currentDate);
+
+        setSelected([]);
+        setSelectedSportId("");
+      } catch (error) {
+        // console.error("Failed to cancel slots:", error);
+        showToast("Failed to cancel slots. Please try again.");
+      }
+    } else if (action === "unbook") {
+      // Find slotId corresponding to selected cells (assuming consecutive cells in same row)
+      const rowsSet = new Set(selected.map(([r]) => r));
+      if (rowsSet.size > 1) {
+        showToast(
+          "Please select cells in the same court (row) for blocking."
+        );
+        return;
+      }
+
+      const [row] = selected[0];
+      const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
+
+      // Validate consecutive columns
+      for (let i = 1; i < colsSelected.length; i++) {
+        if (colsSelected[i] !== colsSelected[i - 1] + 1) {
+          showToast("Please select consecutive time slots for blocking.");
           return;
         }
+      }
 
-        const courtKey = getFilteredCourtByIndex(row).courtId;
+      // Find the slotId for this court and selected time range from courtSlots state
+      const courtSlotsForCourt =
+        courtSlots[getFilteredCourtByIndex(row).courtId] || [];
+      let matchedSlot: any = null;
 
-        // For each overlapping slot, find the bookingId from courtBookIds
-        const bookingIdsToCancel = overlappingSlots
-          .map((slot) => {
-            const bookObj = (courtBookIds[courtKey] || []).find(
-              (b) => b.slotId === slot.slotId
+      // Calculate start and end time of selected cells
+      const firstCol = colsSelected[0];
+      const lastCol = colsSelected[colsSelected.length - 1];
+      const startHour = Math.floor(firstCol / 2);
+      const startMinute = firstCol % 2 === 0 ? 0 : 30;
+      const endHour = Math.floor(lastCol / 2);
+      const endMinute = lastCol % 2 === 0 ? 0 : 30;
+      const startTime = new Date(currentDate);
+      startTime.setHours(startHour, startMinute, 0, 0);
+      const endTime = new Date(currentDate);
+      endTime.setHours(endHour, endMinute, 0, 0);
+      endTime.setTime(endTime.getTime() + 30 * 60 * 1000); // add 30 mins
+
+      const overlappingSlots = courtSlotsForCourt.filter((slot) => {
+        const slotStart = new Date(slot.startTime).getTime();
+        const slotEnd = new Date(slot.endTime).getTime();
+
+        return slotStart < endTime.getTime() && slotEnd > startTime.getTime();
+      });
+
+      if (overlappingSlots.length === 0) {
+        showToast("No matching slot found for selected cells.");
+        return;
+      }
+
+      const courtKey = getFilteredCourtByIndex(row).courtId;
+
+      // For each overlapping slot, find the bookingId from courtBookIds
+      const bookingIdsToCancel = overlappingSlots
+        .map((slot) => {
+          const bookObj = (courtBookIds[courtKey] || []).find(
+            (b) => b.slotId === slot.slotId
+          );
+          return bookObj && bookObj.bookingId ? bookObj.bookingId : null;
+        })
+        .filter(Boolean); // Remove nulls
+      // console.log("Unbook bookingId", bookingIdsToCancel);
+
+      if (bookingIdsToCancel.length === 0) {
+        showToast("No bookingId found for the selected slots.");
+        return;
+      }
+
+      // PATCH request to update timeslot as blocked
+      try {
+        await Promise.all(
+          bookingIdsToCancel.map(async (bookingId) => {
+            const gameIdCancel = await axios.get(
+              `${API_BASE_URL_Latest}/game/get_games_by_bookingId/${bookingId}`
             );
-            return bookObj && bookObj.bookingId ? bookObj.bookingId : null;
-          })
-          .filter(Boolean); // Remove nulls
-        // console.log("Unbook bookingId", bookingIdsToCancel);
+            // console.log("fetchig gameid for cancellation", gameIdCancel);
 
-        if (bookingIdsToCancel.length === 0) {
-          showToast("No bookingId found for the selected slots.");
-          return;
+            const cancelGameId = gameIdCancel.data[0].gameId;
+            await axios.patch(
+              `${API_BASE_URL_Latest}/game/cancel/${cancelGameId}`
+            );
+          })
+        );
+
+        showToast("Slots successfully cancelled.");
+
+        // Update local grid immediately for all affected cells
+        setGrid((prev) => {
+          const newG = prev.map((r) => [...r]);
+          colsSelected.forEach((c) => {
+            newG[row][c] = "available";
+          });
+          return newG;
+        });
+
+        // Update bookingSpans to remove the cancelled spans
+        setBookingSpans((prev) => {
+          const newSpans = { ...prev };
+          newSpans[`${row}`] = newSpans[`${row}`].filter(
+            (span) => !bookingIdsToCancel.includes(span.bookingId)
+          );
+          return newSpans;
+        });
+
+        // Small delay to allow backend propagation
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+
+        await fetchBookingsAndBlocked(currentDate);
+
+        if (selected.length > 0) {
+          await fetchCellDetails(selected[0][0], selected[0][1]);
         }
 
-        // PATCH request to update timeslot as blocked
+        setSelected([]);
+        setSelectedSportId("");
+      } catch (error) {
+        // If game cancel fails, fallback to the direct cancel API
         try {
           await Promise.all(
             bookingIdsToCancel.map(async (bookingId) => {
-              const gameIdCancel = await axios.get(
-                `${API_BASE_URL_Latest}/game/get_games_by_bookingId/${bookingId}`
-              );
-              // console.log("fetchig gameid for cancellation", gameIdCancel);
-
-              const cancelGameId = gameIdCancel.data[0].gameId;
               await axios.patch(
-                `${API_BASE_URL_Latest}/game/cancel/${cancelGameId}`
+                `https://play-os-backend.forgehub.in/court/${bookingId}/cancel`
               );
             })
           );
 
           showToast("Slots successfully cancelled.");
+
+          // Update local grid immediately for all affected cells
+          setGrid((prev) => {
+            const newG = prev.map((r) => [...r]);
+            colsSelected.forEach((c) => {
+              newG[row][c] = "available";
+            });
+            return newG;
+          });
+
+          // Update bookingSpans to remove the cancelled spans
+          setBookingSpans((prev) => {
+            const newSpans = { ...prev };
+            newSpans[`${row}`] = newSpans[`${row}`].filter(
+              (span) => !bookingIdsToCancel.includes(span.bookingId)
+            );
+            return newSpans;
+          });
+
+          // Small delay to allow backend propagation
+          await new Promise((resolve) => setTimeout(resolve, 1500));
 
           await fetchBookingsAndBlocked(currentDate);
 
@@ -2083,122 +2173,101 @@ const CellGridLatestP3 = () => {
 
           setSelected([]);
           setSelectedSportId("");
-        } catch (error) {
-          // If game cancel fails, fallback to the direct cancel API
-          try {
-            await Promise.all(
-              bookingIdsToCancel.map(async (bookingId) => {
-                await axios.patch(
-                  `https://play-os-backend.forgehub.in/court/${bookingId}/cancel`
-                );
-              })
-            );
-
-            showToast("Slots successfully cancelled.");
-
-            await fetchBookingsAndBlocked(currentDate);
-
-            if (selected.length > 0) {
-              await fetchCellDetails(selected[0][0], selected[0][1]);
-            }
-
-            setSelected([]);
-            setSelectedSportId("");
-          } catch (fallbackError) {
-            // console.error("Failed to cancel slots:", fallbackError);
-            showToast("Failed to cancel slots. Please try again.");
-          }
+        } catch (fallbackError) {
+          // console.error("Failed to cancel slots:", fallbackError);
+          showToast("Failed to cancel slots. Please try again.");
         }
-      } else if (action === "occupied") {
-        // Existing booking logic here (unchanged)
-        if (!selectedSportId) {
-          showToast("Please select a sport first");
-          return;
-        }
-        const rowsSet = new Set(selected.map(([r]) => r));
-        if (rowsSet.size > 1) {
-          showToast("Please select cells in the same court (row) for booking.");
-          return;
-        }
-
-        const [row] = selected[0];
-        const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
-
-        // Check if columns are consecutive
-        for (let i = 1; i < colsSelected.length; i++) {
-          if (colsSelected[i] !== colsSelected[i - 1] + 1) {
-            showToast("Please select consecutive time slots for booking.");
-            return;
-          }
-        }
-
-        // Calculate startTime from first selected cell
-        const firstCol = colsSelected[0];
-        const hour = Math.floor(firstCol / 2);
-        const minute = firstCol % 2 === 0 ? 0 : 30;
-        const startTime = new Date(currentDate);
-        startTime.setHours(0, 0, 0, 0);
-        startTime.setHours(hour, minute, 0, 0);
-
-        // Calculate endTime from last selected cell + 30 minutes
-        const lastCol = colsSelected[colsSelected.length - 1];
-        const endHour = Math.floor(lastCol / 2);
-        const endMinute = lastCol % 2 === 0 ? 0 : 30;
-        const endTime = new Date(currentDate);
-        endTime.setHours(0, 0, 0, 0);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        // Add 30 minutes to endTime slot
-        endTime.setTime(endTime.getTime() + 30 * 60 * 1000);
-
-        const bookingData = {
-          hostId: getUserNameFromToken(),
-          type: "game",
-          sport: selectedCellDetails.availableSports.find(
-            (s) => s.sportId === selectedSportId
-          )?.name,
-          sportId: selectedSportId,
-          courtId: getFilteredCourtByIndex(row).courtId,
-          startTime: toLocalISOString(startTime),
-          endTime: toLocalISOString(endTime),
-          bookedBy: getUserNameFromToken(),
-          difficultyLevel: difficultyLevel, // <-- added here
-          maxPlayers: maxPlayers,
-          slotRemaining: maxPlayers - 1,
-          priceType: "",
-          rackPrice: 0,
-          quotePrice: 0,
-        };
-        // console.log("Start Time:", startTime.toISOString());
-        // console.log("End Time:", endTime.toISOString());
-
-        // console.log("Booking Data payload", bookingData);
-
-        try {
-          const response = await axios.post(
-            `${API_BASE_URL_Latest}/game/create`,
-            bookingData
-          );
-          // console.log("Booking created:", response.data);
-          setModalData(response.data.gameId);
-
-          showToast("Slots successfully booked.");
-
-          // Refresh bookings after successful creation
-          await fetchBookingsAndBlocked(currentDate);
-
-          // Clear selection and reset sport
-          setSelected([]);
-          setSelectedSportId("");
-        } catch (error) {
-          // console.error("Failed to create booking:", error);
-          showToast("Failed to create booking. Please try again.");
-        }
-      } else {
       }
-      // ... existing code for booking creation ...
+    } else if (action === "occupied") {
+      // Existing booking logic here (unchanged)
+      if (!selectedSportId) {
+        showToast("Please select a sport first");
+        return;
+      }
+      const rowsSet = new Set(selected.map(([r]) => r));
+      if (rowsSet.size > 1) {
+        showToast("Please select cells in the same court (row) for booking.");
+        return;
+      }
+
+      const [row] = selected[0];
+      const colsSelected = selected.map(([, c]) => c).sort((a, b) => a - b);
+
+      // Check if columns are consecutive
+      for (let i = 1; i < colsSelected.length; i++) {
+        if (colsSelected[i] !== colsSelected[i - 1] + 1) {
+          showToast("Please select consecutive time slots for booking.");
+          return;
+        }
+      }
+
+      // Calculate startTime from first selected cell
+      const firstCol = colsSelected[0];
+      const hour = Math.floor(firstCol / 2);
+      const minute = firstCol % 2 === 0 ? 0 : 30;
+      const startTime = new Date(currentDate);
+      startTime.setHours(0, 0, 0, 0);
+      startTime.setHours(hour, minute, 0, 0);
+
+      // Calculate endTime from last selected cell + 30 minutes
+      const lastCol = colsSelected[colsSelected.length - 1];
+      const endHour = Math.floor(lastCol / 2);
+      const endMinute = lastCol % 2 === 0 ? 0 : 30;
+      const endTime = new Date(currentDate);
+      endTime.setHours(0, 0, 0, 0);
+      endTime.setHours(endHour, endMinute, 0, 0);
+      // Add 30 minutes to endTime slot
+      endTime.setTime(endTime.getTime() + 30 * 60 * 1000);
+
+      const bookingData = {
+        hostId: getUserNameFromToken(),
+        type: "game",
+        sport: selectedCellDetails.availableSports.find(
+          (s) => s.sportId === selectedSportId
+        )?.name,
+        sportId: selectedSportId,
+        courtId: getFilteredCourtByIndex(row).courtId,
+        startTime: toLocalISOString(startTime),
+        endTime: toLocalISOString(endTime),
+        bookedBy: getUserNameFromToken(),
+        difficultyLevel: difficultyLevel, // <-- added here
+        maxPlayers: maxPlayers,
+        slotRemaining: maxPlayers - 1,
+        priceType: "",
+        rackPrice: 0,
+        quotePrice: 0,
+      };
+      // console.log("Start Time:", startTime.toISOString());
+      // console.log("End Time:", endTime.toISOString());
+
+      // console.log("Booking Data payload", bookingData);
+
+      try {
+        const response = await axios.post(
+          `${API_BASE_URL_Latest}/game/create`,
+          bookingData
+        );
+        // console.log("Booking created:", response.data);
+        setModalData(response.data.gameId);
+
+        showToast("Slots successfully booked.");
+
+        // Refresh bookings after successful creation
+        await fetchBookingsAndBlocked(currentDate);
+
+        // Clear selection and reset sport
+        setSelected([]);
+        setSelectedSportId("");
+      } catch (error) {
+        // console.error("Failed to create booking:", error);
+        showToast("Failed to create booking. Please try again.");
+      }
     } else {
     }
-  };
+    // ... existing code for booking creation ...
+  } else {
+  }
+};
 
   const getSlotForCell = (row: number, col: number) => {
     const slotsForCourt =
@@ -2961,6 +3030,15 @@ const CellGridLatestP3 = () => {
     }
   }, [firstSelected, grid]); // Add 'grid' to the dependency array
 
+
+  const formatTime = (date: Date) => {
+  const hour = date.getHours();
+  const minute = date.getMinutes();
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  const ampm = hour < 12 ? "AM" : "PM";
+  return `${displayHour}:${minute.toString().padStart(2, "0")} ${ampm}`;
+};
+
   // if (loadingScreen) {
   //   return <LoadingScreen />;
   // }
@@ -3351,11 +3429,15 @@ const CellGridLatestP3 = () => {
                       : sessionStorage.getItem("hostName")}
                   </p>
                   <p className="text-sm">
-                    <strong>Slots:</strong>{" "}
-                    {selected.length === 0
-                      ? "Not Selected"
-                      : formatSelectedTimeRange(selected)}
-                  </p>
+  <strong>Slots:</strong>{" "}
+  {selected.length === 0
+    ? "Not Selected"
+    : selected.length === 1 &&
+      ["occupied", "booking"].includes(grid[firstSelected[0]][firstSelected[1]]) &&
+      selectedCellDetails.currentBooking
+    ? `${formatTime(toIST(selectedCellDetails.currentBooking.startTime))} - ${formatTime(toIST(selectedCellDetails.currentBooking.endTime))}`
+    : formatSelectedTimeRange(selected)}
+</p>
                   <p className="text-sm">
                     <strong>Allowed Sports:</strong>{" "}
                     {selected.length > 0
@@ -3487,6 +3569,7 @@ const CellGridLatestP3 = () => {
                           </p>
                           <p className="text-sm mb-1">
                             <strong>Max Players:</strong>{" "}
+                            
                             {selectedCellDetails.currentBooking.maxPlayers ||
                               "N/A"}
                           </p>

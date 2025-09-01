@@ -108,6 +108,7 @@ const CellModal3: React.FC<CellModalProps> = ({
       lastMessageTime: { [roomType: string]: number };
     }[]
   >([]);
+  const [bookingType, setBookingType] = useState<string>(""); // New state for booking type
 
   useEffect(() => {
     //@ts-ignore
@@ -124,6 +125,7 @@ const CellModal3: React.FC<CellModalProps> = ({
       );
       const bookingData = bookingRes.data;
       console.log("booking fetch", bookingRes);
+      setBookingType(bookingData.type || ""); // Set booking type
 
       // Get court and sport info for room type matching - MOVED HERE
       const courtId = bookingData.courtId;
@@ -327,6 +329,7 @@ const CellModal3: React.FC<CellModalProps> = ({
     setOpenSmallChatBox(false);
     setSmallChatBoxData(null);
     setOpenDirectGameChat(false);
+    setBookingType(""); // Reset booking type
 
     console.log("🏁 Modal cleanup completed");
     onClose();
@@ -390,8 +393,10 @@ const CellModal3: React.FC<CellModalProps> = ({
   };
 
   useEffect(() => {
-    fetchGameChatId();
-  }, [cellData.bookingId]);
+    if (bookingType === "game") {
+      fetchGameChatId();
+    }
+  }, [bookingType]);
 
   const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
 
@@ -577,8 +582,7 @@ const CellModal3: React.FC<CellModalProps> = ({
                   let messageCount = 0;
 
                   messages.forEach((message) => {
-                    const messageTimestamp =
-                      message.createdAt || message.timestamp;
+                    const messageTimestamp = message.createdAt || message.timestamp;
                     if (messageTimestamp) {
                       const msgDate = new Date(messageTimestamp);
                       if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
@@ -728,8 +732,6 @@ const CellModal3: React.FC<CellModalProps> = ({
       cleanup();
     };
   }, [stableModalUsers, isOpen, directChatRoomType]);
-
-  // Replace the existing handleOpenRoomChat function with this updated version
 
   // Replace the existing handleOpenRoomChat function with this simplified version:
   // Replace the existing handleOpenRoomChat function with this simplified version:
@@ -1507,17 +1509,19 @@ const CellModal3: React.FC<CellModalProps> = ({
           <h2 className="text-lg font-semibold text-gray-900">
             User Attendance - {cellData.courtName}
           </h2>
-          <div
-            className="
+          {bookingType === "game" && (
+            <div
+              className="
     border-2 border-blue-400 rounded-lg shadow-md px-3 py-1 font-semibold text-blue-700 bg-blue-50 cursor-pointer transition duration-150 w-fit hover:bg-blue-100 hover:shadow-xl hover:scale-105 hover:border-blue-600 hover:ring-2 hover:ring-blue-300 active:scale-95 select-none
   "
-            onClick={() => {
-              // navigate("/gameChat");
-              setOpenGameChat(true);
-            }}
-          >
-            Game Chat
-          </div>
+              onClick={() => {
+                // navigate("/gameChat");
+                setOpenGameChat(true);
+              }}
+            >
+              Game Chat
+            </div>
+          )}
 
           <div
             className="
@@ -1542,13 +1546,15 @@ const CellModal3: React.FC<CellModalProps> = ({
           <div className="bg-gray-50 rounded-lg p-3 mb-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <strong>Time Slot:</strong> {slotString}
-              </div>
-              <div>
-                <strong>Game:</strong> {cellData.gameName}
-              </div>
-              <div>
-                <strong>Booking ID:</strong> {cellData.bookingId}
+                <div>
+                  <strong>Time Slot:</strong> {slotString}
+                </div>
+                <div>
+                  <strong>Game:</strong> {cellData.gameName}
+                </div>
+                <div>
+                  <strong>Booking ID:</strong> {cellData.bookingId}
+                </div>
               </div>
             </div>
           </div>
@@ -1810,7 +1816,7 @@ const CellModal3: React.FC<CellModalProps> = ({
                 <ChatClientProvider client={chatClient}>
                   <ChatRoomProvider name={roomName}>
                     <GameChat
-                      roomName={`${localStorage.getItem("currentGameName")}`}
+                      roomName={`${localStorage.getItem("roomGameName")}`}
                       onClose={() => setOpenGameChat(false)}
                       userId={directChatUserId}
                       roomType={directChatRoomType}
@@ -1877,5 +1883,6 @@ const CellModal3: React.FC<CellModalProps> = ({
     </div>
   );
 };
+
 
 export default CellModal3;
