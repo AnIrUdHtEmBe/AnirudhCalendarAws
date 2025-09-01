@@ -675,6 +675,7 @@ const checkIfHandledAfterDate = (
 };
 
 const Attendance = () => {
+  const [isHandledMessagesModalOpen, setIsHandledMessagesModalOpen] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [users, setUsers] = useState<User[]>([]);
   const [checkedUsers, setCheckedUsers] = useState<Set<string>>(new Set());
@@ -1841,6 +1842,10 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
   // Add this useEffect to initialize message polling for absent users (add after your existing useEffects)
   useEffect(() => {
     const initializeMessagePolling = async () => {
+    if (isHandledMessagesModalOpen) {
+      console.log("Skipping polling - handled messages modal is open");
+      return;
+    }
       const allUsers = [
         ...getFilteredUsers("present"),
         ...getFilteredUsers("absent"),
@@ -1977,7 +1982,12 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
   };
 
   // Update your UserItem component to include the handle functionality
-
+const [modalUserData, setModalUserData] = useState<{
+  userId: string;
+  userName: string;
+  columnType: string;
+  isFromNotBooked: boolean;
+} | null>(null);
 // In UserItem component (replace the existing UserItem component)
 const UserItem = ({
   user,
@@ -1989,7 +1999,7 @@ const UserItem = ({
   currentDate: Date;
 }) => {
   const newMsgCount = getNewMessagesForUser(user.userId);
-  const [showHandledMessagesModal, setShowHandledMessagesModal] = useState(false);
+  //const [showHandledMessagesModal, setShowHandledMessagesModal] = useState(false);
   const showCheckbox =
     columnType === "absent" ||
     columnType === "not_booked" ||
@@ -2099,7 +2109,15 @@ if (currentDateMessage) {
               Remark:
             </div>
             <button
-              onClick={() => setShowHandledMessagesModal(true)}
+              onClick={() => {
+  setModalUserData({
+    userId: user.userId,
+    userName: user.name,
+    columnType,
+    isFromNotBooked
+  });
+  setIsHandledMessagesModalOpen(true);
+}}
               className="hover:opacity-70"
               title="View all handled messages"
             >
@@ -2151,7 +2169,7 @@ if (currentDateMessage) {
         </div>
       </div>
       {/* Handled Messages Modal */}
-      {showHandledMessagesModal && (
+      {/* {showHandledMessagesModal && (
         <HandledMessagesModal
           isOpen={showHandledMessagesModal}
           onClose={() => setShowHandledMessagesModal(false)}
@@ -2162,7 +2180,7 @@ if (currentDateMessage) {
           handledHistory={userHandledMessages[user.userId]?.history || []}
           isFromNotBooked={isFromNotBooked} // Pass isFromNotBooked
         />
-      )}
+      )} */}
     </div>
   );
 };
@@ -2338,6 +2356,21 @@ if (currentDateMessage) {
     userId={openHandleModal.userId}
     columnType={openHandleModal.columnType}
     users={users} // Make sure to pass users array
+  />
+)}
+{isHandledMessagesModalOpen && modalUserData && (
+  <HandledMessagesModal
+    isOpen={isHandledMessagesModalOpen}
+    onClose={() => {
+      setIsHandledMessagesModalOpen(false);
+      setModalUserData(null);
+    }}
+    userId={modalUserData.userId}
+    userName={modalUserData.userName}
+    columnType={modalUserData.columnType}
+    currentDate={currentDate}
+    handledHistory={userHandledMessages[modalUserData.userId]?.history || []}
+    isFromNotBooked={modalUserData.isFromNotBooked}
   />
 )}
           </div>
