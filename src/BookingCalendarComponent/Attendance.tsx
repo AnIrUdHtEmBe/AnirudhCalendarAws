@@ -1636,11 +1636,11 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
       userType: "team",
       handledMsg: message,
     };
-
+    
+    let ids: string[] = [];
     if (columnType === "absent" || columnType === "not_booked") {
       const user = users.find(u => u.userId === userId && u.status === columnType);
       if (user) {
-        let ids: string[] = [];
         let handleType: string | undefined;
 
         if (columnType === "absent") {
@@ -1665,6 +1665,21 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
       "https://play-os-backend.forgehub.in/human/human/mark-seen",
       payload
     );
+    setUserHandledMessages(prev => ({
+      ...prev,
+      [userId]: {
+        ...prev[userId],
+        history: [
+          ...(prev[userId]?.history || []),
+          {
+            handledAt: Math.floor(Date.now() / 1000),
+            handledMsg: message,
+            markingType: columnType === "absent" ? "absent" : "notbooked",
+            targets: ids
+          }
+        ]
+      }
+    }));
     setUsers((prev) =>
       prev.map((u) =>
         u.userId === userId && u.status === columnType
@@ -1875,9 +1890,9 @@ const handleChatOpen = async (userId: string, userName: string, columnType?: str
       }
     };
 
-    if (users.length > 0) {
+
       initializeMessagePolling();
-    }
+    
 
     // Cleanup on unmount
     return () => {
@@ -2163,7 +2178,7 @@ if (currentDateMessage) {
           </button>
           {newMsgCount > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-              {newMsgCount}
+              {/* {newMsgCount} */}
             </span>
           )}
         </div>
