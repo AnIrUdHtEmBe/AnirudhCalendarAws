@@ -1636,7 +1636,7 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
       userType: "team",
       handledMsg: message,
     };
-    
+
     let ids: string[] = [];
     if (columnType === "absent" || columnType === "not_booked") {
       const user = users.find(u => u.userId === userId && u.status === columnType);
@@ -1665,6 +1665,8 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
       "https://play-os-backend.forgehub.in/human/human/mark-seen",
       payload
     );
+
+    // Update handled messages for immediate remark display
     setUserHandledMessages(prev => ({
       ...prev,
       [userId]: {
@@ -1680,14 +1682,38 @@ const handleUserAction = async (userId: string, message: string, columnType?: st
         ]
       }
     }));
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.userId === userId && u.status === columnType
-          ? { ...u, status: "completed" }
-          : u
-      )
-    );
-    // Rest of the function remains the same...
+
+    // FIXED: Properly consolidate users to prevent duplicates
+    setUsers((prev) => {
+      const handledUser = prev.find(u => u.userId === userId && u.status === columnType);
+      if (!handledUser) return prev;
+
+      // Check if this user already exists in completed status
+      const existingCompletedUser = prev.find(u => u.userId === userId && u.status === "completed");
+      
+      if (existingCompletedUser) {
+        // User already exists in completed - merge their bookings and remove original
+        const updatedUsers = prev.filter(u => !(u.userId === userId && u.status === columnType));
+        
+        return updatedUsers.map((u) => {
+          if (u.userId === userId && u.status === "completed") {
+            return {
+              ...u,
+              bookings: [...u.bookings, ...handledUser.bookings]
+            };
+          }
+          return u;
+        });
+      } else {
+        // No existing completed user - just change status to completed
+        return prev.map((u) =>
+          u.userId === userId && u.status === columnType
+            ? { ...u, status: "completed" }
+            : u
+        );
+      }
+    });
+
   } catch (error) {
     console.error("Failed to handle user:", error);
   }
