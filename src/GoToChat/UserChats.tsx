@@ -598,9 +598,9 @@ useEffect(() => {
 
   const handleVisibilityChange = () => {
     if (document.visibilityState === 'hidden') {
-      recordPresence("EXIT", true);
-    } else {
       recordPresence("EXIT", false);
+    } else {
+      recordPresence("ENTER", false);
     }
   };
 
