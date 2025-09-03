@@ -833,6 +833,34 @@ const CellModal3: React.FC<CellModalProps> = ({
       );
       const nameRequestsCache = useRef(new Set());
 
+      function getUserId() {
+      try {
+        const t = sessionStorage.getItem("token");
+        return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+      } catch {
+        return "Guest";
+      }
+    }
+
+    const recordPresence = async (action: string) => {
+      try {
+        const backend = await axios.post(
+          "https://play-os-backend.forgehub.in/chatV1/presence/record",
+          [
+            {
+              action: action,
+              userId: getUserId(),
+              roomId: roomName,
+              timeStamp: Date.now(),
+            },
+          ]
+        );
+        console.log(`${action.toLowerCase()} backend`, backend.data);
+      } catch (error) {
+        console.error(`Error recording ${action} presence:`, error);
+      }
+    }
+
       // Independent connection via useMessages hook
       const { historyBeforeSubscribe, send } = useMessages({
         listener: (event) => {
@@ -872,6 +900,25 @@ const CellModal3: React.FC<CellModalProps> = ({
           console.log("📡 Handling discontinuity without reloading messages");
         },
       });
+
+          useEffect(() => {
+      recordPresence("ENTER");
+      return () => {
+        recordPresence("EXIT");
+      };
+    }, [roomName]);
+
+        useEffect(() => {
+      const handleBeforeUnload = () => {
+        recordPresence("EXIT");
+      };
+
+      window.addEventListener("beforeunload", handleBeforeUnload);
+
+      return () => {
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+      };
+    }, []);
 
       const currentClientId = useMemo(() => {
         try {
@@ -1352,6 +1399,35 @@ const CellModal3: React.FC<CellModalProps> = ({
       }
     }, []);
 
+
+    function getUserId() {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }
+
+  const recordPresence = async (action: string, roomId: string) => {
+    try {
+      const backend = await axios.post(
+        "https://play-os-backend.forgehub.in/chatV1/presence/record",
+        [
+          {
+            action: action,
+            userId: getUserId(),
+            roomId: roomId,
+            timeStamp: Date.now(),
+          },
+        ]
+      );
+      console.log(`${action.toLowerCase()} backend for ${roomId}`, backend.data);
+    } catch (error) {
+      console.error(`Error recording ${action} presence for ${roomId}:`, error);
+    }
+  }
+
     const sendToAllUsers = async () => {
       if (!localInput.trim()) return;
 
@@ -1380,9 +1456,13 @@ const CellModal3: React.FC<CellModalProps> = ({
             const matchedRoom = userWithRooms.rooms[0];
             const roomKey = `${matchedRoom.chatId}`;
 
+            await recordPresence("ENTER", roomKey);
+
             // Get the room and send message using Chat client
             const room = await stableChatClient.rooms.get(roomKey);
             await room.messages.send({ text: message });
+
+            await recordPresence("EXIT", roomKey);
 
             successCount++;
             console.log(`✅ Message sent to ${user.name}`);
@@ -1464,7 +1544,7 @@ const CellModal3: React.FC<CellModalProps> = ({
           </div>
 
           {/* Footer */}
-          <div className="p-3 border-t flex space-x-2">
+          <div className="flex space-x-2 mb-1">
             <button
               onClick={onClose}
               disabled={sendingToAll}
@@ -1820,6 +1900,7 @@ const CellModal3: React.FC<CellModalProps> = ({
                       onClose={() => setOpenGameChat(false)}
                       userId={directChatUserId}
                       roomType={directChatRoomType}
+                      roomId={roomName}
                     />
                   </ChatRoomProvider>
                 </ChatClientProvider>

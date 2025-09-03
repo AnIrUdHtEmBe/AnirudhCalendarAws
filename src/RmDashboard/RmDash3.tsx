@@ -88,6 +88,34 @@ const ChatBox = ({
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const nameRequestsCache = useRef<Set<string>>(new Set());
 
+  function getUserId() {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }
+
+  const recordPresence = async (action: string) => {
+    try {
+      const backend = await axios.post(
+        "https://play-os-backend.forgehub.in/chatV1/presence/record",
+        [
+          {
+            action: action,
+            userId: getUserId(),
+            roomId: roomName,
+            timeStamp: Date.now(),
+          },
+        ]
+      );
+      console.log(`${action.toLowerCase()} backend`, backend.data);
+    } catch (error) {
+      console.error(`Error recording ${action} presence:`, error);
+    }
+  }
+
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
       if (event.type === ChatMessageEventType.Created) {
@@ -186,6 +214,25 @@ const ChatBox = ({
       });
     }
   }, [historyBeforeSubscribe, loading, userId, roomType, fetchSenderName]);
+
+    useEffect(() => {
+    recordPresence("ENTER");
+    return () => {
+      recordPresence("EXIT");
+    };
+  }, [roomName]);
+
+    useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -319,6 +366,8 @@ const ChatBox = ({
   );
 };
 
+
+
 // Handle Chat Modal
 const HandleChatModal = ({
   isOpen,
@@ -396,6 +445,7 @@ const RmDashNew3 = () => {
   const [usersWithRooms, setUsersWithRooms] = useState<UserWithRooms[]>([]);
   const [loading, setLoading] = useState(true);
   const [showFilteredView, setShowFilteredView] = useState(false);
+  const [isRmDropdownOpen, setIsRmDropdownOpen] = useState(false);
   const [openChat, setOpenChat] = useState<{
     userId: string;
     roomType: string;
@@ -416,7 +466,7 @@ const RmDashNew3 = () => {
   }>({ isOpen: false, userId: "", roomType: "", userName: "" });
   // New: Add filter states
   const [rms, setRms] = useState<RM[]>([]);
-  const [selectedRm, setSelectedRm] = useState("all");
+  const [selectedRms, setSelectedRms] = useState<string[]>([]);
 const today = new Date().toISOString().split("T")[0];
 const [fromDate, setFromDate] = useState(today);
 const [fromTime, setFromTime] = useState("00:00");
@@ -1125,8 +1175,7 @@ useEffect(() => {
 
 useEffect(() => {
   if (loggedInType === "RM" && loggedInUserId && rms.length > 0) {
-    setSelectedRm(loggedInUserId);
-    // setShowFilteredView(true);
+    setSelectedRms([loggedInUserId]);
   }
 }, [loggedInType, loggedInUserId, rms]);
 
@@ -1157,14 +1206,14 @@ return (
           />
         ) : showFilteredView ? (
           <FilteredDashboard 
-            onBack={() => setShowFilteredView(false)} 
-            initialSelectedRm={selectedRm}
-            initialFromDate={fromDate}
-            initialFromTime={fromTime}
-            initialToDate={toDate}
-            initialToTime={toTime}
-            initialApply={true} // Auto-apply on show
-          />
+  onBack={() => setShowFilteredView(false)} 
+  initialSelectedRms={selectedRms}
+  initialFromDate={fromDate}
+  initialFromTime={fromTime}
+  initialToDate={toDate}
+  initialToTime={toTime}
+  initialApply={true}
+/>
         ) : (
           <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6">
             <div className="max-w-7xl mx-auto">
@@ -1184,18 +1233,76 @@ return (
                 </div>
                 {/* New: Filters UI instead of button */}
                 <div className="mt-6 flex justify-center space-x-4 items-end">
-                  <select
-                    value={selectedRm}
-                    onChange={(e) => setSelectedRm(e.target.value)}
-                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Select RM Name (All)</option>
-                    {rms.map((rm) => (
-                      <option key={rm.userId} value={rm.userId}>
-                        {rm.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+  <button
+    type="button"
+    onClick={() => setIsRmDropdownOpen(!isRmDropdownOpen)}
+    className="border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48 text-left flex items-center justify-between"
+  >
+    <span className="truncate">
+      {selectedRms.length === 0 
+        ? "Select RM Name" 
+        : selectedRms.includes('all') 
+        ? "All RMs" 
+        : selectedRms.length === 1 
+        ? rms.find(rm => rm.userId === selectedRms[0])?.name || "Selected RM"
+        : `${selectedRms.length} RMs selected`
+      }
+    </span>
+    <svg 
+      className={`w-4 h-4 transition-transform ${isRmDropdownOpen ? 'rotate-180' : ''}`}
+      fill="none" 
+      stroke="currentColor" 
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+
+  {isRmDropdownOpen && (
+    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+      <div
+        className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
+        onClick={() => {
+          setSelectedRms(['all']);
+          setIsRmDropdownOpen(false);
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={selectedRms.includes('all')}
+          readOnly
+          className="mr-2"
+        />
+        <span>All RMs</span>
+      </div>
+      {rms.map((rm) => (
+        <div
+          key={rm.userId}
+          className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
+          onClick={() => {
+            if (selectedRms.includes('all')) {
+              setSelectedRms([rm.userId]);
+            } else if (selectedRms.includes(rm.userId)) {
+              const newSelection = selectedRms.filter(id => id !== rm.userId);
+              setSelectedRms(newSelection);
+            } else {
+              setSelectedRms([...selectedRms, rm.userId]);
+            }
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={selectedRms.includes(rm.userId)}
+            readOnly
+            className="mr-2"
+          />
+          <span>{rm.name}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
                   <input
                     type="date"
                     value={fromDate}
@@ -1230,8 +1337,8 @@ return (
                   />
                   <button
   onClick={() => setShowFilteredView(true)}
-  disabled={selectedRm === "all" || !fromDate || !fromTime || !toDate || !toTime}
-  className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ${(selectedRm === "all" || !fromDate || !fromTime || !toDate || !toTime) ? 'opacity-50 cursor-not-allowed' : ''}`}
+  disabled={selectedRms.length === 0 || !fromDate || !fromTime || !toDate || !toTime}
+  className={`bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 ${(selectedRms.length === 0 || !fromDate || !fromTime || !toDate || !toTime) ? 'opacity-50 cursor-not-allowed' : ''}`}
 >
   Apply Filter
 </button>

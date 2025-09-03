@@ -29,9 +29,10 @@ interface SimpleChatRoomProps {
   onClose: () => void;
   userId: string;
   roomType: string;
+  roomId: string;
 }
 
-export default function GameChat({ roomName, onClose, userId, roomType }: SimpleChatRoomProps) {
+export default function GameChat({ roomName, onClose, userId, roomType, roomId }: SimpleChatRoomProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(true);
@@ -43,6 +44,35 @@ export default function GameChat({ roomName, onClose, userId, roomType }: Simple
 
   // Cache for ongoing API requests to prevent duplicate calls
   const nameRequestsCache = useRef<Set<string>>(new Set());
+
+
+  function getUserId() {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }
+
+  const recordPresence = async (action: string) => {
+    try {
+      const backend = await axios.post(
+        "https://play-os-backend.forgehub.in/chatV1/presence/record",
+        [
+          {
+            action: action,
+            userId: getUserId(),
+            roomId: roomId,
+            timeStamp: Date.now(),
+          },
+        ]
+      );
+      console.log(`${action.toLowerCase()} backend`, backend.data);
+    } catch (error) {
+      console.error(`Error recording ${action} presence:`, error);
+    }
+  }
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -57,6 +87,25 @@ export default function GameChat({ roomName, onClose, userId, roomType }: Simple
       setLoading(true);
     },
   });
+
+    useEffect(() => {
+    recordPresence("ENTER");
+    return () => {
+      recordPresence("EXIT");
+    };
+  }, [roomName]);
+
+    useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, []);
 
   // Load message history
   useEffect(() => {

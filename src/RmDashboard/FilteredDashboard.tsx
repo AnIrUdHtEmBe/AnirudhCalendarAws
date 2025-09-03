@@ -93,6 +93,35 @@ const ChatBox = ({
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const nameRequestsCache = useRef<Set<string>>(new Set());
 
+
+  function getUserId() {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }
+
+  const recordPresence = async (action: string) => {
+    try {
+      const backend = await axios.post(
+        "https://play-os-backend.forgehub.in/chatV1/presence/record",
+        [
+          {
+            action: action,
+            userId: getUserId(),
+            roomId: roomName,
+            timeStamp: Date.now(),
+          },
+        ]
+      );
+      console.log(`${action.toLowerCase()} backend`, backend.data);
+    } catch (error) {
+      console.error(`Error recording ${action} presence:`, error);
+    }
+  }
+
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
       if (event.type === ChatMessageEventType.Created) {
@@ -114,6 +143,25 @@ const ChatBox = ({
     } catch {
       return "Guest";
     }
+  }, []);
+  
+    useEffect(() => {
+    recordPresence("ENTER");
+    return () => {
+      recordPresence("EXIT");
+    };
+  }, [roomName]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT");
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
   }, []);
 
   const fetchSenderName = useCallback(
@@ -386,7 +434,7 @@ const HandleChatModal = ({
 
 const FilteredDashboard = ({ 
   onBack, 
-  initialSelectedRm = "all",
+  initialSelectedRms = [],
   initialFromDate = "",
   initialFromTime = "",
   initialToDate = "",
@@ -394,7 +442,7 @@ const FilteredDashboard = ({
   initialApply = false 
 }: { 
   onBack: () => void; 
-  initialSelectedRm?: string;
+  initialSelectedRms?: string[];
   initialFromDate?: string;
   initialFromTime?: string;
   initialToDate?: string;
@@ -407,6 +455,8 @@ const FilteredDashboard = ({
   const [loading, setLoading] = useState(true);
   const [isFiltersApplied, setIsFiltersApplied] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedRms, setSelectedRms] = useState<string[]>(initialSelectedRms);
+  const [isRmDropdownOpen, setIsRmDropdownOpen] = useState(false);
   const [filteredUsersForSearch, setFilteredUsersForSearch] = useState<User[]>(
     []
   );
@@ -427,7 +477,7 @@ const FilteredDashboard = ({
     userName: string;
   }>({ isOpen: false, userId: "", roomType: "", userName: "" });
   const [rms, setRms] = useState<RM[]>([]);
-  const [selectedRm, setSelectedRm] = useState<string>(initialSelectedRm); // Use initial prop
+  const [selectedRm, setSelectedRm] = useState<string>(initialSelectedRms); // Use initial prop
   const [fromDate, setFromDate] = useState<string>(initialFromDate); // Use initial prop
   const [fromTime, setFromTime] = useState<string>(initialFromTime); // Use initial prop
   const [toDate, setToDate] = useState<string>(initialToDate); // Use initial prop
@@ -534,29 +584,50 @@ const FilteredDashboard = ({
 
   // Fetch users based on selected RM (all if "all", assigned if specific)
   useEffect(() => {
-    if (!isFiltersApplied || selectedRm === "all") {
-      setAllUsers([]);
-      return;
-    }
+    if (!isFiltersApplied || selectedRms.length === 0) {
+    setAllUsers([]);
+    return;
+  }
 
-    const fetchUsers = async () => {
-      try {
+const fetchUsers = async () => {
+    try {
+      let users: User[] = [];
+
+      if (selectedRms.includes('all')) {
         const response = await axios.get(
-          `https://play-os-backend.forgehub.in/human/rm/getassignedusers?userID=${selectedRm}`
+          "https://play-os-backend.forgehub.in/human/all?type=forge"
         );
-        const users = response.data.assignedUsers.map((u: any) => ({
+        users = response.data
+          .map((user: any) => ({
+            userId: user.userId,
+            name: user.name,
+            type: user.type || "play",
+          }))
+          .slice(0, 100);
+      } else {
+        let allAssignedUsers: any[] = [];
+        for (const rmId of selectedRms) {
+          const response = await axios.get(
+            `https://play-os-backend.forgehub.in/human/rm/getassignedusers?userID=${rmId}`
+          );
+          allAssignedUsers = [...allAssignedUsers, ...response.data.assignedUsers];
+        }
+        // Deduplicate
+        const uniqueUsersMap = new Map(allAssignedUsers.map(u => [u.userId, u]));
+        users = Array.from(uniqueUsersMap.values()).map((u: any) => ({
           userId: u.userId,
           name: u.name,
           type: u.type || "forge",
         }));
-        setAllUsers(users);
-      } catch (error) {
-        console.error("Failed to fetch assigned users:", error);
-        setAllUsers([]);
       }
-    };
-    fetchUsers();
-  }, [isFiltersApplied, selectedRm]);
+      setAllUsers(users);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      setAllUsers([]);
+    }
+  };
+  fetchUsers();
+}, [isFiltersApplied, selectedRms]);
 
   // Fetch room data for users (same as main)
   useEffect(() => {
@@ -907,10 +978,10 @@ const FilteredDashboard = ({
   // };
 
 const applyFilters = () => {
-  if (selectedRm !== "all" && hasDatesSet) {
+  if (selectedRms.length > 0 && hasDatesSet) {
     setIsFiltersApplied(true);
   } else {
-    alert("Please select an RM and set both from and to date/time.");
+    alert("Please select at least one RM and set both from and to date/time.");
   }
 };
 
@@ -1109,11 +1180,11 @@ const applyFilters = () => {
     }
   }, [searchQuery, allUsers]);
 
-  useEffect(() => {
-  if (initialApply && selectedRm !== "all" && hasDatesSet) {
+useEffect(() => {
+  if (initialApply && selectedRms.length > 0 && hasDatesSet) {
     setIsFiltersApplied(true);
   }
-}, [initialApply, selectedRm, hasDatesSet]);
+}, [initialApply, selectedRms, hasDatesSet]);
 
   // if (loading) {
   //   return (
@@ -1244,18 +1315,76 @@ const applyFilters = () => {
 
                 {/* Filters */}
                 <div className="mt-6 flex justify-center space-x-4 items-end">
-                  <select
-                    value={selectedRm}
-                    onChange={(e) => setSelectedRm(e.target.value)}
-                    className="border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Select RM Name (All)</option>
-                    {rms.map((rm) => (
-                      <option key={rm.userId} value={rm.userId}>
-                        {rm.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+  <button
+    type="button"
+    onClick={() => setIsRmDropdownOpen(!isRmDropdownOpen)}
+    className="border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48 text-left flex items-center justify-between"
+  >
+    <span className="truncate">
+      {selectedRms.length === 0 
+        ? "Select RM Name" 
+        : selectedRms.includes('all') 
+        ? "All RMs" 
+        : selectedRms.length === 1 
+        ? rms.find(rm => rm.userId === selectedRms[0])?.name || "Selected RM"
+        : `${selectedRms.length} RMs selected`
+      }
+    </span>
+    <svg 
+      className={`w-4 h-4 transition-transform ${isRmDropdownOpen ? 'rotate-180' : ''}`}
+      fill="none" 
+      stroke="currentColor" 
+      viewBox="0 0 24 24"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  </button>
+
+  {isRmDropdownOpen && (
+    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+      <div
+        className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
+        onClick={() => {
+          setSelectedRms(['all']);
+          setIsRmDropdownOpen(false);
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={selectedRms.includes('all')}
+          readOnly
+          className="mr-2"
+        />
+        <span>All RMs</span>
+      </div>
+      {rms.map((rm) => (
+        <div
+          key={rm.userId}
+          className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
+          onClick={() => {
+            if (selectedRms.includes('all')) {
+              setSelectedRms([rm.userId]);
+            } else if (selectedRms.includes(rm.userId)) {
+              const newSelection = selectedRms.filter(id => id !== rm.userId);
+              setSelectedRms(newSelection);
+            } else {
+              setSelectedRms([...selectedRms, rm.userId]);
+            }
+          }}
+        >
+          <input
+            type="checkbox"
+            checked={selectedRms.includes(rm.userId)}
+            readOnly
+            className="mr-2"
+          />
+          <span>{rm.name}</span>
+        </div>
+      ))}
+    </div>
+  )}
+</div>
                   <input
                     type="date"
                     value={fromDate}

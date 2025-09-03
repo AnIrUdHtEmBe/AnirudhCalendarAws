@@ -412,7 +412,7 @@ const UserChats: React.FC<UserChatsProps> = ({
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
-
+  const roomsRef = useRef<RoomData[]>([]);
   // Get current client ID (logged in user)
   const currentClientId = useMemo(() => getClientId(), []);
 
@@ -471,39 +471,147 @@ const UserChats: React.FC<UserChatsProps> = ({
     console.log("🔑 Current client ID (logged in user):", currentClientId);
   }, [currentClientId, propUserId, propUserName]);
 
-  useEffect(() => {
-    if (!userId) return;
 
-    const fetchRoomData = async () => {
-      try {
-        setLoading(true);
-        console.log("📡 Fetching room data for userId:", userId);
+// const recordPresence = async (action: "ENTER" | "EXIT") => {
+//   if (roomsData.length === 0) return;
 
-        const response = await fetch(
-          `https://play-os-backend.forgehub.in/human/human/${userId}`
-        );
+//   const payload = roomsData.map(room => ({
+//     action,
+//     userId: getClientId(),
+//     roomId: room.chatId,
+//     timeStamp: Date.now(),
+//   }));
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
+//   try {
+//     const response = await axios.post(
+//       "https://play-os-backend.forgehub.in/chatV1/presence/record",
+//       payload
+//     );
+//     console.log(`${action} presence recorded:`, response.data);
+//   } catch (error) {
+//     console.error(`Error recording ${action} presence:`, error);
+//   }
+// };
 
-        const data: RoomData[] = await response.json();
-        console.log("📋 Room data received:", data);
+const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
+  const currentRooms = roomsRef.current.length > 0 ? roomsRef.current : roomsData;
+  if (currentRooms.length === 0) return;
 
-        setRoomsData(data);
-        setError(null);
-      } catch (error) {
-        console.error("Error fetching room data:", error);
-        setError("Failed to load chat rooms");
-        // Set empty array for development
-        setRoomsData([]);
-      } finally {
-        setLoading(false);
+  const payload = currentRooms.map(room => ({
+    action,
+    userId: getClientId(),
+    roomId: room.chatId,
+    timeStamp: Date.now(),
+  }));
+
+  const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+
+  if (useBeacon && navigator.sendBeacon) {
+    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+    const success = navigator.sendBeacon(url, blob);
+    console.log(`${action.toLowerCase()} beacon sent:`, success);
+    if (success) return;
+  }
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      keepalive: true
+    });
+    
+    if (response.ok) {
+      console.log(`${action} presence recorded successfully`);
+    }
+  } catch (error) {
+    console.error(`Error recording ${action} presence:`, error);
+  }
+};
+  
+useEffect(() => {
+  if (!userId) return;
+
+  const fetchRoomData = async () => {
+    try {
+      setLoading(true);
+      console.log("📡 Fetching room data for userId:", userId);
+
+      const response = await fetch(
+        `https://play-os-backend.forgehub.in/human/human/${userId}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    };
 
-    fetchRoomData();
-  }, [userId]);
+      const data: RoomData[] = await response.json();
+      console.log("📋 Room data received:", data);
+
+      setRoomsData(data);
+      setError(null);
+    } catch (error) {
+      console.error("Error fetching room data:", error);
+      setError("Failed to load chat rooms");
+      // Set empty array for development
+      setRoomsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchRoomData();
+}, [userId]);
+
+useEffect(() => {
+  roomsRef.current = roomsData;
+}, [roomsData]);
+
+useEffect(() => {
+  if (roomsData.length === 0) return;
+
+  recordPresence("ENTER");
+
+  return () => {
+    recordPresence("EXIT");
+  };
+}, [roomsData]);
+
+// useEffect(() => {
+//   const handleBeforeUnload = () => {
+//     recordPresence("EXIT");
+//   };
+
+//   window.addEventListener("beforeunload", handleBeforeUnload);
+
+//   return () => {
+//     window.removeEventListener("beforeunload", handleBeforeUnload);
+//   };
+// }, [roomsData]);
+
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    recordPresence("EXIT", true);
+  };
+
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      recordPresence("EXIT", true);
+    } else {
+      recordPresence("EXIT", false);
+    }
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [roomsData]);
 
   const getColumnHeaderStyle = (type: string): string => {
     switch (type) {

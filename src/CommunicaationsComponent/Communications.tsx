@@ -127,6 +127,7 @@ export default function Communications({
   const [mySport, setMySports] = useState<any[]>([]);
   const chatType = "tribe";
   const [activeChat, setActiveChat] = useState<string | null>(null);
+  
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -158,6 +159,41 @@ export default function Communications({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+
+useEffect(() => {
+  recordPresence("ENTER")
+  return(() => {
+    recordPresence("EXIT")
+  })
+},[roomName])
+
+const recordPresence = async(action: string) => {
+  const backend = await axios.post(
+    "https://play-os-backend.forgehub.in/chatV1/presence/record",
+    [
+      {
+        action: action,
+        userId: getUserId(),
+        roomId: roomName,
+        timeStamp: Date.now(),
+      },
+    ]
+  );
+  console.log(`${action.toLowerCase()} backend`, backend.data);
+}
+  
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    recordPresence("EXIT");
+  };
+
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+  };
+}, []);
 
   const getIconForSport = (sportName: string) => {
     const name = sportName.toLowerCase();
@@ -209,6 +245,15 @@ export default function Communications({
     try {
       const t = sessionStorage.getItem("token");
       return t ? JSON.parse(atob(t.split(".")[1])).name : "Guest";
+    } catch {
+      return "Guest";
+    }
+  }
+
+   function getUserId() {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
     } catch {
       return "Guest";
     }
