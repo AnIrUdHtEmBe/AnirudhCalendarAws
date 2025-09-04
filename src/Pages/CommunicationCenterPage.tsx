@@ -12,7 +12,7 @@ function getClientId() {
   try {
     const t = sessionStorage.getItem("token");
     return t
-      ? JSON.parse(atob(t.split(".")[1])).name
+      ? JSON.parse(atob(t.split(".")[1])).sub
       : "Guest";
   } catch {
     return "Guest";

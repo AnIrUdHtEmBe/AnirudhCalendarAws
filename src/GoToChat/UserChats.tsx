@@ -216,7 +216,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
 
     try {
       console.log("📤 Sending message:", newMessage.trim());
-      await send({ text: newMessage.trim() });
+      await send({ text: newMessage.trim(), metadata: {location: "User-Chats"} });
       setNewMessage("");
       console.log("✅ Message sent successfully");
     } catch (error) {

@@ -97,24 +97,40 @@ const ChatBox = ({
     }
   }
 
-  const recordPresence = async (action: string) => {
-    try {
-      const backend = await axios.post(
-        "https://play-os-backend.forgehub.in/chatV1/presence/record",
-        [
-          {
-            action: action,
-            userId: getUserId(),
-            roomId: roomName,
-            timeStamp: Date.now(),
-          },
-        ]
-      );
-      console.log(`${action.toLowerCase()} backend`, backend.data);
-    } catch (error) {
-      console.error(`Error recording ${action} presence:`, error);
+const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
+  try {
+    const payload = [{
+      action,
+      userId: getUserId(),
+      roomId: roomName,
+      timeStamp: Date.now(),
+    }];
+
+    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+
+    if (useBeacon && navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+      const success = navigator.sendBeacon(url, blob);
+      console.log(`${action.toLowerCase()} beacon sent:`, success);
+      if (success) return;
     }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+      keepalive: true
+    });
+    
+    if (response.ok) {
+      console.log(`${action} presence recorded successfully`);
+    }
+  } catch (error) {
+    console.error(`Error recording ${action} presence:`, error);
   }
+};
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -133,7 +149,7 @@ const ChatBox = ({
   const currentClientId = useMemo(() => {
     try {
       const t = sessionStorage.getItem("token");
-      return t ? JSON.parse(atob(t.split(".")[1])).name : "Guest";
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
     } catch {
       return "Guest";
     }
@@ -196,13 +212,16 @@ const ChatBox = ({
             });
 
             setMessages(newMessages);
-
+            console.log("messages from rmdash..", newMessages);
+            
             // Fetch names for unique client IDs
             const uniqueClientIds = [
               ...new Set(newMessages.map((msg) => msg.clientId)),
             ];
             uniqueClientIds.forEach((clientId) => fetchSenderName(clientId));
           } else {
+            console.log("msg from rmdas", allMessages);
+            
             setMessages(allMessages);
           }
         } catch (error) {
@@ -222,17 +241,27 @@ const ChatBox = ({
     };
   }, [roomName]);
 
-    useEffect(() => {
-    const handleBeforeUnload = () => {
-      recordPresence("EXIT");
-    };
+useEffect(() => {
+  const handleBeforeUnload = () => {
+    recordPresence("EXIT", true);
+  };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+  const handleVisibilityChange = () => {
+    if (document.visibilityState === 'hidden') {
+      recordPresence("EXIT", false);
+    } else {
+      recordPresence("ENTER", false);
+    }
+  };
 
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
+  window.addEventListener("beforeunload", handleBeforeUnload);
+  document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+    document.removeEventListener("visibilitychange", handleVisibilityChange);
+  };
+}, [roomName]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -244,7 +273,7 @@ const ChatBox = ({
   const sendMessage = useCallback(async () => {
     if (!inputValue.trim()) return;
     try {
-      await send({ text: inputValue.trim() });
+      await send({ text: inputValue.trim(), metadata: {location: "RM-Dashboard"} });
       setInputValue("");
     } catch (err) {
       console.error("Send error", err);
@@ -482,7 +511,7 @@ const [toTime, setToTime] = useState("12:00");
     () =>
       new Ably.Realtime({
         key: API_KEY,
-        clientId: loggedInUser || "RM_Dashboard",
+        clientId: loggedInUserId || "RM_Dashboard",
       }),
     [loggedInUser]
   );
@@ -725,7 +754,7 @@ useEffect(() => {
             // Create new realtime and chat client
             const newRealtime = new Ably.Realtime({
               key: API_KEY,
-              clientId: loggedInUser || "RM_Dashboard",
+              clientId: loggedInUserId || "RM_Dashboard",
             });
             const newChatClient = new ChatClient(newRealtime, {
               logLevel: LogLevel.Info,
