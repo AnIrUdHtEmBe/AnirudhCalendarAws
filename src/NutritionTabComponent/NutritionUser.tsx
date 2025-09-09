@@ -81,8 +81,8 @@ const UserNutrition = () => {
   const [sessionDetails, setSessionDetails] = useState<
     NutritionSessionTemplate[]
   >([]);
-    const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
-    const [activeIndex, setActiveIndex] = useState<number>(-1);
+  const [weekStartToEndDates, setWeekStartToEndDates] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   useEffect(() => {
     // Get date from query params or use current date
@@ -262,11 +262,15 @@ const UserNutrition = () => {
   };
 
   const handlePrevDay = () => {
-    setCurrentDate((prev) => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000));
+    setCurrentDate(
+      (prev) => new Date(prev.getTime() - 7 * 24 * 60 * 60 * 1000)
+    );
   };
 
   const handleNextDay = () => {
-    setCurrentDate((prev) => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000));
+    setCurrentDate(
+      (prev) => new Date(prev.getTime() + 7 * 24 * 60 * 60 * 1000)
+    );
   };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,66 +403,77 @@ const UserNutrition = () => {
   ];
 
   useEffect(() => {
-      let referenceDate = new Date(currentDate);
-  
-      if (isNaN(referenceDate.getTime())) {
-        referenceDate = new Date();
-      }
-  
-      const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
-  
-      setWeekStartToEndDates(weekDates);
-  
-      const currentDateStr = referenceDate.toISOString().split("T")[0];
-  
-      const newActiveIndex = weekDates.findIndex(
-        (dateStr) => dateStr === currentDateStr
-      );
-  
-      setActiveIndex(newActiveIndex !== -1 ? newActiveIndex : 0);
-    }, [currentDate]);
+    let referenceDate = new Date(currentDate);
+
+    if (isNaN(referenceDate.getTime())) {
+      referenceDate = new Date();
+    }
+
+    const weekDates = getArrayOfDatesFromSundayToSaturday(referenceDate);
+
+    setWeekStartToEndDates(weekDates);
+
+    const currentDateStr = referenceDate.toISOString().split("T")[0];
+
+    const newActiveIndex = weekDates.findIndex(
+      (dateStr) => dateStr === currentDateStr
+    );
+
+    setActiveIndex(newActiveIndex !== -1 ? newActiveIndex : 0);
+  }, [currentDate]);
 
   return (
     <>
       <TopBar />
-      <div className="flex items-center justify-center gap-10 py-2 bg-white shadow-sm shrink-0">
+      <div className="flex items-center justify-between py-2 bg-white shadow-sm shrink-0 px-6">
+        {/* Left side - Back button */}
         <button
-          onClick={handlePrevDay}
-          className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 transition-colors"
+          onClick={handleBackToNutrition}
+          className="flex items-center space-x-1 px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-xs"
         >
-          ← Prev
+          <ArrowLeft className="w-3 h-3" />
+          <span>Back</span>
         </button>
-        <WeekPlanView
-                activeIndex={activeIndex}
-                setActiveIndex={setActiveIndex}
-                weekStartToEndDates={weekStartToEndDates}
-                onDateChange={(newDate) => {
-                  setCurrentDate(newDate);
-                }}
-              />
-        <span className="text-xs font-semibold">
-          {/* {currentDate.toLocaleDateString("en-IN", {
-            weekday: "short",
-            year: "numeric",
-            month: "short",
-            day: "numeric",
-          })} */}
-          {isLoading && <span className="ml-2 text-blue-500">Loading...</span>}
-        </span>
-        <div className="flex items-center gap-4">
-          <input
-            type="date"
-            value={formatDateForInput(currentDate)}
-            onChange={handleDateChange}
-            className="px-2 py-1 border border-gray-300 rounded text-xs"
+
+        {/* Center - Date navigation */}
+        <div className="flex items-center gap-10">
+          <button
+            onClick={handlePrevDay}
+            className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 transition-colors"
+          >
+            ← Prev
+          </button>
+          <WeekPlanView
+            activeIndex={activeIndex}
+            setActiveIndex={setActiveIndex}
+            weekStartToEndDates={weekStartToEndDates}
+            onDateChange={(newDate) => {
+              setCurrentDate(newDate);
+            }}
           />
+          <span className="text-xs font-semibold">
+            {isLoading && (
+              <span className="ml-2 text-blue-500">Loading...</span>
+            )}
+          </span>
+          <div className="flex items-center gap-4">
+            <input
+              type="date"
+              value={formatDateForInput(currentDate)}
+              onChange={handleDateChange}
+              className="px-2 py-1 border border-gray-300 rounded text-xs"
+            />
+          </div>
+          <button
+            onClick={handleNextDay}
+            className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 transition-colors"
+          >
+            Next →
+          </button>
         </div>
-        <button
-          onClick={handleNextDay}
-          className="px-3 py-1 bg-gray-300 rounded hover:bg-gray-400 transition-colors"
-        >
-          Next →
-        </button>
+
+        {/* Right side - Empty for balance */}
+        <div className="w-16"></div>
       </div>
 
       <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 flex flex-col">
@@ -466,13 +481,13 @@ const UserNutrition = () => {
           {/* Header - Fixed */}
           <div className="flex-shrink-0">
             <div className="flex items-center mb-6">
-              <button
+              {/* <button
                 onClick={handleBackToNutrition}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Back to Nutrition Overview</span>
-              </button>
+              </button> */}
             </div>
 
             <div className="text-center mb-8">

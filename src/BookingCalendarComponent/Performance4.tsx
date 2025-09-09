@@ -90,8 +90,6 @@ type Booking = {
   st_unix: number;
   et_unix: number;
   bookingId: string;
-  difficultyLevel?: string; // Add this field
-  maxPlayers?: number;
 };
 
 type CourtDetails = {
@@ -354,7 +352,7 @@ const Cell = React.memo(
   }
 );
 
-const CellGridLatestP3 = () => {
+const CellGridLatestP4 = () => {
   console.log(`🔌 Ably client status:`, ablyRealtimeClient.connection.state);
   console.log(`💬 Chat client status:`, cellChatClient);
   const [courtId, setCourtId] = useState<Court[]>([]);
@@ -526,9 +524,7 @@ const CellGridLatestP3 = () => {
   const [loadingScreen, setLoadingScreen] = useState(true);
 
   // Check if all selected cells are in the same row and columns are consecutive
-  const isValidSelection = (
-    selectedCells: Array<[number, number]>
-  ): boolean => {
+  const isValidSelection = useMemo(() => (selectedCells: Array<[number, number]>) => {
     if (selectedCells.length === 0) return false;
 
     // Extract all rows and columns
@@ -545,57 +541,16 @@ const CellGridLatestP3 = () => {
     }
 
     return true;
-  };
+  }, []);
 
-  const getCellData = async () => {
-    if (!selectedCell) return null;
+    const getFilteredCourtByIndex = useCallback((index: number) => {
+    return filteredCourtId[index];
+  }, [filteredCourtId]);
 
-    const { row, col } = selectedCell;
-    const court = getFilteredCourtByIndex(row);
-    const courtName = resolvedNames[court.courtId] || court.name;
 
-    // Format the selected time slot (single or multiple)
-    const timeSlot = formatSelectedTimeRange(
-      selected.length > 0 ? selected : [[row, col]]
-    );
-
-    // Use gameName from selectedCellDetails, fallback if needed
-    const gameName = selectedCellDetails.gameName || "";
-
-    // Get FRESH bookingId instead of using cached data
-    let bookingId = "";
-    try {
-      const freshBookingId = await getBookingIdForCell(row, col);
-      bookingId = freshBookingId || "";
-    } catch (error) {
-      // console.error("Error getting fresh bookingId:", error);
-      bookingId = "";
-    }
-
-    const data = {
-      courtName,
-      timeSlot,
-      gameName,
-      bookingId,
-    };
-
-    // Update the state with the fetched data
-    setCellData(data);
-
-    // return {
-    //   courtName,
-    //   timeSlot,
-    //   gameName,
-    //   bookingId,
-    // };
-
-    return data;
-  };
 
   // Format time range only if selection is valid
-  const formatSelectedTimeRange = (
-    selectedCells: Array<[number, number]>
-  ): string => {
+  const formatSelectedTimeRange = useMemo(() => (selectedCells: Array<[number, number]>) => {
     if (!isValidSelection(selectedCells)) {
       return "Invalid selection";
     }
@@ -630,7 +585,7 @@ const CellGridLatestP3 = () => {
       .padStart(2, "0")} ${endAmPm}`;
 
     return `${startTimeStr} - ${endTimeStr} `;
-  };
+  }, [isValidSelection]);
 
   // Generate time labels for 24 hours (12 AM to 12 AM)
   const timeLabels = useMemo(() => {
@@ -669,7 +624,7 @@ const CellGridLatestP3 = () => {
       : dateOrString;
   }
 
-  const calculateColumns = (
+  const calculateColumns = useMemo(() => (
     openTime: string | Date,
     closeTime: string | Date
   ) => {
@@ -687,9 +642,9 @@ const CellGridLatestP3 = () => {
 
     // Round to integer if needed
     return Math.round(slots);
-  };
+  }, []);
 
-  const fetchArenaData = async () => {
+  const fetchArenaData = useCallback(async () => {
     try {
       const response = await fetch(
         "https://play-os-backend.forgehub.in/arena/AREN_JZSW15"
@@ -723,9 +678,9 @@ const CellGridLatestP3 = () => {
       // console.error("Error fetching arena data:", error);
       // Keep default values on error
     }
-  };
+  }, []);
 
-  const fetchArenaDetails = async () => {
+  const fetchArenaDetails = useCallback(async () => {
     const apiRes = await axios.get(`${API_BASE_URL_Latest}/arena/AREN_JZSW15`);
     const arenaStartTime = apiRes.data.openingTime;
     const arenaEndTime = apiRes.data.closingTime;
@@ -736,9 +691,9 @@ const CellGridLatestP3 = () => {
     // console.log("arena opne close", arenaOpen, arenaClose);
     const numColumns = calculateColumns(arenaOpen, arenaClose);
     // console.log("Number of 30 min slots (columns):", numColumns);
-  };
+  }, [calculateColumns]);
 
-  const fetchCourtIDs = async () => {
+  const fetchCourtIDs = useCallback(async () => {
     try {
       const response = await axios.get(
         `${API_BASE_URL_Latest}/arena/AREN_JZSW15/courts`
@@ -770,11 +725,11 @@ const CellGridLatestP3 = () => {
     } catch (error) {
       // console.error("Failed to fetch court IDs", error);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchArenaDetails();
-  }, []);
+  }, [fetchArenaDetails]);
 
   const fetchAllCourtDetails = useCallback(
     async (filteredCourtId: Court[]) => {
@@ -824,7 +779,7 @@ const CellGridLatestP3 = () => {
       setCourtDetailsMap(detailsMap);
       setCourtAllowedSportsMap(allowedSportsMap);
     },
-    [courtDetailsMap, courtAllowedSportsMap]
+    []
   );
 
   const fetchSlotsForCourts = useCallback(async () => {
@@ -865,9 +820,9 @@ const CellGridLatestP3 = () => {
 
     setCourtSlots(slotsMap);
     setCourtBookids(bookIdMap);
-  }, [currentDate, filteredCourtId, courtSlots]);
+  }, [currentDate, filteredCourtId]);
 
-  const fetchPrices = async () => {
+  const fetchPrices = useCallback(async () => {
     const newPrices: Record<string, Record<string, number>> = {};
 
     const allSlots = Object.values(courtSlots).flat();
@@ -891,32 +846,32 @@ const CellGridLatestP3 = () => {
     // console.log("new prices response", newPrices);
 
     setSlotPrices(newPrices);
-  };
+  }, [courtSlots]);
 
   useEffect(() => {
     fetchCourtIDs();
-  }, []);
+  }, [fetchCourtIDs]);
 
   useEffect(() => {
     if (filteredCourtId.length > 0) {
       fetchAllCourtDetails(filteredCourtId);
     }
-  }, [filteredCourtId, activeTab]);
+  }, [filteredCourtId, activeTab, fetchAllCourtDetails]);
 
   useEffect(() => {
     if (filteredCourtId.length === 0) return;
     fetchSlotsForCourts();
-  }, [filteredCourtId.length, currentDate, activeTab]);
+  }, [filteredCourtId.length, currentDate, activeTab, fetchSlotsForCourts]);
 
   // console.log(courtSlots, "Court Slots state");
 
-  // useEffect(() => {
-  //   if (Object.keys(courtSlots).length > 0) {
-  //     fetchPrices();
-  //   }
-  // }, [courtSlots]);
+  useEffect(() => {
+    if (Object.keys(courtSlots).length > 0) {
+      fetchPrices();
+    }
+  }, [courtSlots, fetchPrices]);
 
-  const calculateBookingSpans = async (courtsData: Court[], date: Date) => {
+  const calculateBookingSpans = useCallback(async (courtsData: Court[], date: Date) => {
     const dateStr = date.toISOString().split("T")[0];
     const spans: Record<
       string,
@@ -981,11 +936,9 @@ const CellGridLatestP3 = () => {
     );
 
     setBookingSpans(spans);
-  };
+  }, []);
 
-  const getFilteredCourtByIndex = (index: number) => {
-    return filteredCourtId[index];
-  };
+
 
   // Updated grid generation function
   const updateGridWithBookings = useCallback(
@@ -1117,10 +1070,10 @@ const CellGridLatestP3 = () => {
 
       setGrid(newGrid);
     },
-    [cols]
+    [cols, timeLabels]
   );
 
-  const fetchBukings = async (dateStr: string) => {
+  const fetchBukings = useCallback(async (dateStr: string) => {
     const bookingsMap: Record<string, { start: Date; end: Date }[]> = {};
     const cancelledBookingsMap: Record<string, { start: Date; end: Date }[]> =
       {};
@@ -1179,9 +1132,9 @@ const CellGridLatestP3 = () => {
     // console.log("CancelledMao", cancelledBookingsMap);
 
     return { bookingsMap, cancelledBookingsMap, bookBookingsMap };
-  };
+  }, [filteredCourtId]);
 
-  const fetchBlockedSlots = async (dateStr: string) => {
+  const fetchBlockedSlots = useCallback(async (dateStr: string) => {
     const blockedMap: Record<string, { start: Date; end: Date }[]> = {};
     await Promise.all(
       filteredCourtId.map(async (court) => {
@@ -1229,9 +1182,9 @@ const CellGridLatestP3 = () => {
       })
     );
     return blockedMap;
-  };
+  }, [filteredCourtId]);
 
-  const fetchBookingsAndBlocked = async (date: Date) => {
+  const fetchBookingsAndBlocked = useCallback(async (date: Date) => {
     if (filteredCourtId.length === 0) return;
 
     setIsLoadingBookings(true);
@@ -1282,14 +1235,14 @@ const CellGridLatestP3 = () => {
     } finally {
       setIsLoadingBookings(false);
     }
-  };
+  }, [filteredCourtId, fetchBukings, fetchBlockedSlots, updateGridWithBookings, calculateBookingSpans, fetchSlotsForCourts]);
 
   // Fetch bookings when courts or date changes
   useEffect(() => {
     if (filteredCourtId.length > 0) {
       fetchBookingsAndBlocked(currentDate);
     }
-  }, [filteredCourtId.length, currentDate, activeTab]);
+  }, [filteredCourtId.length, currentDate, activeTab, fetchBookingsAndBlocked]);
 
   useEffect(() => {
     setGrid(
@@ -1297,260 +1250,279 @@ const CellGridLatestP3 = () => {
         Array(cols).fill("available")
       )
     );
-  }, [courtId.length]);
+  }, [filteredCourtId.length, cols]);
 
   // New function to fetch cell details when a cell is selected
   // New function to fetch cell details when a cell is selected
   const fetchCellDetails = useCallback(
-    async (row: number, col: number) => {
-      if (filteredCourtId.length === 0) return;
+  async (row: number, col: number) => {
+    if (filteredCourtId.length === 0) return;
 
-      const cacheKey = `${row}-${col}-${
-        currentDate.toISOString().split("T")[0]
-      }`;
+    const cacheKey = `${row}-${col}-${
+      currentDate.toISOString().split("T")[0]
+    }`;
 
-      // Check if we already have fresh data for this cell
-      if (
-        selectedCellDetails.courtDetails &&
-        selectedCell?.row === row &&
-        selectedCell?.col === col
-      ) {
-        return;
+    // Check if we already have fresh data for this cell
+    if (
+      selectedCellDetails.courtDetails &&
+      selectedCell?.row === row &&
+      selectedCell?.col === col
+    ) {
+      return;
+    }
+
+    setIsLoadingCellDetails(true);
+    const court = getFilteredCourtByIndex(row);
+    const dateStr = currentDate.toISOString().split("T")[0];
+
+    // Initialize all details to null/empty before fetching
+    let selectedCourtDetails: CourtDetails | null = null;
+    let selectedBookingArray: Booking[] = [];
+    let selectedGameName: string = "";
+    let selectedAvailableSports: Sport[] = [];
+    let selectedCurrentBooking: Booking | null = null;
+
+    try {
+      // 1. Use cached court details
+      selectedCourtDetails = courtDetailsMap[court.courtId] || null;
+
+      // 2. Use cached available sports
+      selectedAvailableSports = courtAllowedSportsMap[court.courtId] || [];
+
+      // 3. ALWAYS fetch fresh bookings for the court on the selected date
+      try {
+        const bookingsRes = await axios.get(
+          `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+        );
+        selectedBookingArray = bookingsRes?.data?.bookings || [];
+
+        // Find current booking for this cell (if any) - ACTIVE AND RESCHEDULED BOOKINGS
+        const hour = Math.floor(col / 2);
+        const minute = col % 2 === 0 ? 0 : 30;
+        const slotTime = new Date(currentDate);
+        slotTime.setHours(hour, minute, 0, 0);
+        const slotStartMillis = slotTime.getTime();
+        const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
+
+        selectedCurrentBooking =
+          selectedBookingArray.find((booking: Booking) => {
+            const startTime = toIST(booking.startTime).getTime();
+            const endTime = toIST(booking.endTime).getTime();
+            // Include both active and rescheduled bookings
+            const isValidBooking =
+              booking.status === "active" || booking.status === "rescheduled";
+            return (
+              slotStartMillis < endTime &&
+              slotEndMillis > startTime &&
+              isValidBooking
+            );
+          }) || null;
+
+        // IMPORTANT: Always reset to all allowed sports first
+        selectedGameName = selectedAvailableSports
+          .map((sport) => sport.name)
+          .join(", ");
+
+        // If current booking exists (active or rescheduled), override gameName with booked sport's name
+        if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
+          try {
+            // 1. Use cached sport name for the booking
+            const bookedSport = selectedAvailableSports.find(
+              (s) => s.sportId === selectedCurrentBooking!.sportId
+            );
+            selectedGameName = bookedSport ? bookedSport.name : selectedGameName;
+
+            // Only fetch game details if type is "game"
+            if (selectedCurrentBooking.type === "game") {
+              // 2. Compute cell timeslot start & end for the selected cell
+              const hour = Math.floor(col / 2);
+              const minute = col % 2 === 0 ? 0 : 30;
+              const slotStart = new Date(currentDate);
+              slotStart.setHours(hour, minute, 0, 0);
+              const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
+
+              // 3. Fetch the game list for this sport, court, and date (make async)
+              axios
+                .get(`${API_BASE_URL_Latest}/game/games/by-sport`, {
+                  params: {
+                    sportId: selectedCurrentBooking.sportId,
+                    date: dateStr,
+                    courtId: court.courtId,
+                  },
+                })
+                .then((gamesRes) => {
+                  const games = gamesRes.data || [];
+
+                  // 4. Find the correct game for this timeslot/cell
+                  const matchingGame = games.find((game: any) => {
+                    const gameStart = new Date(game.startTime).getTime();
+                    const gameEnd = new Date(game.endTime).getTime();
+                    return (
+                      (gameStart === slotStart.getTime() &&
+                        gameEnd === slotEnd.getTime()) ||
+                      (slotStart.getTime() >= gameStart &&
+                        slotEnd.getTime() <= gameEnd)
+                    );
+                  });
+
+                  if (matchingGame) {
+                    // console.log(
+                    //   "latest game id and chatId",
+                    //   matchingGame.gameId,
+                    //   matchingGame.chatId
+                    // );
+                  }
+                })
+                .catch((err) => {
+                  console.error("Error fetching games:", err);
+                });
+            }
+          } catch (err) {
+            // console.error("Error processing sport details for booking:", err);
+            // Keep the default all allowed sports name
+            selectedGameName = selectedAvailableSports
+              .map((sport) => sport.name)
+              .join(", ");
+          }
+        }
+        // If no valid booking, selectedGameName remains as all allowed sports
+      } catch (bookingsError) {
+        // console.error("Failed to fetch bookings:", bookingsError);
+        selectedBookingArray = [];
+        selectedCurrentBooking = null;
+        // Keep selectedGameName as allowed sports names
+        selectedGameName = selectedAvailableSports
+          .map((sport) => sport.name)
+          .join(", ");
       }
+    } catch (mainError) {
+      // console.error(
+      //   "Failed to fetch court details or primary info:",
+      //   mainError
+      // );
+      // If court details fail, clear everything
+      selectedCourtDetails = null;
+      selectedBookingArray = [];
+      selectedGameName = "";
+      selectedAvailableSports = [];
+      selectedCurrentBooking = null;
+    } finally {
+      setSelectedCellDetails({
+        courtDetails: selectedCourtDetails,
+        bookings: selectedBookingArray,
+        gameName: selectedGameName,
+        availableSports: selectedAvailableSports,
+        currentBooking: selectedCurrentBooking,
+      });
+      if (!selectedCurrentBooking) {
+        setHostName("");
+      } else {
+        const bookedById = selectedCurrentBooking.bookedBy;
+        axios
+          .get(`${API_BASE_URL_Latest}/human/${bookedById}`)
+          .then((userRes) => {
+            setHostName(userRes.data.name || bookedById);
+          })
+          .catch((error) => {
+            console.error("Failed to fetch host name:", error);
+            setHostName(bookedById);
+          });
+      }
+      setIsLoadingCellDetails(false);
+    }
+  },
+  [selectedCell, currentDate, filteredCourtId, courtDetailsMap, courtAllowedSportsMap, getFilteredCourtByIndex, toIST]
+);
 
-      setIsLoadingCellDetails(true);
+
+  const fetchGameIdForCell = useCallback(async (row: number, col: number) => {
+    try {
       const court = getFilteredCourtByIndex(row);
       const dateStr = currentDate.toISOString().split("T")[0];
 
-      // Initialize all details to null/empty before fetching
-      let selectedCourtDetails: CourtDetails | null = null;
-      let selectedBookingArray: Booking[] = [];
-      let selectedGameName: string = "";
-      let selectedAvailableSports: Sport[] = [];
-      let selectedCurrentBooking: Booking | null = null;
+      // Get the cell time
+      const hour = Math.floor(col / 2);
+      const minute = col % 2 === 0 ? 0 : 30;
+      const slotTime = new Date(currentDate);
+      slotTime.setHours(hour, minute, 0, 0);
+      const slotStartMillis = slotTime.getTime();
+      const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
 
-      try {
-        // 1. Use cached court details
-        selectedCourtDetails = courtDetailsMap[court.courtId] || null;
+      // ALWAYS fetch fresh bookings to get latest sportId
+      const bookingsRes = await axios.get(
+        `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
+      );
+      const bookings = bookingsRes?.data?.bookings || [];
 
-        // 2. Use cached available sports
-        selectedAvailableSports = courtAllowedSportsMap[court.courtId] || [];
+      const cellBooking = bookings.find((booking: Booking) => {
+        const startTime = toIST(booking.startTime).getTime();
+        const endTime = toIST(booking.endTime).getTime();
+        const isActiveBooking =
+          booking.status === "active" || booking.status === "rescheduled";
+        return (
+          slotStartMillis < endTime &&
+          slotEndMillis > startTime &&
+          isActiveBooking
+        );
+      });
 
-        // 3. ALWAYS fetch fresh bookings for the court on the selected date
-        try {
-          const bookingsRes = await axios.get(
-            `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
-          );
-          selectedBookingArray = bookingsRes?.data?.bookings || [];
-
-          // Find current booking for this cell (if any) - ACTIVE AND RESCHEDULED BOOKINGS
-          const hour = Math.floor(col / 2);
-          const minute = col % 2 === 0 ? 0 : 30;
-          const slotTime = new Date(currentDate);
-          slotTime.setHours(hour, minute, 0, 0);
-          const slotStartMillis = slotTime.getTime();
-          const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
-
-          selectedCurrentBooking =
-            selectedBookingArray.find((booking: Booking) => {
-              const startTime = toIST(booking.startTime).getTime();
-              const endTime = toIST(booking.endTime).getTime();
-              // Include both active and rescheduled bookings
-              const isValidBooking =
-                booking.status === "active" || booking.status === "rescheduled";
-              return (
-                slotStartMillis < endTime &&
-                slotEndMillis > startTime &&
-                isValidBooking
-              );
-            }) || null;
-
-          // IMPORTANT: Always reset to all allowed sports first
-          selectedGameName = selectedAvailableSports
-            .map((sport) => sport.name)
-            .join(", ");
-
-          if (
-            selectedCurrentBooking &&
-            selectedCurrentBooking.bookingId &&
-            selectedCurrentBooking.type === "game"
-          ) {
-            try {
-              const fullBookingRes = await axios.get(
-                `${API_BASE_URL_Latest}/booking/${selectedCurrentBooking.bookingId}`
-              );
-              const fullBookingData = fullBookingRes.data;
-
-              // Update the currentBooking with full details, focusing on difficultyLevel and maxPlayers
-              selectedCurrentBooking = {
-                ...selectedCurrentBooking,
-                difficultyLevel:
-                  fullBookingData.scheduledPlayersDetails?.[0]?.gameLevel ||
-                  selectedCurrentBooking.difficultyLevel ||
-                  "Not specified",
-                maxPlayers:
-                  fullBookingData.maxPlayers ||
-                  selectedCurrentBooking.maxPlayers ||
-                  0,
-              };
-            } catch (fullBookingError) {
-              console.error(
-                "Failed to fetch full booking details:",
-                fullBookingError
-              );
-              // Fallback: keep existing values, which might be undefined
-            }
-          }
-
-          if (
-            selectedCurrentBooking &&
-            selectedCurrentBooking.type === "game" &&
-            selectedCurrentBooking.bookingId
-          ) {
-            try {
-              const gameRes = await axios.get(
-                `https://play-os-backend.forgehub.in/game/get_games_by_bookingId/${selectedCurrentBooking.bookingId}`
-              );
-              const games = gameRes.data;
-
-              if (games.length > 0) {
-                const game = games[0];
-                selectedCurrentBooking = {
-                  ...selectedCurrentBooking,
-                  difficultyLevel: game.difficultyLevel || "Not specified",
-                  maxPlayers: game.maxPlayers || 0,
-                };
-              }
-            } catch (fullBookingError) {
-              console.error(
-                "Failed to fetch full game details:",
-                fullBookingError
-              );
-              // Fallback: keep existing values, which might be undefined for non-games
-            }
-          }
-
-          // If current booking exists (active or rescheduled), override gameName with booked sport's name
-          if (selectedCurrentBooking && selectedCurrentBooking.sportId) {
-            try {
-              // 1. Use cached sport name for the booking
-              const bookedSport = selectedAvailableSports.find(
-                (s) => s.sportId === selectedCurrentBooking!.sportId
-              );
-              selectedGameName = bookedSport
-                ? bookedSport.name
-                : selectedGameName;
-
-              // Only fetch game details if type is "game"
-              if (selectedCurrentBooking.type === "game") {
-                // 2. Compute cell timeslot start & end for the selected cell
-                const hour = Math.floor(col / 2);
-                const minute = col % 2 === 0 ? 0 : 30;
-                const slotStart = new Date(currentDate);
-                slotStart.setHours(hour, minute, 0, 0);
-                const slotEnd = new Date(slotStart.getTime() + 60 * 60 * 1000);
-
-                // 3. Fetch the game list for this sport, court, and date (make async)
-                axios
-                  .get(`${API_BASE_URL_Latest}/game/games/by-sport`, {
-                    params: {
-                      sportId: selectedCurrentBooking.sportId,
-                      date: dateStr,
-                      courtId: court.courtId,
-                    },
-                  })
-                  .then((gamesRes) => {
-                    const games = gamesRes.data || [];
-
-                    // 4. Find the correct game for this timeslot/cell
-                    const matchingGame = games.find((game: any) => {
-                      const gameStart = new Date(game.startTime).getTime();
-                      const gameEnd = new Date(game.endTime).getTime();
-                      return (
-                        (gameStart === slotStart.getTime() &&
-                          gameEnd === slotEnd.getTime()) ||
-                        (slotStart.getTime() >= gameStart &&
-                          slotEnd.getTime() <= gameEnd)
-                      );
-                    });
-
-                    if (matchingGame) {
-                      // console.log(
-                      //   "latest game id and chatId",
-                      //   matchingGame.gameId,
-                      //   matchingGame.chatId
-                      // );
-                    }
-                  })
-                  .catch((err) => {
-                    console.error("Error fetching games:", err);
-                  });
-              }
-            } catch (err) {
-              // console.error("Error processing sport details for booking:", err);
-              // Keep the default all allowed sports name
-              selectedGameName = selectedAvailableSports
-                .map((sport) => sport.name)
-                .join(", ");
-            }
-          }
-          // If no valid booking, selectedGameName remains as all allowed sports
-        } catch (bookingsError) {
-          // console.error("Failed to fetch bookings:", bookingsError);
-          selectedBookingArray = [];
-          selectedCurrentBooking = null;
-          // Keep selectedGameName as allowed sports names
-          selectedGameName = selectedAvailableSports
-            .map((sport) => sport.name)
-            .join(", ");
-        }
-      } catch (mainError) {
-        // console.error(
-        //   "Failed to fetch court details or primary info:",
-        //   mainError
-        // );
-        // If court details fail, clear everything
-        selectedCourtDetails = null;
-        selectedBookingArray = [];
-        selectedGameName = "";
-        selectedAvailableSports = [];
-        selectedCurrentBooking = null;
-      } finally {
-        setSelectedCellDetails({
-          courtDetails: selectedCourtDetails,
-          bookings: selectedBookingArray,
-          gameName: selectedGameName,
-          availableSports: selectedAvailableSports,
-          currentBooking: selectedCurrentBooking,
-        });
-        if (!selectedCurrentBooking) {
-          setHostName("");
-        } else {
-          const bookedById = selectedCurrentBooking.bookedBy;
-          axios
-            .get(`${API_BASE_URL_Latest}/human/${bookedById}`)
-            .then((userRes) => {
-              setHostName(userRes.data.name || bookedById);
-            })
-            .catch((error) => {
-              console.error("Failed to fetch host name:", error);
-              setHostName(bookedById);
-            });
-        }
-        setIsLoadingCellDetails(false);
+      if (!cellBooking || !cellBooking.sportId) {
+        throw new Error("No fresh booking or sportId found for this cell");
       }
-    },
-    [
-      selectedCell,
-      currentDate,
-      filteredCourtId,
-      courtDetailsMap,
-      courtAllowedSportsMap,
-    ]
-  );
+
+      const sportId = cellBooking.sportId;
+
+      // For game type bookings, fetch games using the fresh sportId
+      if (cellBooking.type === "game") {
+        let response;
+        try {
+          response = await axios.get(
+            `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=${court.courtId}`
+          );
+        } catch (error) {
+          // console.log("Trying with courtId=ALL as fallback");
+          response = await axios.get(
+            `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=ALL`
+          );
+        }
+        // console.log("Fresh game fetch response:", response.data);
+        const games = response.data;
+        sessionStorage.setItem("newHostClick", response.data[0].hostName);
+
+        const matchingGame = games.find((game: any) => {
+          const gameStart = toIST(game.startTime).getTime();
+          const gameEnd = toIST(game.endTime).getTime();
+
+          return (
+            (game.courtId === court.courtId && slotStartMillis < gameEnd) ||
+            slotEndMillis > gameStart
+          );
+        });
+
+        if (!matchingGame) {
+          throw new Error("No matching fresh game found for cell");
+        }
+
+        // console.log("Found fresh matching game with ID:", matchingGame.gameId);
+        localStorage.setItem("gameId", matchingGame.gameId);
+        return matchingGame.gameId;
+      } else {
+        // For booking type, we don't need gameId, just return the bookingId
+        return cellBooking.bookingId;
+      }
+    } catch (error) {
+      // console.error("Failed to fetch fresh gameId:", error);
+      throw error;
+    }
+  }, [getFilteredCourtByIndex, currentDate]);
+
+
+    const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+  }, []);
 
   // Update updateCell to allow multiple selection toggling
-  const updateCell = (row: number, col: number) => {
+  const updateCell = useCallback((row: number, col: number) => {
     //   setSelectedCell({ row, col });
     //    setSelectedCell(prev =>
     //   prev && prev.row === row && prev.col === col ? null : { row, col }
@@ -1632,10 +1604,10 @@ const CellGridLatestP3 = () => {
     // Fetch cell details for the clicked cell (last clicked)
     fetchCellDetails(row, col);
     fetchGameIdForCell(row, col);
-  };
+  }, [grid, selected, setSelectedSportId, setSelectedCell, fetchCellDetails, fetchGameIdForCell]);
 
   // Replace the entire handleDrop function
-  const handleDrop = async (
+  const handleDrop = useCallback(async (
     [fr, fc]: [number, number],
     [tr, tc]: [number, number]
   ) => {
@@ -1822,7 +1794,7 @@ const CellGridLatestP3 = () => {
         showToast("Failed to reschedule booking. Please try again.");
       }
     }
-  };
+  }, [grid, getFilteredCourtByIndex, currentDate, fetchGameIdForCell, showToast, setSelected, cols, fetchBookingsAndBlocked, fetchSlotsForCourts]);
 
   type ModalGame = {
     gameId: string;
@@ -1844,7 +1816,7 @@ const CellGridLatestP3 = () => {
   }
 
   // Modify applyAction to handle multiple selected cells for booking
-  const applyAction = async (action: CellState) => {
+  const applyAction = useCallback(async (action: CellState) => {
     if (selected.length === 0) return;
 
     if (
@@ -2366,9 +2338,9 @@ const CellGridLatestP3 = () => {
       // ... existing code for booking creation ...
     } else {
     }
-  };
+  }, [selected, selectedSportId, showToast, courtSlots, getFilteredCourtByIndex, currentDate, difficultyLevel, maxPlayers, selectedCellDetails.availableSports, fetchBookingsAndBlocked]);
 
-  const getSlotForCell = (row: number, col: number) => {
+  const getSlotForCell = useCallback((row: number, col: number) => {
     const slotsForCourt =
       courtSlots[getFilteredCourtByIndex(row)?.courtId] || [];
     const hour = Math.floor(col / 2);
@@ -2380,7 +2352,7 @@ const CellGridLatestP3 = () => {
       const slotStart = new Date(slot.startTime);
       return slotStart.getTime() === cellStartTime.getTime();
     });
-  };
+  }, [courtSlots, getFilteredCourtByIndex, currentDate]);
 
   // Modify cancelBooking to cancel bookings for all selected cells with bookings
   const leftSidebarRef = useRef<HTMLDivElement>(null);
@@ -2398,11 +2370,10 @@ const CellGridLatestP3 = () => {
     el.addEventListener("scroll", onSidebarScroll);
 
     return () => el.removeEventListener("scroll", onSidebarScroll);
-  }, [leftSidebarRef.current]);
+  }, []);
 
   // Helper for UI: get first selected cell or null
-  const firstSelected = selected.length > 0 ? selected[0] : null;
-  // console.log(firstSelected, "firstSelected");
+  const firstSelected = useMemo(() => selected.length > 0 ? selected[0] : null, [selected]);
 
   const [isModalOpen, setisModalOpen] = useState<boolean>(false);
 
@@ -2418,101 +2389,21 @@ const CellGridLatestP3 = () => {
     return date.toISOString().split("T")[0];
   }
 
-  const selectedSlot = selectedCell
+  const selectedSlot = useMemo(() => selectedCell
     ? getSlotForCell(selectedCell.row, selectedCell.col)
-    : null;
-  const slotPrice = selectedSlot
+    : null, [selectedCell, getSlotForCell]);
+
+  const slotPrice = useMemo(() => selectedSlot
     ? slotPrices[selectedSlot.courtId]?.[selectedSlot.slotId]
-    : null;
+    : null, [selectedSlot, slotPrices]);
 
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-  };
 
-  const fetchGameIdForCell = async (row: number, col: number) => {
-    try {
-      const court = getFilteredCourtByIndex(row);
-      const dateStr = currentDate.toISOString().split("T")[0];
 
-      // Get the cell time
-      const hour = Math.floor(col / 2);
-      const minute = col % 2 === 0 ? 0 : 30;
-      const slotTime = new Date(currentDate);
-      slotTime.setHours(hour, minute, 0, 0);
-      const slotStartMillis = slotTime.getTime();
-      const slotEndMillis = slotStartMillis + 30 * 60 * 1000;
 
-      // ALWAYS fetch fresh bookings to get latest sportId
-      const bookingsRes = await axios.get(
-        `${API_BASE_URL_Latest}/court/${court.courtId}/bookings?date=${dateStr}`
-      );
-      const bookings = bookingsRes?.data?.bookings || [];
 
-      const cellBooking = bookings.find((booking: Booking) => {
-        const startTime = toIST(booking.startTime).getTime();
-        const endTime = toIST(booking.endTime).getTime();
-        const isActiveBooking =
-          booking.status === "active" || booking.status === "rescheduled";
-        return (
-          slotStartMillis < endTime &&
-          slotEndMillis > startTime &&
-          isActiveBooking
-        );
-      });
-
-      if (!cellBooking || !cellBooking.sportId) {
-        throw new Error("No fresh booking or sportId found for this cell");
-      }
-
-      const sportId = cellBooking.sportId;
-
-      // For game type bookings, fetch games using the fresh sportId
-      if (cellBooking.type === "game") {
-        let response;
-        try {
-          response = await axios.get(
-            `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=${court.courtId}`
-          );
-        } catch (error) {
-          // console.log("Trying with courtId=ALL as fallback");
-          response = await axios.get(
-            `${API_BASE_URL_Latest}/game/games/by-sport?sportId=${sportId}&date=${dateStr}&courtId=ALL`
-          );
-        }
-        // console.log("Fresh game fetch response:", response.data);
-        const games = response.data;
-        sessionStorage.setItem("newHostClick", response.data[0].hostName);
-
-        const matchingGame = games.find((game: any) => {
-          const gameStart = toIST(game.startTime).getTime();
-          const gameEnd = toIST(game.endTime).getTime();
-
-          return (
-            (game.courtId === court.courtId && slotStartMillis < gameEnd) ||
-            slotEndMillis > gameStart
-          );
-        });
-
-        if (!matchingGame) {
-          throw new Error("No matching fresh game found for cell");
-        }
-
-        // console.log("Found fresh matching game with ID:", matchingGame.gameId);
-        localStorage.setItem("gameId", matchingGame.gameId);
-        return matchingGame.gameId;
-      } else {
-        // For booking type, we don't need gameId, just return the bookingId
-        return cellBooking.bookingId;
-      }
-    } catch (error) {
-      // console.error("Failed to fetch fresh gameId:", error);
-      throw error;
-    }
-  };
-
-  const getBookingIdForCell = async (
+  const getBookingIdForCell = useCallback(async (
     row: number,
     col: number
   ): Promise<string | null> => {
@@ -2562,9 +2453,54 @@ const CellGridLatestP3 = () => {
       // console.error("Error getting fresh bookingId for cell:", error);
       return null;
     }
-  };
+  }, [getFilteredCourtByIndex, currentDate]);
 
-  const fetchScheduledUsersForBooking = async (bookingId: string) => {
+    const getCellData = useCallback(async () => {
+    if (!selectedCell) return null;
+
+    const { row, col } = selectedCell;
+    const court = getFilteredCourtByIndex(row);
+    const courtName = resolvedNames[court.courtId] || court.name;
+
+    // Format the selected time slot (single or multiple)
+    const timeSlot = formatSelectedTimeRange(
+      selected.length > 0 ? selected : [[row, col]]
+    );
+
+    // Use gameName from selectedCellDetails, fallback if needed
+    const gameName = selectedCellDetails.gameName || "";
+
+    // Get FRESH bookingId instead of using cached data
+    let bookingId = "";
+    try {
+      const freshBookingId = await getBookingIdForCell(row, col);
+      bookingId = freshBookingId || "";
+    } catch (error) {
+      // console.error("Error getting fresh bookingId:", error);
+      bookingId = "";
+    }
+
+    const data = {
+      courtName,
+      timeSlot,
+      gameName,
+      bookingId,
+    };
+
+    // Update the state with the fetched data
+    setCellData(data);
+
+    // return {
+    //   courtName,
+    //   timeSlot,
+    //   gameName,
+    //   bookingId,
+    // };
+
+    return data;
+  }, [selectedCell, selected, resolvedNames, selectedCellDetails.gameName, getFilteredCourtByIndex, formatSelectedTimeRange, getBookingIdForCell]);
+
+  const fetchScheduledUsersForBooking = useCallback(async (bookingId: string) => {
     try {
       const bookingRes = await axios.get(
         `${API_BASE_URL_Latest}/booking/${bookingId}`
@@ -2577,9 +2513,9 @@ const CellGridLatestP3 = () => {
       );
       return [];
     }
-  };
+  }, []);
 
-  const fetchChatRoomsForUser = async (userId: string) => {
+  const fetchChatRoomsForUser = useCallback(async (userId: string) => {
     try {
       const response = await axios.get(
         `https://play-os-backend.forgehub.in/human/human/${userId}`
@@ -2592,12 +2528,12 @@ const CellGridLatestP3 = () => {
       console.error(`Failed to fetch chat rooms for user ${userId}:`, error);
       return [];
     }
-  };
+  }, []);
 
   // Replace the existing subscribeToRoom function
   // In subscribeToRoom function, replace individual setCellMessageCounts calls with batched updates
   // Replace the existing subscribeToRoom function
-  const subscribeToRoom = async (
+  const subscribeToRoom = useCallback(async (
     bookingId: string,
     userId: string,
     roomType: string,
@@ -2678,10 +2614,10 @@ const CellGridLatestP3 = () => {
     } catch (error) {
       console.error(`Failed to subscribe to room ${roomKey}:`, error);
     }
-  };
+  }, []);
 
   // Replace the existing initializeMessagePollingForCell function
-  const initializeMessagePollingForCell = async (bookingId: string) => {
+  const initializeMessagePollingForCell = useCallback(async (bookingId: string) => {
     if (pollingQueue.current.has(bookingId)) return;
     pollingQueue.current.add(bookingId);
 
@@ -2801,10 +2737,10 @@ const CellGridLatestP3 = () => {
         pollingQueue.current.delete(bookingId);
       }
     }, 0); // Move to background immediately
-  };
+  }, [fetchScheduledUsersForBooking, fetchChatRoomsForUser, subscribeToRoom]);
 
   // Replace the existing startPollingForAllOccupiedCells function
-  const startPollingForAllOccupiedCells = async () => {
+  const startPollingForAllOccupiedCells = useCallback(async () => {
     if (isPollingActive.current) return;
 
     isPollingActive.current = true;
@@ -2871,10 +2807,10 @@ const CellGridLatestP3 = () => {
 
       isPollingActive.current = false;
     }, 0); // Move to background immediately
-  };
+  }, [currentDate, filteredCourtId, initializeMessagePollingForCell]);
 
   // Replace the existing cleanupMessagePolling function
-  const cleanupMessagePolling = () => {
+  const cleanupMessagePolling = useCallback(() => {
     // Cancel ongoing operations
     if (pollingController.current) {
       pollingController.current.abort();
@@ -2904,7 +2840,7 @@ const CellGridLatestP3 = () => {
 
     setCellMessageCounts({});
     setCellAblyRooms({});
-  };
+  }, []);
 
   // Replace the useEffect around line 570 that controls loading screen
   useEffect(() => {
@@ -2983,11 +2919,11 @@ const CellGridLatestP3 = () => {
       // Refetch bookings and blocked slots for filtered courts
       fetchBookingsAndBlocked(currentDate);
     }
-  }, [activeTab, filteredCourtId.length]); // Trigger when activeTab or filtered court count changes
+  }, [activeTab, filteredCourtId.length, cols, fetchBookingsAndBlocked, currentDate]);
 
   const [courName, setCourName] = useState("Loading...");
 
-  const getBookingIdForOccupiedCell = async (
+  const getBookingIdForOccupiedCell = useCallback(async (
     row: number,
     col: number
   ): Promise<string | null> => {
@@ -3024,7 +2960,7 @@ const CellGridLatestP3 = () => {
       console.error("Error getting bookingId for cell:", error);
       return null;
     }
-  };
+  }, [getFilteredCourtByIndex, currentDate]);
 
   useEffect(() => {
     const courtId = selectedCellDetails.courtDetails?.courtId;
@@ -3090,9 +3026,10 @@ const CellGridLatestP3 = () => {
           clearInterval(pollingInterval.current);
           pollingInterval.current = null;
         }
+        cleanupMessagePolling();
       };
     }
-  }, [filteredCourtId.length, currentDate, activeTab]);
+  }, [filteredCourtId.length, currentDate, activeTab, isModalOpen, startPollingForAllOccupiedCells, cleanupMessagePolling]);
 
   // Remove the old useEffect with [weekNumber] and replace with this
   useEffect(() => {
@@ -3132,13 +3069,13 @@ const CellGridLatestP3 = () => {
     }
   }, [firstSelected, grid]); // Add 'grid' to the dependency array
 
-  const formatTime = (date: Date) => {
+  const formatTime = useCallback((date: Date) => {
     const hour = date.getHours();
     const minute = date.getMinutes();
     const displayHour = hour % 12 === 0 ? 12 : hour % 12;
     const ampm = hour < 12 ? "AM" : "PM";
     return `${displayHour}:${minute.toString().padStart(2, "0")} ${ampm}`;
-  };
+  }, []);
 
   // if (loadingScreen) {
   //   return <LoadingScreen />;
@@ -3226,8 +3163,8 @@ const CellGridLatestP3 = () => {
 
       {/* Main Content Area - Flexible */}
 
-      {/* Main Content Area - Flexible */}
-      {/* Main Content Area - Flexible */}
+      {/* Main Content Area - flexible */}
+      {/* Main Content Area - flexible */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* Left Sidebar - Synchronized with grid vertical scroll */}
         <div className="flex flex-col w-24 shrink-0 bg-white">
@@ -3517,11 +3454,7 @@ const CellGridLatestP3 = () => {
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                       <h3 className="font-semibold text-sm text-gray-800">
-                        {filteredCourtId[firstSelected[0]]?.name.startsWith(
-                          "court_"
-                        )
-                          ? "Coach Details"
-                          : "Booking Details"}
+                        Booking Details
                       </h3>
                     </div>
                     {/* <button
@@ -3564,7 +3497,7 @@ const CellGridLatestP3 = () => {
                     <div className="flex justify-between">
                       <span className="font-medium text-gray-600">Host:</span>
                       <span className="text-gray-900 truncate ml-1">
-                        {hostName || localStorage.getItem("hostName")}
+                        {hostName || "N/A"}
                       </span>
                     </div>
 
@@ -3655,11 +3588,7 @@ const CellGridLatestP3 = () => {
                     <div className="flex items-center gap-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <h3 className="font-semibold text-sm text-gray-800">
-                        {filteredCourtId[firstSelected[0]]?.name.startsWith(
-                          "court_"
-                        )
-                          ? "Join a Group Class?"
-                          : "Is it a Game? ➡️"}
+                        Game Creation
                       </h3>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer">
@@ -3685,20 +3614,7 @@ const CellGridLatestP3 = () => {
                           grid[firstSelected[0]][firstSelected[1]]
                         )}
                       />
-                      <div className="relative w-11 h-6 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-600 peer-checked:bg-blue-600 peer-disabled:opacity-90 peer-disabled:cursor-not-allowed transition-all duration-300 ease-in-out shadow-inner">
-                        <div
-                          className={`absolute top-0.5 bg-white w-5 h-5 rounded-full shadow-md transition-all duration-300 ease-in-out border border-gray-200 ${
-                            (
-                              grid[firstSelected[0]][firstSelected[1]] ===
-                              "occupied"
-                                ? true
-                                : isToggleEnabled
-                            )
-                              ? "right-0.5"
-                              : "left-0.5"
-                          }`}
-                        ></div>
-                      </div>
+                      <div className="relative w-8 h-4 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[1px] after:start-[1px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600 peer-disabled:cursor-not-allowed"></div>
                     </label>
                   </div>
 
@@ -3794,26 +3710,6 @@ const CellGridLatestP3 = () => {
                             )?.name || "Unknown"}
                           </span>
                         </div>
-
-                        <div className="flex justify-between">
-                          <span className="text-xs font-medium text-gray-600">
-                            Difficulty Level:
-                          </span>
-                          <span className="text-xs text-gray-900">
-                            {selectedCellDetails.currentBooking
-                              .difficultyLevel || "Not specified"}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between">
-                          <span className="text-xs font-medium text-gray-600">
-                            Max Players:
-                          </span>
-                          <span className="text-xs text-gray-900">
-                            {selectedCellDetails.currentBooking.maxPlayers ||
-                              "Not specified"}
-                          </span>
-                        </div>
                       </div>
                     ) : (
                       <div className="bg-yellow-50 border border-yellow-200 rounded p-2">
@@ -3907,7 +3803,7 @@ const CellGridLatestP3 = () => {
                           setSelected([]);
                         }}
                       >
-                        Cancel
+                        Cancel Booking
                       </button>
                     )}
                   </div>
@@ -3916,6 +3812,19 @@ const CellGridLatestP3 = () => {
             </div>
           </div>
         </div>
+
+        {/* Overlay when panel is open */}
+        {/* {isRightPanelOpen && (
+          <div
+            className="fixed inset-0 bg-opacity-20 z-30"
+            style={{ marginTop: "130px" }}
+            onClick={() => {
+              setIsRightPanelOpen(false);
+              setSelected([]);
+              setSelectedCell(null);
+            }}
+          />
+        )} */}
       </div>
       <UserModal3
         isOpen={isModalOpen}
@@ -3936,4 +3845,4 @@ const CellGridLatestP3 = () => {
   );
 };
 
-export default CellGridLatestP3;
+export default CellGridLatestP4;

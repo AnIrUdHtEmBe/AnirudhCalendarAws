@@ -1,6 +1,6 @@
 .custom-scrollbar::-webkit-scrollbar {
   width: 10px;  /* Vertical scrollbar width */
-  height: 8px; /* Horizontal scrollbar height */
+  height: 16px; /* Horizontal scrollbar height */
 }
 
 /* Scrollbar track */

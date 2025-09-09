@@ -1,5 +1,5 @@
 import { LucideCircleMinus, Plus, Save, X, Eye } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import {
   Activity_Api_call,
   DataContext,
@@ -152,6 +152,17 @@ function ActivityTable() {
       },
     ]);
   };
+
+  const uniqueActivities = useMemo(() => {
+  const seen = new Set();
+  return activities_api_call.filter(activity => {
+    if (seen.has(activity.name) || !activity.name) {
+      return false;
+    }
+    seen.add(activity.name);
+    return true;
+  });
+}, [activities_api_call]);
 
   // ✅ FIXED handleModalSave — same as Nutrition version logic
   const handleModalSave = async () => {
@@ -473,36 +484,68 @@ function ActivityTable() {
                   >
                     <div className="flex justify-center">
                       <Autocomplete
-                        options={activities_api_call}
-                        getOptionLabel={(option) => option.name || ""}
-                        value={
-                          activities_api_call.find(
-                            (a) => a.activityId === selectedActivities[index]
-                          ) || null
-                        }
-                        onChange={(_, newValue) => {
-                          // newValue is the selected activity object or null
-                          handleActivitySelectChange(
-                            index,
-                            newValue ? newValue.activityId : ""
-                          );
-                          setActivityForTable(newValue);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Select Activity"
-                            variant="outlined"
-                            size="small"
-                            sx={{ width: 250 }}
-                          />
-                        )}
-                        sx={{ width: 250, backgroundColor: "white" }}
-                        isOptionEqualToValue={(option, value) =>
-                          option.activityId === value.activityId
-                        }
-                        freeSolo
-                      />
+  options={uniqueActivities}
+  getOptionLabel={(option) => option.name || ""}
+  value={
+    uniqueActivities.find(
+      (a) => a.activityId === selectedActivities[index]
+    ) || null
+  }
+  onChange={(_, newValue) => {
+    handleActivitySelectChange(
+      index,
+      newValue ? newValue.activityId : ""
+    );
+    setActivityForTable(newValue);
+  }}
+  filterOptions={(options, { inputValue }) => {
+    if (!inputValue || inputValue.length < 2) {
+      return options.slice(0, 15);
+    }
+    
+    const lowerInput = inputValue.toLowerCase();
+    const exactMatches: any[] = [];
+    const startsMatches: any[] = [];
+    const containsMatches: any[] = [];
+    
+    for (const option of options) {
+      const nameLower = option.name.toLowerCase();
+      
+      if (nameLower === lowerInput) {
+        exactMatches.push(option);
+      } else if (nameLower.startsWith(lowerInput)) {
+        startsMatches.push(option);
+      } else if (nameLower.includes(lowerInput)) {
+        containsMatches.push(option);
+      }
+      
+      if ((exactMatches.length + startsMatches.length + containsMatches.length) >= 20) break;
+    }
+    
+    return [
+      ...exactMatches,
+      ...startsMatches.sort((a, b) => a.name.localeCompare(b.name)),
+      ...containsMatches.sort((a, b) => a.name.localeCompare(b.name))
+    ].slice(0, 20);
+  }}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Select Activity"
+      variant="outlined"
+      size="small"
+      sx={{ width: 250 }}
+    />
+  )}
+  sx={{ width: 250, backgroundColor: "white" }}
+  isOptionEqualToValue={(option, value) =>
+    option.activityId === value.activityId
+  }
+  freeSolo
+  noOptionsText="Type 2+ characters to search..."
+  disablePortal
+  blurOnSelect
+/>
                     </div>
                   </td>
 
@@ -642,30 +685,58 @@ function ActivityTable() {
                         <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
                           <div className="flex justify-center">
                             <Autocomplete
-                              options={activities_api_call}
-                              getOptionLabel={(option) => option.name || ""}
-                              getOptionDisabled={() => true} // disables all options
-                              value={
-                                activities_api_call.find(
-                                  (a) => a.name === activity.name
-                                ) || null
-                              }
-                              onInputChange={(_, newInputValue) => {
-                                const updated = [...newActivities];
-                                updated[index].name = newInputValue;
-                                setNewActivities(updated);
-                              }}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Select Activity"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ width: 180 }}
-                                />
-                              )}
-                              freeSolo // allows custom input as well as selection
-                            />
+  options={uniqueActivities}
+  getOptionLabel={(option) => option.name || ""}
+  value={
+    uniqueActivities.find(
+      (a) => a.name === activity.name
+    ) || null
+  }
+  onInputChange={(_, newInputValue) => {
+    const updated = [...newActivities];
+    updated[index].name = newInputValue;
+    setNewActivities(updated);
+  }}
+  filterOptions={(options, { inputValue }) => {
+    if (!inputValue || inputValue.length < 2) {
+      return options.slice(0, 10);
+    }
+    
+    const lowerInput = inputValue.toLowerCase();
+    const results: any[] = [];
+    
+    for (const option of options) {
+      const nameLower = option.name.toLowerCase();
+      if (nameLower.includes(lowerInput)) {
+        results.push({
+          ...option,
+          _priority: nameLower.startsWith(lowerInput) ? 0 : 1
+        });
+        if (results.length >= 15) break;
+      }
+    }
+    
+    return results
+      .sort((a, b) => {
+        if (a._priority !== b._priority) return a._priority - b._priority;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 10);
+  }}
+  renderInput={(params) => (
+    <TextField
+      {...params}
+      label="Activity Name"
+      variant="outlined"
+      size="small"
+      sx={{ width: 180 }}
+    />
+  )}
+  freeSolo
+  noOptionsText="Type to search..."
+  disablePortal
+  blurOnSelect
+/>
                           </div>
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
