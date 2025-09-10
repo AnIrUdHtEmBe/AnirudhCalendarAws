@@ -420,7 +420,7 @@ const CellGridLatestP3 = () => {
   const getCourtType = async (courtId: string): Promise<string> => {
     try {
       const courtRes = await axios.get(
-        `https://play-os-backend.forgehub.in/court/${courtId}`
+        `${API_BASE_URL_Latest}/court/${courtId}`
       );
       const sportIdss = courtRes.data.allowedSports?.[0];
       // console.log("sportId from court filter", sportIdss);
@@ -428,7 +428,7 @@ const CellGridLatestP3 = () => {
       if (!sportIdss) return "Sports"; // Default fallback
 
       const sportRes = await axios.get(
-        `https://play-os-backend.forgehub.in/sports/id/${sportIdss}`
+        `${API_BASE_URL_Latest}/sports/id/${sportIdss}`
       );
       const category = sportRes.data.category || "";
       // console.log("category filter", category);
@@ -692,7 +692,7 @@ const CellGridLatestP3 = () => {
   const fetchArenaData = async () => {
     try {
       const response = await fetch(
-        "https://play-os-backend.forgehub.in/arena/AREN_JZSW15"
+        "${API_BASE_URL_Latest}/arena/AREN_JZSW15"
       );
       const arenaData = await response.json();
 
@@ -1409,7 +1409,7 @@ const CellGridLatestP3 = () => {
           ) {
             try {
               const gameRes = await axios.get(
-                `https://play-os-backend.forgehub.in/game/get_games_by_bookingId/${selectedCurrentBooking.bookingId}`
+                `${API_BASE_URL_Latest}/game/get_games_by_bookingId/${selectedCurrentBooking.bookingId}`
               );
               const games = gameRes.data;
 
@@ -2236,7 +2236,7 @@ const CellGridLatestP3 = () => {
             await Promise.all(
               bookingIdsToCancel.map(async (bookingId) => {
                 await axios.patch(
-                  `https://play-os-backend.forgehub.in/court/${bookingId}/cancel`
+                  `${API_BASE_URL_Latest}/court/${bookingId}/cancel`
                 );
               })
             );
@@ -2582,7 +2582,7 @@ const CellGridLatestP3 = () => {
   const fetchChatRoomsForUser = async (userId: string) => {
     try {
       const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
+        `${API_BASE_URL_Latest}/human/human/${userId}`
       );
       const rooms = Array.isArray(response.data)
         ? response.data

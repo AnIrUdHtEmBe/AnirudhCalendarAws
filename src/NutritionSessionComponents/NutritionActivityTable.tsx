@@ -104,22 +104,22 @@ function NutritionActivityTable() {
     setSelectComponent("AllSessions");
   };
 
- const handleSessionCreation = async () => {
-  const activityIds: string[] = emptyArr
-    .map((item) => item.activityId)
-    .filter((id): id is string => typeof id === "string");
+  const handleSessionCreation = async () => {
+    const activityIds: string[] = emptyArr
+      .map((item) => item.activityId)
+      .filter((id): id is string => typeof id === "string");
 
-  const sessionToBeCreated: Session_Api_call = {
-    title: planName,
-    description: "",
-    category: category,
-    activityIds: activityIds,
-    themes: theme ? [theme] : [],
-    goals: goal ? [goal] : [],
+    const sessionToBeCreated: Session_Api_call = {
+      title: planName,
+      description: "",
+      category: category,
+      activityIds: activityIds,
+      themes: theme ? [theme] : [],
+      goals: goal ? [goal] : [],
+    };
+    console.log(sessionToBeCreated);
+    await createSession(sessionToBeCreated);
   };
-  console.log(sessionToBeCreated);
-  await createSession(sessionToBeCreated);
-};
 
   const handleAddNewRow = () => {
     setNewActivities((prev) => [
@@ -244,15 +244,15 @@ function NutritionActivityTable() {
   };
 
   const uniqueActivities = useMemo(() => {
-  const seen = new Set();
-  return activities_api_call.filter(activity => {
-    if (seen.has(activity.name) || !activity.name) {
-      return false;
-    }
-    seen.add(activity.name);
-    return true;
-  });
-}, [activities_api_call]);
+    const seen = new Set();
+    return activities_api_call.filter((activity) => {
+      if (seen.has(activity.name) || !activity.name) {
+        return false;
+      }
+      seen.add(activity.name);
+      return true;
+    });
+  }, [activities_api_call]);
 
   const handleDelete = (index: number) => {
     const updatedPlan = emptyArr.filter((_, i) => i !== index);
@@ -506,68 +506,78 @@ function NutritionActivityTable() {
                   >
                     <div className="flex justify-center">
                       <Autocomplete
-  options={uniqueActivities}
-  getOptionLabel={(option) => option.name || ""}
-  value={
-    uniqueActivities.find(
-      (a) => a.activityId === selectedActivities[index]
-    ) || null
-  }
-  onChange={(_, newValue) => {
-    handleActivitySelectChange(
-      index,
-      newValue ? newValue.activityId : ""
-    );
-    setActivityForTable(newValue);
-  }}
-  filterOptions={(options, { inputValue }) => {
-    if (!inputValue || inputValue.length < 2) {
-      return options.slice(0, 15);
-    }
-    
-    const lowerInput = inputValue.toLowerCase();
-    const exactMatches: any[] = [];
-    const startsMatches: any[] = [];
-    const containsMatches: any[] = [];
-    
-    for (const option of options) {
-      const nameLower = option.name.toLowerCase();
-      
-      if (nameLower === lowerInput) {
-        exactMatches.push(option);
-      } else if (nameLower.startsWith(lowerInput)) {
-        startsMatches.push(option);
-      } else if (nameLower.includes(lowerInput)) {
-        containsMatches.push(option);
-      }
-      
-      if ((exactMatches.length + startsMatches.length + containsMatches.length) >= 20) break;
-    }
-    
-    return [
-      ...exactMatches,
-      ...startsMatches.sort((a, b) => a.name.localeCompare(b.name)),
-      ...containsMatches.sort((a, b) => a.name.localeCompare(b.name))
-    ].slice(0, 20);
-  }}
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      label="Select Item"
-      variant="outlined"
-      size="small"
-      sx={{ width: 250 }}
-    />
-  )}
-  sx={{ width: 250, backgroundColor: "white" }}
-  isOptionEqualToValue={(option, value) =>
-    option.activityId === value.activityId
-  }
-  freeSolo
-  noOptionsText="Type 2+ characters to search..."
-  disablePortal
-  blurOnSelect
-/>
+                        options={uniqueActivities}
+                        getOptionLabel={(option) => option.name || ""}
+                        value={
+                          uniqueActivities.find(
+                            (a) => a.activityId === selectedActivities[index]
+                          ) || null
+                        }
+                        onChange={(_, newValue) => {
+                          handleActivitySelectChange(
+                            index,
+                            newValue ? newValue.activityId : ""
+                          );
+                          setActivityForTable(newValue);
+                        }}
+                        filterOptions={(options, { inputValue }) => {
+                          if (!inputValue || inputValue.length < 2) {
+                            return options.slice(0, 15);
+                          }
+
+                          const lowerInput = inputValue.toLowerCase();
+                          const exactMatches: any[] = [];
+                          const startsMatches: any[] = [];
+                          const containsMatches: any[] = [];
+
+                          for (const option of options) {
+                            const nameLower = option.name.toLowerCase();
+
+                            if (nameLower === lowerInput) {
+                              exactMatches.push(option);
+                            } else if (nameLower.startsWith(lowerInput)) {
+                              startsMatches.push(option);
+                            } else if (nameLower.includes(lowerInput)) {
+                              containsMatches.push(option);
+                            }
+
+                            if (
+                              exactMatches.length +
+                                startsMatches.length +
+                                containsMatches.length >=
+                              20
+                            )
+                              break;
+                          }
+
+                          return [
+                            ...exactMatches,
+                            ...startsMatches.sort((a, b) =>
+                              a.name.localeCompare(b.name)
+                            ),
+                            ...containsMatches.sort((a, b) =>
+                              a.name.localeCompare(b.name)
+                            ),
+                          ].slice(0, 20);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Select Item"
+                            variant="outlined"
+                            size="small"
+                            sx={{ width: 250 }}
+                          />
+                        )}
+                        sx={{ width: 250, backgroundColor: "white" }}
+                        isOptionEqualToValue={(option, value) =>
+                          option.activityId === value.activityId
+                        }
+                        freeSolo
+                        noOptionsText="Type 2+ characters to search..."
+                        disablePortal
+                        blurOnSelect
+                      />
                     </div>
                   </td>
 
@@ -667,58 +677,63 @@ function NutritionActivityTable() {
                         <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
                           <div className="flex justify-center">
                             <Autocomplete
-  options={uniqueActivities}
-  getOptionLabel={(option) => option.name || ""}
-  value={
-    uniqueActivities.find(
-      (a) => a.name === activity.name
-    ) || null
-  }
-  onInputChange={(_, newInputValue) => {
-    const updated = [...newActivities];
-    updated[index].name = newInputValue;
-    setNewActivities(updated);
-  }}
-  filterOptions={(options, { inputValue }) => {
-    if (!inputValue || inputValue.length < 2) {
-      return options.slice(0, 10);
-    }
-    
-    const lowerInput = inputValue.toLowerCase();
-    const results: any[] = [];
-    
-    for (const option of options) {
-      const nameLower = option.name.toLowerCase();
-      if (nameLower.includes(lowerInput)) {
-        results.push({
-          ...option,
-          _priority: nameLower.startsWith(lowerInput) ? 0 : 1
-        });
-        if (results.length >= 15) break;
-      }
-    }
-    
-    return results
-      .sort((a, b) => {
-        if (a._priority !== b._priority) return a._priority - b._priority;
-        return a.name.localeCompare(b.name);
-      })
-      .slice(0, 10);
-  }}
-  renderInput={(params) => (
-    <TextField
-      {...params}
-      label="Select Item"
-      variant="outlined"
-      size="small"
-      sx={{ width: 180 }}
-    />
-  )}
-  freeSolo
-  noOptionsText="Type to search..."
-  disablePortal
-  blurOnSelect
-/>
+                              options={uniqueActivities}
+                              getOptionLabel={(option) => option.name || ""}
+                              value={
+                                uniqueActivities.find(
+                                  (a) => a.name === activity.name
+                                ) || null
+                              }
+                              onInputChange={(_, newInputValue) => {
+                                const updated = [...newActivities];
+                                updated[index].name = newInputValue;
+                                setNewActivities(updated);
+                              }}
+                              filterOptions={(options, { inputValue }) => {
+                                if (!inputValue || inputValue.length < 2) {
+                                  return options.slice(0, 10);
+                                }
+
+                                const lowerInput = inputValue.toLowerCase();
+                                const results: any[] = [];
+
+                                for (const option of options) {
+                                  const nameLower = option.name.toLowerCase();
+                                  if (nameLower.includes(lowerInput)) {
+                                    results.push({
+                                      ...option,
+                                      _priority: nameLower.startsWith(
+                                        lowerInput
+                                      )
+                                        ? 0
+                                        : 1,
+                                    });
+                                    if (results.length >= 15) break;
+                                  }
+                                }
+
+                                return results
+                                  .sort((a, b) => {
+                                    if (a._priority !== b._priority)
+                                      return a._priority - b._priority;
+                                    return a.name.localeCompare(b.name);
+                                  })
+                                  .slice(0, 10);
+                              }}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Select Item"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ width: 180 }}
+                                />
+                              )}
+                              freeSolo
+                              noOptionsText="Type to search..."
+                              disablePortal
+                              blurOnSelect
+                            />
                           </div>
                         </td>
                         <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
