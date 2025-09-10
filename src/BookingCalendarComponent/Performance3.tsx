@@ -3658,7 +3658,7 @@ const CellGridLatestP3 = () => {
                         {filteredCourtId[firstSelected[0]]?.name.startsWith(
                           "court_"
                         )
-                          ? "Join a Group Class?"
+                          ? "Is it a Group Session?"
                           : "Is it a Game? ➡️"}
                       </h3>
                     </div>
@@ -3849,7 +3849,12 @@ const CellGridLatestP3 = () => {
                               className="w-full bg-indigo-500 text-white px-3 py-2 rounded hover:bg-indigo-600 transition-colors font-medium text-xs"
                               onClick={() => applyAction("booking")}
                             >
-                              Create Booking
+                              {filteredCourtId[firstSelected[0]]?.name.startsWith(
+                          "court_"
+                        )
+                          ? "Create One-on-One Session"
+                          : "Create Booking"}
+                              
                             </button>
                             <button
                               className="w-full bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors font-medium text-xs"
@@ -3864,7 +3869,11 @@ const CellGridLatestP3 = () => {
                             className="w-full bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 transition-colors font-medium text-xs"
                             onClick={() => applyAction("occupied")}
                           >
-                            Create Game
+                            {filteredCourtId[firstSelected[0]]?.name.startsWith(
+                          "court_"
+                        )
+                          ? "Create Group Session"
+                          : "Create Game"}
                           </button>
                         )}
                       </>
