@@ -578,7 +578,8 @@ const CellGridLatestP3 = () => {
       gameName,
       bookingId,
     };
-
+    console.log("cell Data", data);
+    
     // Update the state with the fetched data
     setCellData(data);
 

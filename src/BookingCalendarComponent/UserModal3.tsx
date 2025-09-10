@@ -429,6 +429,7 @@ const CellModal3: React.FC<CellModalProps> = ({
     const endDate = new Date(parsedEndTimeStr);
     console.log(startDate, endDate, "from usermodal");
     setDatePlanStart(startDate.toISOString().slice(0, 10));
+    
     setDatePlanEnd(endDate.toISOString().slice(0, 10));
 
     const options: Intl.DateTimeFormatOptions = {
@@ -582,7 +583,8 @@ const CellModal3: React.FC<CellModalProps> = ({
                   let messageCount = 0;
 
                   messages.forEach((message) => {
-                    const messageTimestamp = message.createdAt || message.timestamp;
+                    const messageTimestamp =
+                      message.createdAt || message.timestamp;
                     if (messageTimestamp) {
                       const msgDate = new Date(messageTimestamp);
                       if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
@@ -834,48 +836,53 @@ const CellModal3: React.FC<CellModalProps> = ({
       const nameRequestsCache = useRef(new Set());
 
       function getUserId() {
-      try {
-        const t = sessionStorage.getItem("token");
-        return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
-      } catch {
-        return "Guest";
+        try {
+          const t = sessionStorage.getItem("token");
+          return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+        } catch {
+          return "Guest";
+        }
       }
-    }
 
-const recordPresence = async (action: string, useBeacon = false) => {
-  try {
-    const payload = [{
-            action: action,
-            userId: getUserId(),
-            roomId: roomName,
-            timeStamp: Date.now(),
-          }];
+      const recordPresence = async (action: string, useBeacon = false) => {
+        try {
+          const payload = [
+            {
+              action: action,
+              userId: getUserId(),
+              roomId: roomName,
+              timeStamp: Date.now(),
+            },
+          ];
 
-    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+          const url =
+            "https://play-os-backend.forgehub.in/chatV1/presence/record";
 
-    if (useBeacon && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      const success = navigator.sendBeacon(url, blob);
-      console.log(`${action.toLowerCase()} beacon sent:`, success);
-      if (success) return;
-    }
+          if (useBeacon && navigator.sendBeacon) {
+            const blob = new Blob([JSON.stringify(payload)], {
+              type: "application/json",
+            });
+            const success = navigator.sendBeacon(url, blob);
+            console.log(`${action.toLowerCase()} beacon sent:`, success);
+            if (success) return;
+          }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-    
-    if (response.ok) {
-      console.log(`${action} presence recorded successfully`);
-    }
-  } catch (error) {
-    console.error(`Error recording ${action} presence:`, error);
-  }
-};
+          const response = await fetch(url, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+            keepalive: true,
+          });
+
+          if (response.ok) {
+            console.log(`${action} presence recorded successfully`);
+          }
+        } catch (error) {
+          console.error(`Error recording ${action} presence:`, error);
+        }
+      };
 
       // Independent connection via useMessages hook
       const { historyBeforeSubscribe, send } = useMessages({
@@ -917,34 +924,37 @@ const recordPresence = async (action: string, useBeacon = false) => {
         },
       });
 
-          useEffect(() => {
-      recordPresence("ENTER");
-      return () => {
-        recordPresence("EXIT");
-      };
-    }, [roomName]);
+      useEffect(() => {
+        recordPresence("ENTER");
+        return () => {
+          recordPresence("EXIT");
+        };
+      }, [roomName]);
 
-useEffect(() => {
-  const handleBeforeUnload = () => {
-    recordPresence("EXIT", true);
-  };
+      useEffect(() => {
+        const handleBeforeUnload = () => {
+          recordPresence("EXIT", true);
+        };
 
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'hidden') {
-      recordPresence("EXIT", false);
-    } else {
-      recordPresence("ENTER", false);
-    }
-  };
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === "hidden") {
+            recordPresence("EXIT", false);
+          } else {
+            recordPresence("ENTER", false);
+          }
+        };
 
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [roomName]);
+        return () => {
+          window.removeEventListener("beforeunload", handleBeforeUnload);
+          document.removeEventListener(
+            "visibilitychange",
+            handleVisibilityChange
+          );
+        };
+      }, [roomName]);
 
       const currentClientId = useMemo(() => {
         try {
@@ -1078,7 +1088,10 @@ useEffect(() => {
         if (!inputValue.trim()) return;
 
         try {
-          await send({ text: inputValue.trim(), metadata: {location: "ViewDetails-User-Chats"} });
+          await send({
+            text: inputValue.trim(),
+            metadata: { location: "ViewDetails-User-Chats" },
+          });
           setInputValue("");
 
           // Mark as seen by team after sending
@@ -1160,7 +1173,6 @@ useEffect(() => {
 
                   console.log(timestamp);
 
-                  
                   const displayName = clientNames[msg.clientId] || msg.clientId;
 
                   return (
@@ -1425,71 +1437,77 @@ useEffect(() => {
       }
     }, []);
 
-
     function getUserId() {
-    try {
-      const t = sessionStorage.getItem("token");
-      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
-    } catch {
-      return "Guest";
+      try {
+        const t = sessionStorage.getItem("token");
+        return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+      } catch {
+        return "Guest";
+      }
     }
-  }
 
-const recordPresence = async (action: string, roomId: string, useBeacon = false) => {
-  try {
-    const payload = [{
+    const recordPresence = async (
+      action: string,
+      roomId: string,
+      useBeacon = false
+    ) => {
+      try {
+        const payload = [
+          {
             action: action,
             userId: getUserId(),
             roomId: roomId,
             timeStamp: Date.now(),
-          }];
+          },
+        ];
 
-    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+        const url =
+          "https://play-os-backend.forgehub.in/chatV1/presence/record";
 
-    if (useBeacon && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      const success = navigator.sendBeacon(url, blob);
-      console.log(`${action.toLowerCase()} beacon sent:`, success);
-      if (success) return;
-    }
+        if (useBeacon && navigator.sendBeacon) {
+          const blob = new Blob([JSON.stringify(payload)], {
+            type: "application/json",
+          });
+          const success = navigator.sendBeacon(url, blob);
+          console.log(`${action.toLowerCase()} beacon sent:`, success);
+          if (success) return;
+        }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-    
-    if (response.ok) {
-      console.log(`${action} presence recorded successfully`);
-    }
-  } catch (error) {
-    console.error(`Error recording ${action} presence:`, error);
-  }
-};
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
 
+        if (response.ok) {
+          console.log(`${action} presence recorded successfully`);
+        }
+      } catch (error) {
+        console.error(`Error recording ${action} presence:`, error);
+      }
+    };
 
-
-  // const recordPresence = async (action: string, roomId: string) => {
-  //   try {
-  //     const backend = await axios.post(
-  //       "https://play-os-backend.forgehub.in/chatV1/presence/record",
-  //       [
-  //         {
-  //           action: action,
-  //           userId: getUserId(),
-  //           roomId: roomId,
-  //           timeStamp: Date.now(),
-  //         },
-  //       ]
-  //     );
-  //     console.log(`${action.toLowerCase()} backend for ${roomId}`, backend.data);
-  //   } catch (error) {
-  //     console.error(`Error recording ${action} presence for ${roomId}:`, error);
-  //   }
-  // }
+    // const recordPresence = async (action: string, roomId: string) => {
+    //   try {
+    //     const backend = await axios.post(
+    //       "https://play-os-backend.forgehub.in/chatV1/presence/record",
+    //       [
+    //         {
+    //           action: action,
+    //           userId: getUserId(),
+    //           roomId: roomId,
+    //           timeStamp: Date.now(),
+    //         },
+    //       ]
+    //     );
+    //     console.log(`${action.toLowerCase()} backend for ${roomId}`, backend.data);
+    //   } catch (error) {
+    //     console.error(`Error recording ${action} presence for ${roomId}:`, error);
+    //   }
+    // }
 
     const sendToAllUsers = async () => {
       if (!localInput.trim()) return;
@@ -1523,7 +1541,10 @@ const recordPresence = async (action: string, roomId: string, useBeacon = false)
 
             // Get the room and send message using Chat client
             const room = await stableChatClient.rooms.get(roomKey);
-            await room.messages.send({ text: message, metadata: {location: "ViewDetails-ReplyToAll"} });
+            await room.messages.send({
+              text: message,
+              metadata: { location: "ViewDetails-ReplyToAll" },
+            });
 
             await recordPresence("EXIT", roomKey);
 
@@ -1685,22 +1706,15 @@ const recordPresence = async (action: string, roomId: string, useBeacon = false)
 
         {/* Modal Content */}
         <div className="p-4">
-          {/* Booking Details */}
-          <div className="bg-gray-50 rounded-lg p-3 mb-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div>
-                  <strong>Time Slot:</strong> {slotString}
-                </div>
-                <div>
-                  <strong>Game:</strong> {cellData.gameName}
-                </div>
-                <div>
-                  <strong>Booking ID:</strong> {cellData.bookingId}
-                </div>
-              </div>
-            </div>
-          </div>
+  {/* Booking Details */}
+  <div className="bg-gray-50 rounded-lg p-3 mb-4">
+    <div className="text-sm space-y-1 font-mono">
+      <div><strong>Date:</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{datePlanStart}&nbsp;&nbsp;&nbsp;&nbsp;{/* Add your date variable here */}</div>
+      <div><strong>Time Slot:</strong>&nbsp;&nbsp;{slotString}</div>
+      <div><strong>Game:</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{cellData.gameName}</div>
+      <div><strong>Booking ID:</strong>&nbsp;{cellData.bookingId}</div>
+    </div>
+  </div>
 
           {/* User Attendance Table */}
           <div className="overflow-y-auto max-h-64">
@@ -2027,6 +2041,5 @@ const recordPresence = async (action: string, roomId: string, useBeacon = false)
     </div>
   );
 };
-
 
 export default CellModal3;
