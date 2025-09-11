@@ -429,7 +429,7 @@ const CellModal3: React.FC<CellModalProps> = ({
     const endDate = new Date(parsedEndTimeStr);
     console.log(startDate, endDate, "from usermodal");
     setDatePlanStart(startDate.toISOString().slice(0, 10));
-    
+
     setDatePlanEnd(endDate.toISOString().slice(0, 10));
 
     const options: Intl.DateTimeFormatOptions = {
@@ -1706,15 +1706,34 @@ const CellModal3: React.FC<CellModalProps> = ({
 
         {/* Modal Content */}
         <div className="p-4">
-  {/* Booking Details */}
-  <div className="bg-gray-50 rounded-lg p-3 mb-4">
-    <div className="text-sm space-y-1 font-mono">
-      <div><strong>Date:</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{datePlanStart}&nbsp;&nbsp;&nbsp;&nbsp;{/* Add your date variable here */}</div>
-      <div><strong>Time Slot:</strong>&nbsp;&nbsp;{slotString}</div>
-      <div><strong>Game:</strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{cellData.gameName}</div>
-      <div><strong>Booking ID:</strong>&nbsp;{cellData.bookingId}</div>
-    </div>
-  </div>
+          {/* Booking Details */}
+          <div className="bg-gray-50 rounded-lg p-3 mb-4">
+            <div className="text-sm font-mono grid grid-cols-[80px_min-content_auto] gap-x-2 gap-y-1">
+              <div>
+                <strong>Date</strong>
+              </div>
+              <div>:</div>
+              <div>{datePlanStart}</div>
+
+              <div>
+                <strong>Time Slot</strong>
+              </div>
+              <div>:</div>
+              <div>{slotString}</div>
+
+              <div>
+                <strong>Game</strong>
+              </div>
+              <div>:</div>
+              <div>{cellData.gameName}</div>
+
+              <div>
+                <strong>Booking ID</strong>
+              </div>
+              <div>:</div>
+              <div>{cellData.bookingId}</div>
+            </div>
+          </div>
 
           {/* User Attendance Table */}
           <div className="overflow-y-auto max-h-64">

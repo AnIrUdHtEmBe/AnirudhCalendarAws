@@ -379,6 +379,7 @@ const CellGridLatestP3 = () => {
   const location = useLocation();
   const urlParams = new URLSearchParams(location.search);
   const activeTab = urlParams.get("tab") || "All";
+  const hasRetried = useRef(false);
 
   // Add this after the existing state declarations (around line 150)
   const [cellData, setCellData] = useState<{
@@ -3132,6 +3133,24 @@ const CellGridLatestP3 = () => {
       setIsRightPanelOpen(false);
     }
   }, [firstSelected, grid]); // Add 'grid' to the dependency array
+
+
+  useEffect(() => {
+  hasRetried.current = false;
+}, [firstSelected]); // reset when selection changes
+
+useEffect(() => {
+  if (firstSelected && 
+      grid[firstSelected[0]]?.[firstSelected[1]] === "occupied" && 
+      selectedCellDetails.currentBooking === null && 
+      !hasRetried.current) {
+    hasRetried.current = true;
+    const timer = setTimeout(() => {
+      fetchCellDetails(firstSelected[0], firstSelected[1]);
+    }, 500);
+    return () => clearTimeout(timer);
+  }
+}, [firstSelected, selectedCellDetails.currentBooking, grid, fetchCellDetails]);
 
   const formatTime = (date: Date) => {
     const hour = date.getHours();
