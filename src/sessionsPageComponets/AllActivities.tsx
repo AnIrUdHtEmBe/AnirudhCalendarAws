@@ -578,124 +578,88 @@ const AllActivities: React.FC = () => {
     );
   }
   //csv download functions
-  const handleDownloadSample = () => {
-    const headers = [
-      "Name",
-      "Description",
-      "Target",
-      "Unit",
-      "Target2",
-      "Unit2",
-      "VideoLink",
-    ];
+// ----------  CSV download  ----------
+const handleDownloadSample = () => {
+  const headers = [
+    "Name",
+    "Description",
+    "Target",
+    "Unit",
+    "Target2",
+    "Unit2",
+    "VideoLink",
+  ];
+  const csvContent = headers.join(",");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "sample_activities.csv";
+  link.click();
+  URL.revokeObjectURL(url);
+};
 
-    // ---- example rows ----
-    const examples = [
-      [
-        "Sample Activity",
-        "DELETE BEFORE UPLOADING",
-        "30",
-        "time",
-        "0",
-        "weight",
-        "https://www.youtube.com/watch?......",
-      ],
-      [
-        "Sample Activity",
-        "DELETE BEFORE UPLOADING",
-        "15",
-        "repetitions",
-        "10",
-        "distance",
-        "https://www.youtube.com/shorts/.....",
-      ],
-    ];
+// ----------  CSV parse  ----------
+const handleParse = async () => {
+  if (!csvFile) return;
+  setParsing(true);
+  try {
+    const text = await csvFile.text();
 
-    // build CSV text
-    const escape = (v: string) =>
-      v.includes(",") || v.includes('"') || v.includes("\n")
-        ? `"${v.replace(/"/g, '""')}"`
-        : v;
-
-    const csvContent =
-      headers.join(",") +
-      "\n" +
-      examples.map((row) => row.map(escape).join(",")).join("\n");
-
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = "sample_activities.csv";
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-  const handleParse = async () => {
-    if (!csvFile) return;
-    setParsing(true);
-    try {
-      const text = await csvFile.text();
-      if (!text) throw new Error("Empty file");
-
-      const lines = text.trim().split("\n");
-      const headers = lines[0].split(",").map((h) => h.trim());
-      const expected = [
-        "Name",
-        "Description",
-        "Target",
-        "Unit",
-        "Target2",
-        "Unit2",
-        "VideoLink",
-      ];
-      const ok = expected.every((h, i) => headers[i] === h);
-      if (!ok) throw new Error("Headers mismatch");
-
-      const rows = lines.slice(1).map((l) => l.split(",").map((c) => c.trim()));
-      const payload = rows
-        .map((r) => ({
-          name: r[0],
-          description: r[1],
-          target: parseFloat(r[2]) || 0,
-          unit: r[3].toLowerCase(),
-          target2: parseFloat(r[4]) || 0,
-          unit2: r[5]?.toLowerCase() || "",
-          videoLink: r[6] || "",
-        }))
-        .filter((row) => row.name.trim() !== "Sample Activity"); // ← skip sample rows
-
-      // push to backend
-      const res = await fetch(
-        `${API_BASE_URL}/activity-templates:csv-scratch`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
-      console.log(API_BASE_URL, "PARSING");
-      if (!res.ok) throw new Error("Failed to store CSV rows");
-
-      const { inserted_ids } = await res.json();
-      /*  fetch the rows you just inserted (they have the real _id)  */
-      const freshRes = await fetch(
-        `${API_BASE_URL}/activity-templates:csv-scratch?ids=${inserted_ids.join(
-          ","
-        )}`
-      );
-      if (!freshRes.ok) throw new Error("Could not fetch inserted rows");
-      const freshRows = await freshRes.json(); // ← every row has  _id
-
-      context.setActivities_api_call(freshRows); // ✅ real docs
-      setCsvScratchIds(inserted_ids);
-      startCountDown(); // 5-second analyse timer
-    } catch (err) {
-      console.error(err);
-      enqueueSnackbar("Failed to parse CSV.", { variant: "error" });
-    } finally {
-      setParsing(false);
+    /* ----------  simple CSV -> 2-D array  ---------- */
+    const rows: string[][] = [];
+    let cur = '', insideQuote = false, row: string[] = [];
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const n = text[i + 1];
+      if (c === '"') {
+        if (insideQuote && n === '"') { cur += '"'; i++; } // escaped quote
+        else { insideQuote = !insideQuote; }
+      } else if (c === ',' && !insideQuote) {
+        row.push(cur); cur = '';
+      } else if (c === '\n' && !insideQuote) {
+        row.push(cur); rows.push(row); cur = ''; row = [];
+      } else { cur += c; }
     }
-  };
+    if (cur || row.length) { row.push(cur); rows.push(row); } // last line
+
+    if (!rows.length) throw new Error('Empty file');
+
+    /* ----------  build objects  ---------- */
+    const [headers, ...data] = rows;
+    const payload = data.map((r) => ({
+      name:      r[0] ?? '',
+      description: r[1] ?? '',
+      target:    parseFloat(r[2]) || 0,
+      unit:      (r[3] ?? '').toLowerCase(),
+      target2:   parseFloat(r[4]) || 0,
+      unit2:     (r[5] ?? '').toLowerCase(),
+      videoLink: r[6] ?? '',
+    }));
+
+    /* ----------  send to backend  ---------- */
+    const res = await fetch(`${API_BASE_URL}/activity-templates:csv-scratch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('Failed to store CSV rows');
+
+    const { inserted_ids } = await res.json();
+    const freshRes = await fetch(
+      `${API_BASE_URL}/activity-templates:csv-scratch?ids=${inserted_ids.join(',')}`
+    );
+    const freshRows = await freshRes.json();
+    context.setActivities_api_call(freshRows);
+    setCsvScratchIds(inserted_ids);
+    startCountDown();
+  } catch (err) {
+    console.error(err);
+    enqueueSnackbar('Failed to parse CSV.', { variant: 'error' });
+  } finally {
+    setParsing(false);
+  }
+};
   const handleContinue = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/activity-templates:csv-scratch`);
