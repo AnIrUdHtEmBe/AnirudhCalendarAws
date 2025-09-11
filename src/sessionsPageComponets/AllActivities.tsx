@@ -1,18 +1,33 @@
-import React, { useState, useEffect } from "react";
-import { DataGrid, GridColDef, GridRowsProp, GridEditInputCell } from "@mui/x-data-grid";
+import React, { useState, useEffect, useContext, useRef } from "react";
+import {
+  DataGrid,
+  GridColDef,
+  GridRowsProp,
+  GridEditInputCell,
+  useGridApiRef,
+} from "@mui/x-data-grid";
 import {
   TextField,
   InputAdornment,
   CircularProgress,
   Button,
 } from "@mui/material";
-import { SearchIcon, Plus, Save, Trash2, Edit } from "lucide-react";
+import { SearchIcon, Plus, Save, Edit, ChevronDown } from "lucide-react";
 import Header from "./Header";
 import "./AllActivities.css";
 import { enqueueSnackbar } from "notistack";
-
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
+import { DataContext, Activity_Api_call } from "../store/DataContext";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  Box,
+  Typography,
+} from "@mui/material";
 interface Activity {
   activityId: string;
+  mongoId?: string;
   name: string;
   description: string;
   target: number;
@@ -39,7 +54,7 @@ const YouTubeVideoModal = ({
   // Extract YouTube video ID from URL
   const getYouTubeVideoId = (url: string) => {
     const regExp =
-      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   };
@@ -103,6 +118,7 @@ const formatUnit = (unit: string) => {
 };
 
 const AllActivities: React.FC = () => {
+  const apiRef = useGridApiRef();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +134,23 @@ const AllActivities: React.FC = () => {
   const [editedActivities, setEditedActivities] = useState<Activity[]>([]);
   const [isAddingActivity, setIsAddingActivity] = useState(false);
   const [newActivityData, setNewActivityData] = useState<Activity | null>(null);
+  const [changedActivities, setChangedActivities] = useState<
+    Map<string, Partial<Activity>>
+  >(new Map());
+  const [isParsing, setIsParsing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [uploadOpen, setUploadOpen] = useState(false); // modal open/close
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvName, setCsvName] = useState("");
+  const [parsing, setParsing] = useState(false);
+  const [countDown, setCountDown] = useState(0);
+  const [csvScratchIds, setCsvScratchIds] = useState<string[]>([]);
+  const context = useContext(DataContext);
+  if (!context) {
+    return <div>Loading...</div>;
+  }
+  const { setSelectComponent } = context;
   const createEmptyActivity = (): Activity => ({
     activityId: `temp-${Date.now()}`, // Temporary ID for new activity
     name: "",
@@ -130,7 +163,22 @@ const AllActivities: React.FC = () => {
   });
 
   const unitOptions = ["repetitions", "weight", "time", "distance"];
-
+  // 1.  memoise the countdown logic
+  const startCountDown = React.useCallback(() => {
+    let n = 5;
+    setCountDown(n);
+    const t = setInterval(() => {
+      n -= 1;
+      setCountDown(n);
+      if (n === 0) {
+        clearInterval(t);
+        setCountDown(0);
+        setUploadOpen(false); // close modal
+        enqueueSnackbar("CSV parsed successfully!", { variant: "success" });
+        context.setSelectComponent("BulkAddTable");
+      }
+    }, 1000);
+  }, [context]);
   useEffect(() => {
     fetchActivities();
   }, []);
@@ -144,13 +192,25 @@ const AllActivities: React.FC = () => {
     );
     setFilteredActivities(filtered);
   }, [searchTerm, activities, editedActivities, isEditMode]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(
+          `${API_BASE_URL}/activity-templates:csv-scratch/count`
+        );
+        const { pending } = await res.json();
+        setPendingCount(pending);
+      } catch {
+        setPendingCount(0);
+      }
+    })();
+  }, []);
 
   const fetchActivities = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        "https://forge-play-backend.forgehub.in/activity-templates"
-      );
+      const response = await fetch(`${API_BASE_URL}/activity-templates`);
+      console.log(API_BASE_URL);
 
       if (!response.ok) {
         throw new Error("Failed to fetch activities");
@@ -168,17 +228,14 @@ const AllActivities: React.FC = () => {
   };
   const createActivity = async (activityData: Omit<Activity, "activityId">) => {
     try {
-      const response = await fetch(
-        "https://forge-play-backend.forgehub.in/activity-templates",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(activityData),
-        }
-      );
-
+      const response = await fetch(`${API_BASE_URL}/activity-templates`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(activityData),
+      });
+      console.log(API_BASE_URL, "ADD");
       if (!response.ok) {
         throw new Error("Failed to create activity");
       }
@@ -249,38 +306,32 @@ const AllActivities: React.FC = () => {
       });
       return true;
     } catch (error) {
-      console.error("Error saving new activity:", error);
-      alert("Failed to create activity. Please try again.");
+      enqueueSnackbar("Failed to create activity", { variant: "error" });
+      return false;
     }
   };
 
-  const handleSave = () => {
-    // Save logic here
-    console.log("Save clicked");
-  };
-
-  const handleDelete = async () => {
-    if (selectedActivityIds.length === 0) {
-      alert("Please select at least one activity to delete.");
-      return;
-    }
-
+  const bulkUpdateActivities = async (
+    updates: Array<{ activityId: string } & Partial<Activity>>
+  ) => {
     try {
-      // Add your delete API logic here
-      console.log("Deleting activities:", selectedActivityIds);
+      const response = await fetch(`${API_BASE_URL}/activity-templates:batch`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updates),
+      });
+      console.log(API_BASE_URL, "EDIT");
+      if (!response.ok) {
+        throw new Error("Failed to bulk update activities");
+      }
+      console.log(updates);
 
-      // For now, just remove from local state
-      const updatedActivities = activities.filter(
-        (activity) => !selectedActivityIds.includes(activity.activityId)
-      );
-      setActivities(updatedActivities);
-      setSelectedActivityIds([]);
-
-      // Show success message
-      alert("Activities deleted successfully!");
+      return await response.json();
     } catch (error) {
-      console.error("Error deleting activities:", error);
-      alert("Failed to delete activities. Please try again.");
+      console.error("Error bulk updating activities:", error);
+      throw error;
     }
   };
 
@@ -307,27 +358,37 @@ const AllActivities: React.FC = () => {
       headerName: "Name",
       flex: 0.75,
       minWidth: 56,
-      headerAlign: "center",
+      headerAlign: "left",
       align: "left",
       editable: isEditMode || isAddingActivity,
       renderCell: (params) => {
-    if (params.row.id === "new-activity" && (!params.value || params.value === "")) {
-      return <span style={{ color: 'gray', fontStyle: 'italic' }}>Add New Activity Here</span>;
-    }
-    return params.value;
-  },
-  renderEditCell: (params) => <GridEditInputCell {...params} placeholder="Add name" />,
+        if (
+          params.row.id === "new-activity" &&
+          (!params.value || params.value === "")
+        ) {
+          return (
+            <span style={{ color: "gray", fontStyle: "italic" }}>
+              Add New Activity Here
+            </span>
+          );
+        }
+        return params.value;
+      },
+      renderEditCell: (params) => (
+        <GridEditInputCell {...params} placeholder="Add name" />
+      ),
     },
     {
       field: "description",
       headerName: "Description",
       flex: 0.75,
       minWidth: 112,
-      headerAlign: "center",
+      headerAlign: "left",
       align: "left",
       editable: isEditMode || isAddingActivity,
-        renderEditCell: (params) => <GridEditInputCell {...params} placeholder="Add description" />,
-
+      renderEditCell: (params) => (
+        <GridEditInputCell {...params} placeholder="Add description" />
+      ),
     },
     {
       field: "target",
@@ -337,8 +398,9 @@ const AllActivities: React.FC = () => {
       align: "center",
       editable: isEditMode || isAddingActivity,
       type: "number",
-        renderEditCell: (params) => <GridEditInputCell {...params} placeholder="Add target" />,
-
+      renderEditCell: (params) => (
+        <GridEditInputCell {...params} placeholder="Add target" />
+      ),
     },
     {
       field: "unit",
@@ -349,7 +411,35 @@ const AllActivities: React.FC = () => {
       editable: isEditMode || isAddingActivity,
       type: "singleSelect",
       valueOptions: unitOptions,
-      renderCell: (params) => formatUnit(params.value) || params.value,
+      renderCell: (params) => {
+        const isEditable =
+          isEditMode || (isAddingActivity && params.row.id === "new-activity");
+        const value = formatUnit(params.value as string) || "";
+        if (isEditable) {
+          return (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+              }}
+            >
+              {value || (
+                <span style={{ color: "gray", fontStyle: "italic" }}>
+                  Select unit
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                style={{ marginLeft: "4px", color: "gray" }}
+              />
+            </div>
+          );
+        } else {
+          return value || "-";
+        }
+      },
     },
     {
       field: "target2",
@@ -359,8 +449,9 @@ const AllActivities: React.FC = () => {
       align: "center",
       editable: isEditMode || isAddingActivity,
       type: "number",
-              renderEditCell: (params) => <GridEditInputCell {...params} placeholder="Add target2" />,
-
+      renderEditCell: (params) => (
+        <GridEditInputCell {...params} placeholder="Add target2" />
+      ),
     },
     {
       field: "unit2",
@@ -371,7 +462,35 @@ const AllActivities: React.FC = () => {
       editable: isEditMode || isAddingActivity,
       type: "singleSelect",
       valueOptions: unitOptions,
-      renderCell: (params) => formatUnit(params.value) || params.value,
+      renderCell: (params) => {
+        const isEditable =
+          isEditMode || (isAddingActivity && params.row.id === "new-activity");
+        const value = formatUnit(params.value as string) || "";
+        if (isEditable) {
+          return (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+              }}
+            >
+              {value || (
+                <span style={{ color: "gray", fontStyle: "italic" }}>
+                  Select unit
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                style={{ marginLeft: "4px", color: "gray" }}
+              />
+            </div>
+          );
+        } else {
+          return value || "-";
+        }
+      },
     },
     {
       field: "videoLink",
@@ -381,33 +500,40 @@ const AllActivities: React.FC = () => {
       headerAlign: "center",
       align: "left",
       editable: isEditMode || isAddingActivity,
-              renderEditCell: (params) => <GridEditInputCell {...params} placeholder="Add video link" />,
+      renderEditCell: (params) => (
+        <GridEditInputCell {...params} placeholder="Add video link" />
+      ),
       renderCell: (params) => {
-        if (params.value) {
-          return (
-            <button
-              onClick={() =>
-                handleVideoLinkClick(params.value, params.row.name)
-              }
-              className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
-              style={{
-                textDecoration: "underline",
-                background: "none",
-                border: "none",
-                color: "#3b82f6",
-                cursor: "pointer",
-                padding: 0,
-                font: "inherit",
-                textAlign: "left",
-              }}
-            >
-              {params.value.length > 30
-                ? `${params.value.substring(0, 30)}...`
-                : params.value}
-            </button>
-          );
+        if (isEditMode || isAddingActivity) {
+          return params.value || "-";
+        } else {
+          if (params.value) {
+            return (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleVideoLinkClick(params.value, params.row.name);
+                }}
+                className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
+                style={{
+                  textDecoration: "underline",
+                  background: "none",
+                  border: "none",
+                  color: "#3b82f6",
+                  cursor: "pointer",
+                  padding: 0,
+                  font: "inherit",
+                  textAlign: "left",
+                }}
+              >
+                {params.value.length > 30
+                  ? `${params.value.substring(0, 30)}...`
+                  : params.value}
+              </button>
+            );
+          }
+          return "-";
         }
-        return "-";
       },
     },
     {
@@ -451,7 +577,140 @@ const AllActivities: React.FC = () => {
       </div>
     );
   }
+  //csv download functions
+  const handleDownloadSample = () => {
+    const headers = [
+      "Name",
+      "Description",
+      "Target",
+      "Unit",
+      "Target2",
+      "Unit2",
+      "VideoLink",
+    ];
 
+    // ---- example rows ----
+    const examples = [
+      [
+        "Sample Activity",
+        "DELETE BEFORE UPLOADING",
+        "30",
+        "time",
+        "0",
+        "weight",
+        "https://www.youtube.com/watch?......",
+      ],
+      [
+        "Sample Activity",
+        "DELETE BEFORE UPLOADING",
+        "15",
+        "repetitions",
+        "10",
+        "distance",
+        "https://www.youtube.com/shorts/.....",
+      ],
+    ];
+
+    // build CSV text
+    const escape = (v: string) =>
+      v.includes(",") || v.includes('"') || v.includes("\n")
+        ? `"${v.replace(/"/g, '""')}"`
+        : v;
+
+    const csvContent =
+      headers.join(",") +
+      "\n" +
+      examples.map((row) => row.map(escape).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sample_activities.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const handleParse = async () => {
+    if (!csvFile) return;
+    setParsing(true);
+    try {
+      const text = await csvFile.text();
+      if (!text) throw new Error("Empty file");
+
+      const lines = text.trim().split("\n");
+      const headers = lines[0].split(",").map((h) => h.trim());
+      const expected = [
+        "Name",
+        "Description",
+        "Target",
+        "Unit",
+        "Target2",
+        "Unit2",
+        "VideoLink",
+      ];
+      const ok = expected.every((h, i) => headers[i] === h);
+      if (!ok) throw new Error("Headers mismatch");
+
+      const rows = lines.slice(1).map((l) => l.split(",").map((c) => c.trim()));
+      const payload = rows
+        .map((r) => ({
+          name: r[0],
+          description: r[1],
+          target: parseFloat(r[2]) || 0,
+          unit: r[3].toLowerCase(),
+          target2: parseFloat(r[4]) || 0,
+          unit2: r[5]?.toLowerCase() || "",
+          videoLink: r[6] || "",
+        }))
+        .filter((row) => row.name.trim() !== "Sample Activity"); // ← skip sample rows
+
+      // push to backend
+      const res = await fetch(
+        `${API_BASE_URL}/activity-templates:csv-scratch`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }
+      );
+      console.log(API_BASE_URL, "PARSING");
+      if (!res.ok) throw new Error("Failed to store CSV rows");
+
+      const { inserted_ids } = await res.json();
+      /*  fetch the rows you just inserted (they have the real _id)  */
+      const freshRes = await fetch(
+        `${API_BASE_URL}/activity-templates:csv-scratch?ids=${inserted_ids.join(
+          ","
+        )}`
+      );
+      if (!freshRes.ok) throw new Error("Could not fetch inserted rows");
+      const freshRows = await freshRes.json(); // ← every row has  _id
+
+      context.setActivities_api_call(freshRows); // ✅ real docs
+      setCsvScratchIds(inserted_ids);
+      startCountDown(); // 5-second analyse timer
+    } catch (err) {
+      console.error(err);
+      enqueueSnackbar("Failed to parse CSV.", { variant: "error" });
+    } finally {
+      setParsing(false);
+    }
+  };
+  const handleContinue = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/activity-templates:csv-scratch`);
+      if (!res.ok) throw new Error("Could not fetch pending rows");
+
+      const rows = await res.json(); // already in Activity_Api_call shape
+      context.setActivities_api_call(rows); // fill bulk-add table
+      setUploadOpen(false); // close modal if open
+      context.setSelectComponent("BulkAddTable"); // go to bulk-add page
+    } catch (err) {
+      enqueueSnackbar("Failed to load pending activities", {
+        variant: "error",
+      });
+    }
+  };
   return (
     <>
       <Header />
@@ -486,17 +745,272 @@ const AllActivities: React.FC = () => {
                     Add Activity
                   </Button>
                   <Button
-                    variant="contained"
+                    variant="outlined"
                     startIcon={<Edit size={16} />}
                     onClick={() => {
                       setIsEditMode(true);
                       setOriginalActivities([...activities]);
                       setEditedActivities([...activities]);
                     }}
-                    className="action-button save-button"
+                    className="action-button"
                   >
                     Edit Mode
                   </Button>
+                  <div
+                    className="excel-download-container"
+                    title="Download Sample Excel"
+                    onClick={handleDownloadSample}
+                    style={{
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="30"
+                      height="30"
+                      viewBox="0 0 48 48"
+                      className="excel-download-icon"
+                      style={{
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <rect
+                        width="16"
+                        height="9"
+                        x="28"
+                        y="15"
+                        fill="#21a366"
+                      ></rect>
+                      <path
+                        fill="#185c37"
+                        d="M44,24H12v16c0,1.105,0.895,2,2,2h28c1.105,0,2-0.895,2-2V24z"
+                      ></path>
+                      <rect
+                        width="16"
+                        height="9"
+                        x="28"
+                        y="24"
+                        fill="#107c42"
+                      ></rect>
+                      <rect
+                        width="16"
+                        height="9"
+                        x="12"
+                        y="15"
+                        fill="#3fa071"
+                      ></rect>
+                      <path
+                        fill="#33c481"
+                        d="M42,6H28v9h16V8C44,6.895,43.105,6,42,6z"
+                      ></path>
+                      <path
+                        fill="#21a366"
+                        d="M14,6h14v9H12V8C12,6.895,12.895,6,14,6z"
+                      ></path>
+                      <path
+                        d="M22.319,13H12v24h10.319C24.352,37,26,35.352,26,33.319V16.681C26,14.648,24.352,13,22.319,13z"
+                        opacity=".05"
+                      ></path>
+                      <path
+                        d="M22.213,36H12V13.333h10.213c1.724,0,3.121,1.397,3.121,3.121v16.425	C25.333,34.603,23.936,36,22.213,36z"
+                        opacity=".07"
+                      ></path>
+                      <path
+                        d="M22.106,35H12V13.667h10.106c1.414,0,2.56,1.146,2.56,2.56V32.44C24.667,33.854,23.520,35,22.106,35z"
+                        opacity=".09"
+                      ></path>
+                      <linearGradient
+                        id="excelDownloadGrad"
+                        x1="4.725"
+                        x2="23.055"
+                        y1="14.725"
+                        y2="33.055"
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        <stop offset="0" stopColor="#18884f"></stop>
+                        <stop offset="1" stopColor="#0b6731"></stop>
+                      </linearGradient>
+                      <path
+                        fill="url(#excelDownloadGrad)"
+                        d="M22,34H6c-1.105,0-2-0.895-2-2V16c0-1.105,0.895-2,2-2h16c1.105,0,2,0.895,2,2v16	C24,33.105,23.105,34,22,34z"
+                      ></path>
+                      <path
+                        fill="#fff"
+                        d="M9.807,19h2.386l1.936,3.754L16.175,19h2.229l-3.071,5l3.141,5h-2.351l-2.11-3.93L11.912,29H9.526	l3.193-5.018L9.807,19z"
+                      ></path>
+
+                      {/* Download arrow overlay */}
+                      <g transform="translate(24, 12)">
+                        <circle
+                          cx="10"
+                          cy="10"
+                          r="8"
+                          fill="rgba(255,255,255,0.9)"
+                          stroke="#21a366"
+                          strokeWidth="1"
+                        />
+                        <path
+                          d="M6 8 L10 12 L14 8"
+                          stroke="#21a366"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M10 4 L10 12"
+                          stroke="#21a366"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    </svg>
+                    <span
+                      className="excel-action-label"
+                      style={{ paddingLeft: "0.3rem" }}
+                    >
+                      SAMPLE FORM
+                    </span>
+                  </div>
+                  <div
+                    className="excel-upload-container"
+                    title="Upload Excel File"
+                    onClick={() => {
+                      setCsvFile(null);
+                      setCsvName("");
+                      setUploadOpen(true);
+                    }}
+                    style={{
+                      cursor: isParsing ? "not-allowed" : "pointer",
+                      opacity: isParsing ? 0.5 : 1,
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="30"
+                      height="30"
+                      viewBox="0 0 48 48"
+                      className="excel-upload-icon"
+                    >
+                      <rect
+                        width="16"
+                        height="9"
+                        x="28"
+                        y="15"
+                        fill="#21a366"
+                      ></rect>
+                      <path
+                        fill="#185c37"
+                        d="M44,24H12v16c0,1.105,0.895,2,2,2h28c1.105,0,2-0.895,2-2V24z"
+                      ></path>
+                      <rect
+                        width="16"
+                        height="9"
+                        x="28"
+                        y="24"
+                        fill="#107c42"
+                      ></rect>
+                      <rect
+                        width="16"
+                        height="9"
+                        x="12"
+                        y="15"
+                        fill="#3fa071"
+                      ></rect>
+                      <path
+                        fill="#33c481"
+                        d="M42,6H28v9h16V8C44,6.895,43.105,6,42,6z"
+                      ></path>
+                      <path
+                        fill="#21a366"
+                        d="M14,6h14v9H12V8C12,6.895,12.895,6,14,6z"
+                      ></path>
+                      <path
+                        d="M22.319,13H12v24h10.319C24.352,37,26,35.352,26,33.319V16.681C26,14.648,24.352,13,22.319,13z"
+                        opacity=".05"
+                      ></path>
+                      <path
+                        d="M22.213,36H12V13.333h10.213c1.724,0,3.121,1.397,3.121,3.121v16.425	C25.333,34.603,23.936,36,22.213,36z"
+                        opacity=".07"
+                      ></path>
+                      <path
+                        d="M22.106,35H12V13.667h10.106c1.414,0,2.56,1.146,2.56,2.56V32.44C24.667,33.854,23.520,35,22.106,35z"
+                        opacity=".09"
+                      ></path>
+                      <linearGradient
+                        id="excelUploadGrad"
+                        x1="4.725"
+                        x2="23.055"
+                        y1="14.725"
+                        y2="33.055"
+                        gradientUnits="userSpaceOnUse"
+                      >
+                        <stop offset="0" stopColor="#18884f"></stop>
+                        <stop offset="1" stopColor="#0b6731"></stop>
+                      </linearGradient>
+                      <path
+                        fill="url(#excelUploadGrad)"
+                        d="M22,34H6c-1.105,0-2-0.895-2-2V16c0-1.105,0.895-2,2-2h16c1.105,0,2,0.895,2,2v16	C24,33.105,23.105,34,22,34z"
+                      ></path>
+                      <path
+                        fill="#fff"
+                        d="M9.807,19h2.386l1.936,3.754L16.175,19h2.229l-3.071,5l3.141,5h-2.351l-2.11-3.93L11.912,29H9.526	l3.193-5.018L9.807,19z"
+                      ></path>
+
+                      {/* Upload arrow overlay */}
+                      <g transform="translate(24, 12)">
+                        <circle
+                          cx="10"
+                          cy="10"
+                          r="8"
+                          fill="rgba(255,255,255,0.9)"
+                          stroke="#21a366"
+                          strokeWidth="1"
+                        />
+                        <path
+                          d="M14 12 L10 8 L6 12"
+                          stroke="#21a366"
+                          strokeWidth="2"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                        <path
+                          d="M10 16 L10 8"
+                          stroke="#21a366"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                        />
+                      </g>
+                    </svg>
+                    <span
+                      className="excel-action-label"
+                      style={{ paddingLeft: "0.3rem" }}
+                    >
+                      {isParsing ? "PARSING..." : "UPLOAD BULK DATA"}
+                    </span>
+                  </div>
+                  {pendingCount > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.5rem",
+                        justifyContent: "center",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Button variant="contained" onClick={handleContinue}>
+                        VIEW AND RESOLVE
+                      </Button>
+                      <span className="pending-badge">
+                        {pendingCount} uploaded activities not in DB
+                      </span>
+                    </div>
+                  )}
                 </>
               ) : isEditMode ? (
                 // Edit mode buttons
@@ -504,10 +1018,38 @@ const AllActivities: React.FC = () => {
                   <Button
                     variant="contained"
                     startIcon={<Save size={16} />}
-                    onClick={() => {
-                      setActivities([...editedActivities]);
+                    onClick={async () => {
+                      if (changedActivities.size > 0) {
+                        try {
+                          const updates = Array.from(
+                            changedActivities.values()
+                          );
+                          await bulkUpdateActivities(updates);
+
+                          // Update local state with changes
+                          setActivities([...editedActivities]);
+
+                          enqueueSnackbar(
+                            `${updates.length} activities updated successfully!`,
+                            {
+                              variant: "success",
+                              autoHideDuration: 3000,
+                            }
+                          );
+                        } catch (error) {
+                          enqueueSnackbar(
+                            "Failed to update activities. Please try again.",
+                            {
+                              variant: "error",
+                              autoHideDuration: 3000,
+                            }
+                          );
+                          return;
+                        }
+                      }
+
                       setIsEditMode(false);
-                      console.log("Changes saved");
+                      setChangedActivities(new Map());
                     }}
                     className="action-button save-button"
                   >
@@ -518,6 +1060,7 @@ const AllActivities: React.FC = () => {
                     onClick={() => {
                       setEditedActivities([...originalActivities]);
                       setActivities([...originalActivities]);
+                      setChangedActivities(new Map()); // Clear tracked changes
                       setIsEditMode(false);
                     }}
                     className="action-button"
@@ -563,11 +1106,25 @@ const AllActivities: React.FC = () => {
 
         <div className="table-container">
           <DataGrid
-           getRowClassName={(params) => {
-    if (params.row.id === "new-activity") return "new-activity-row";
-    if (isEditMode) return "new-activity-row"; // Apply the same style to all rows in edit mode
-    return "";
-  }}
+            apiRef={apiRef}
+            onCellClick={(params) => {
+              if ((isEditMode || isAddingActivity) && params.isEditable) {
+                apiRef.current.startCellEditMode({
+                  id: params.id,
+                  field: params.field,
+                });
+              }
+            }}
+            getRowClassName={(params) => {
+              if (params.row.id === "new-activity") return "new-activity-row";
+              if (isEditMode) {
+                const hasChanges = changedActivities.has(params.row.activityId);
+                return hasChanges
+                  ? "new-activity-row changed-row"
+                  : "new-activity-row";
+              }
+              return "";
+            }}
             rows={rows}
             columns={columns}
             initialState={{
@@ -579,8 +1136,11 @@ const AllActivities: React.FC = () => {
             checkboxSelection
             className="data-grid"
             onRowSelectionModelChange={(ids) => {
+              // Ensure ids is an array
+              const idsArray = Array.isArray(ids) ? ids : Array.from(ids);
+
               // Map back to activityIds using the row data
-              const activityIds = ids
+              const activityIds = idsArray
                 .map((id) => {
                   const row = rows.find((r) => r.id === id);
                   return row ? row.activityId : null;
@@ -605,7 +1165,7 @@ const AllActivities: React.FC = () => {
             }}
             processRowUpdate={(newRow) => {
               if (isAddingActivity && newRow.id === "new-activity") {
-                // Handle new activity updates
+                // Keep existing new activity logic unchanged
                 const updatedNewActivity = {
                   ...newActivityData!,
                   name: newRow.name,
@@ -618,29 +1178,60 @@ const AllActivities: React.FC = () => {
                 };
                 setNewActivityData(updatedNewActivity);
               } else if (isEditMode) {
-                // Handle existing activity updates in edit mode
                 const activityId = newRow.activityId;
-                const activityIndex = editedActivities.findIndex(
-                  (activity) => activity.activityId === activityId
+                const originalActivity = originalActivities.find(
+                  (a) => a.activityId === activityId
                 );
 
-                if (activityIndex !== -1) {
-                  const updatedEditedActivities = [...editedActivities];
-                  updatedEditedActivities[activityIndex] = {
-                    ...updatedEditedActivities[activityIndex],
-                    name: newRow.name,
-                    description: newRow.description,
-                    target: newRow.target,
-                    unit: newRow.unit,
-                    target2: newRow.target2,
-                    unit2: newRow.unit2,
-                    videoLink: newRow.videoLink,
-                  };
+                if (originalActivity) {
+                  // Track only actually changed fields
+                  const changes: Partial<Activity> = {};
+                  if (newRow.name !== originalActivity.name)
+                    changes.name = newRow.name;
+                  if (newRow.description !== originalActivity.description)
+                    changes.description = newRow.description;
+                  if (newRow.target !== originalActivity.target)
+                    changes.target = newRow.target;
+                  if (newRow.unit !== originalActivity.unit)
+                    changes.unit = newRow.unit;
+                  if (newRow.target2 !== originalActivity.target2)
+                    changes.target2 = newRow.target2;
+                  if (newRow.unit2 !== originalActivity.unit2)
+                    changes.unit2 = newRow.unit2;
+                  if (newRow.videoLink !== originalActivity.videoLink)
+                    changes.videoLink = newRow.videoLink;
 
-                  setEditedActivities(updatedEditedActivities);
+                  // Update changedActivities map
+                  setChangedActivities((prev) => {
+                    const newMap = new Map(prev);
+                    if (Object.keys(changes).length > 0) {
+                      newMap.set(activityId, { activityId, ...changes });
+                    } else {
+                      newMap.delete(activityId);
+                    }
+                    return newMap;
+                  });
+
+                  // Update editedActivities for display
+                  const activityIndex = editedActivities.findIndex(
+                    (activity) => activity.activityId === activityId
+                  );
+                  if (activityIndex !== -1) {
+                    const updatedEditedActivities = [...editedActivities];
+                    updatedEditedActivities[activityIndex] = {
+                      ...updatedEditedActivities[activityIndex],
+                      name: newRow.name,
+                      description: newRow.description,
+                      target: newRow.target,
+                      unit: newRow.unit,
+                      target2: newRow.target2,
+                      unit2: newRow.unit2,
+                      videoLink: newRow.videoLink,
+                    };
+                    setEditedActivities(updatedEditedActivities);
+                  }
                 }
               }
-
               return newRow;
             }}
             onProcessRowUpdateError={(error) => {
@@ -661,6 +1252,144 @@ const AllActivities: React.FC = () => {
         videoUrl={currentVideoUrl}
         title={videoTitle}
       />
+      {/* ----------  CSV-upload dialog  ---------- */}
+      <Dialog
+        open={uploadOpen}
+        onClose={() => !(parsing || countDown) && setUploadOpen(false)}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle sx={{ position: "relative" }}>
+          Upload CSV
+          <button
+            onClick={() => setUploadOpen(false)}
+            disabled={parsing || countDown}
+            style={{
+              position: "absolute",
+              right: "24px",
+              top: "8px",
+              background: "none",
+              border: "none",
+              fontSize: "25px",
+              cursor: "pointer",
+            }}
+          >
+            ×
+          </button>
+        </DialogTitle>
+        <DialogContent>
+          {/* file name + browse */}
+          <Box display="flex" alignItems="center" gap={1} mb={2}>
+            <TextField
+              size="small"
+              fullWidth
+              InputProps={{ readOnly: true }}
+              value={csvName}
+              placeholder="No file chosen"
+            />
+            <Button
+              variant="outlined"
+              component="label"
+              disabled={parsing || !!countDown}
+            >
+              Browse
+              <input
+                type="file"
+                accept=".csv"
+                hidden
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setCsvFile(f);
+                  setCsvName(f?.name || "");
+                }}
+              />
+            </Button>
+          </Box>
+
+          {/* status + parse */}
+          <Box
+            display="flex"
+            justifyContent="center"
+            alignItems="center"
+            gap={2}
+            sx={{
+              minHeight: "40px", // Prevent layout shift
+            }}
+          >
+            {(parsing || countDown > 0) && (
+              <Box
+                display="flex"
+                alignItems="center"
+                gap={1}
+                sx={{
+                  background:
+                    "linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)",
+                  border: "1px solid #1976d2",
+                  borderRadius: "12px",
+                  padding: "8px 16px",
+                  animation: "fadeIn 0.3s ease-in-out",
+                  boxShadow: "0 2px 8px rgba(25,118,210,0.2)",
+                  "@keyframes fadeIn": {
+                    "0%": { opacity: 0, transform: "translateY(-10px)" },
+                    "100%": { opacity: 1, transform: "translateY(0)" },
+                  },
+                }}
+              >
+                <Box
+                  sx={{
+                    position: "relative",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <CircularProgress
+                    size={18}
+                    sx={{
+                      color: "#1976d2",
+                      "& .MuiCircularProgress-circle": {
+                        strokeLinecap: "round",
+                      },
+                    }}
+                  />
+                  {/* Pulsing dot overlay for extra visual feedback */}
+                  <Box
+                    sx={{
+                      position: "absolute",
+                      width: "6px",
+                      height: "6px",
+                      backgroundColor: "#1976d2",
+                      borderRadius: "50%",
+                      animation: "pulse 1.5s ease-in-out infinite",
+                      "@keyframes pulse": {
+                        "0%, 100%": { opacity: 0.3, transform: "scale(1)" },
+                        "50%": { opacity: 1, transform: "scale(1.2)" },
+                      },
+                    }}
+                  />
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                    color: "#1565c0",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {countDown > 0 ? `Analysing ${countDown}…` : "Parsing CSV…"}
+                </Typography>
+              </Box>
+            )}
+            <Button
+              variant="contained"
+              disabled={!csvFile || parsing || !!countDown}
+              onClick={handleParse}
+            >
+              Parse CSV
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

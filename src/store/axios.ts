@@ -11,12 +11,35 @@ import {
 // import { Dispatch, SetStateAction } from 'react';
 import { createAssessmentTemplate } from "./DataContext";
 import { enqueueSnackbar } from "notistack";
-const API_BASE_URL = "https://forge-play-backend.forgehub.in";
 // const API_BASE_URL="http://127.0.0.1:8000"
 // const API_BASE_URL="https://forge-play-backendv2.forgehub.in"
-const API_BASE_URL2="https://play-os-backend.forgehub.in";
 // const API_BASE_URL2=" http://127.0.0.1:8000"
 // const API_BASE_URL2='https://play-os-backendv2.forgehub.in'
+
+
+//export const API_BASE_URL = "https://forge-play-backend.forgehub.in";
+//export const API_BASE_URL2="https://play-os-backend.forgehub.in";
+// export const API_BASE_URL = "https://testforgebackend.forgehub.in";
+// export const API_BASE_URL2 = "https://testplaybackend.forgehub.in";
+
+
+const mode = "production";  // or "development", or other
+let API_BASE_URL: string;
+let API_BASE_URL2: string;
+
+if (mode === "production") {
+  API_BASE_URL = "https://forge-play-backend.forgehub.in";
+  API_BASE_URL2 = "https://play-os-backend.forgehub.in";
+} else if (mode === "development") {
+  API_BASE_URL = "https://testforgebackend.forgehub.in";
+  API_BASE_URL2 = "https://testplaybackend.forgehub.in";
+} else {
+  API_BASE_URL = "http://127.0.0.1:8001";
+  API_BASE_URL2 = "http://127.0.0.1:8000";
+}
+
+export { API_BASE_URL, API_BASE_URL2 };
+
 
 // kkkkkwwwwwww
 export const useApiCalls = () => {
@@ -37,12 +60,13 @@ export const useApiCalls = () => {
     setAssessmentInstance_call,
   } = context;
 
-  const customer_creation = async (customer: any) => {
+const customer_creation = async (customer: any) => {
 
     // console.log("Creating customer with data:", customer);
     const data={
       type:customer.type,
       name:customer.name,
+      dob: customer.dob, 
       age:customer.age,
       gender:customer.gender,
       mobile:customer.mobile,
@@ -69,11 +93,11 @@ export const useApiCalls = () => {
         variant: "success",
         autoHideDuration: 3000,
       });
-
+ const userId = res.data.userId.userId;
       const res_2=await axios.patch(`${API_BASE_URL2}/human/${res.data.userId.userId}`,data2);
       // console.log("Customer updated successfully:", res_2.data);
       customers_fetching(); // Refresh the customer list after creation
-      return res_2
+      return { ...res_2, userId };
     } catch (error) {
        enqueueSnackbar("Please fill all details!", {
         variant: "warning",

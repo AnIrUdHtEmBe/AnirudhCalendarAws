@@ -64,7 +64,7 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
       timeStamp: Date.now(),
     }];
 
-    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+    const url = `${API_BASE_URL_Latest}/chatV1/presence/record`;
 
     if (useBeacon && navigator.sendBeacon) {
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
@@ -167,7 +167,7 @@ useEffect(() => {
     setInputValue("");
     setIsTyping(false);
 //        const seenByUser = await axios.patch(
-//   `https://play-os-backend.forgehub.in/human/human/mark-seen`,
+//   `${API_BASE_URL2}/human/human/mark-seen`,
 //   {
 //     userId: userId,
 //     roomType: roomType, // convert to uppercase safely

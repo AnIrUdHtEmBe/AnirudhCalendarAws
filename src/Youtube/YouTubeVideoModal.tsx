@@ -1,5 +1,5 @@
-import React from 'react';
-import './YouTubeVideoModal.css';
+import React from "react";
+import "./YouTubeVideoModal.css";
 
 interface YouTubeVideoModalProps {
   isOpen: boolean;
@@ -12,11 +12,12 @@ const YouTubeVideoModal: React.FC<YouTubeVideoModalProps> = ({
   isOpen,
   onClose,
   videoUrl,
-  title = "Video Player"
+  title = "Video Player",
 }) => {
   // Function to extract YouTube video ID from URL
   const extractVideoId = (url: string): string | null => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     return match && match[2].length === 11 ? match[2] : null;
   };
@@ -31,20 +32,20 @@ const YouTubeVideoModal: React.FC<YouTubeVideoModalProps> = ({
   // Handle escape key press
   React.useEffect(() => {
     const handleEscapeKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+      if (e.key === "Escape" && isOpen) {
         onClose();
       }
     };
 
     if (isOpen) {
-      document.addEventListener('keydown', handleEscapeKey);
+      document.addEventListener("keydown", handleEscapeKey);
       // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = "hidden";
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscapeKey);
-      document.body.style.overflow = 'unset';
+      document.removeEventListener("keydown", handleEscapeKey);
+      document.body.style.overflow = "unset";
     };
   }, [isOpen, onClose]);
 
@@ -54,13 +55,16 @@ const YouTubeVideoModal: React.FC<YouTubeVideoModalProps> = ({
   const videoId = extractVideoId(videoUrl);
 
   if (!videoId) {
-    console.error('Invalid YouTube URL provided:', videoUrl);
+    console.error("Invalid YouTube URL provided:", videoUrl);
     return null;
   }
 
   return (
     <div className="video-modal-overlay" onClick={handleOverlayClick}>
-      <div className="video-modal-container" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="video-modal-container"
+        onClick={(e) => e.stopPropagation()}
+      >
         <button
           className="video-modal-close"
           onClick={onClose}

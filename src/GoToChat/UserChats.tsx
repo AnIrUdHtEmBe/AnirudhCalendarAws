@@ -33,7 +33,7 @@ import { TbMessage } from "react-icons/tb";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 // Add these imports at the top of the UserChats component file
 import axios from "axios";
-
+import { API_BASE_URL , API_BASE_URL2 } from "../store/axios";
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
 
 interface RoomData {
@@ -484,7 +484,7 @@ const UserChats: React.FC<UserChatsProps> = ({
 
 //   try {
 //     const response = await axios.post(
-//       "https://play-os-backend.forgehub.in/chatV1/presence/record",
+//       "${API_BASE_URL2}/chatV1/presence/record",
 //       payload
 //     );
 //     console.log(`${action} presence recorded:`, response.data);
@@ -504,7 +504,7 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
     timeStamp: Date.now(),
   }));
 
-  const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+  const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
   if (useBeacon && navigator.sendBeacon) {
     const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
@@ -540,7 +540,7 @@ useEffect(() => {
       console.log("📡 Fetching room data for userId:", userId);
 
       const response = await fetch(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
+        `${API_BASE_URL2}/human/human/${userId}`
       );
 
       if (!response.ok) {
@@ -660,7 +660,7 @@ useEffect(() => {
     const fetchAllUsers = async () => {
       try {
         const response = await axios.get(
-          "https://play-os-backend.forgehub.in/human/all?type=forge"
+          `${API_BASE_URL2}/human/all?type=forge`
         );
         const users = response.data
           .map((user: any) => ({

@@ -32,7 +32,7 @@ import {
 } from "@mui/material";
 import { enqueueSnackbar } from "notistack";
 import CloseIcon from "@mui/icons-material/Close";
-
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 const actions = ["Edit profile", "See plan", "Take Assessment", "Go to chat"];
 
 interface ActionsContainerProps {
@@ -151,38 +151,41 @@ const CustomerTable = () => {
     assignedRM: "",
   });
 
-  const fetchAdminUsers = async () => {
-    setLoadingAdmins(true);
-    try {
-      // Fetch both admin and RM users in parallel
-      const [adminResponse, rmResponse] = await Promise.all([
-        fetch("https://play-os-backend.forgehub.in/human/all?type=admin"),
-        fetch("https://play-os-backend.forgehub.in/human/all?type=RM"),
-      ]);
+const fetchAdminUsers = async () => {
+  setLoadingAdmins(true);
+  try {
+    // Fetch both admin and RM users in parallel
+    const [adminResponse, rmResponse] = await Promise.all([
+      fetch(`${API_BASE_URL2}/human/all?type=admin`), // Fetch admins
+      fetch(`${API_BASE_URL2}/human/all?type=RM`),    // Fetch RMs
+    ]);
 
-      const adminData = await adminResponse.json();
-      const rmData = await rmResponse.json();
+    const adminData = await adminResponse.json();
+    const rmData = await rmResponse.json();
 
-      // Add type property to each user
-      const adminUsers = adminData.map((user) => ({
-        ...user,
-        userType: "admin",
-      }));
-      const rmUsers = rmData.map((user) => ({ ...user, userType: "RM" }));
+    // Add correct type property to each user
+    const adminUsers = adminData.map((user) => ({
+      ...user,
+      userType: "admin",  // Correctly label as admin
+    }));
+    const rmUsers = rmData.map((user) => ({
+      ...user,
+      userType: "RM",     // Correctly label as RM
+    }));
 
-      // Combine both arrays
-      const combinedUsers = [...adminUsers, ...rmUsers];
-      setAdminUsers(combinedUsers);
-    } catch (error) {
-      console.error("Failed to fetch admin users:", error);
-      enqueueSnackbar("Failed to load admin users", {
-        variant: "error",
-        autoHideDuration: 3000,
-      });
-    } finally {
-      setLoadingAdmins(false);
-    }
-  };
+    // Combine both arrays
+    const combinedUsers = [...adminUsers, ...rmUsers];
+    setAdminUsers(combinedUsers);
+  } catch (error) {
+    console.error("Failed to fetch admin users:", error);
+    enqueueSnackbar("Failed to load admin users", {
+      variant: "error",
+      autoHideDuration: 3000,
+    });
+  } finally {
+    setLoadingAdmins(false);
+  }
+};
 
   // Function to calculate age from DOB
   const calculateAge = (dob: string) => {
@@ -288,35 +291,38 @@ const CustomerTable = () => {
       return newData;
     });
   };
-const assignUserToRM = async (rmId: string, userId: string) => {
-  try {
-    const response = await fetch('https://play-os-backend.forgehub.in/human/rm/assignusers', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        rmId: rmId,
-        userIds: [userId]
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to assign user to RM');
+  const assignUserToRM = async (rmId: string, userId: string) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL2}/human/rm/assignusers`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            rmId: rmId,
+            userIds: [userId],
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to assign user to RM");
+      }
+
+      enqueueSnackbar("Successfully assigned user to RM", {
+        variant: "success",
+        autoHideDuration: 3000,
+      });
+    } catch (error) {
+      console.error("Error assigning user to RM:", error);
+      enqueueSnackbar("Failed to assign user to RM", {
+        variant: "error",
+        autoHideDuration: 3000,
+      });
     }
-    
-    enqueueSnackbar('Successfully assigned user to RM', { 
-      variant: 'success', 
-      autoHideDuration: 3000 
-    });
-  } catch (error) {
-    console.error('Error assigning user to RM:', error);
-    enqueueSnackbar('Failed to assign user to RM', { 
-      variant: 'error', 
-      autoHideDuration: 3000 
-    });
-  }
-};
+  };
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Convert numeric fields
@@ -350,14 +356,15 @@ const assignUserToRM = async (rmId: string, userId: string) => {
 
     const res = await customer_creation(payload); // assuming this returns a promise
     if (res) {
-    if (formData.assignedRM) {
-      // The user ID should be available in res.data.userId based on your customer_creation function
-      await assignUserToRM(formData.assignedRM, res.data.userId);
-    }
+      if (formData.assignedRM) {
+        // The user ID should be available in res.data.userId based on your customer_creation function
+        await assignUserToRM(formData.assignedRM, res.userId);
+      }
       setModalOpen(false);
       // Clear the form by resetting formData to initial empty values
       setFormData({
         name: "",
+        dob: "",
         age: "",
         gender: "",
         mobile: "",
@@ -389,14 +396,15 @@ const assignUserToRM = async (rmId: string, userId: string) => {
 
     console.log("Edit payload:", payload);
     const res = await patch_customer(editingCustomer.userId, payload);
- if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
-    await assignUserToRM(editFormData.assignedRM, editingCustomer.userId);
-  }
+    if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
+      await assignUserToRM(editFormData.assignedRM, editingCustomer.userId);
+    }
     setEditModalOpen(false);
     setEditingCustomer(null);
     // Clear the edit form
     setEditFormData({
       name: "",
+      dob: "",
       age: "",
       gender: "",
       mobile: "",
@@ -420,6 +428,7 @@ const assignUserToRM = async (rmId: string, userId: string) => {
     setEditFormData({
       name: "",
       age: "",
+      dob: "",
       gender: "",
       mobile: "",
       email: "",
@@ -471,8 +480,14 @@ const assignUserToRM = async (rmId: string, userId: string) => {
     console.log("Edit profile clicked for customer:", customer);
     setEditingCustomer(customer);
     // Pre-fill the edit form with customer data
+    const dobValue = customer.dob
+      ? new Date(customer.dob + "Z").toLocaleDateString("en-CA", {
+          timeZone: "Asia/Kolkata",
+        })
+      : "";
     setEditFormData({
       name: customer.name || "",
+      dob: dobValue || "",
       age: customer.age?.toString() || "",
       gender: customer.gender || "",
       mobile: customer.mobile || "",

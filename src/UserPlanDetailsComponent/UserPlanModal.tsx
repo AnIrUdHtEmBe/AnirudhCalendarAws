@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import Modal from "@mui/material/Modal";
 import axios from "axios";
-
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 // Define types for activity and session objects based on your data structure
 
 interface Activity {
@@ -46,7 +46,7 @@ type ApiResponse = PlanInstance[];
 //   endDate: string;
 // }): Promise<ApiResponse> {
 //   return axios.get(
-//     `https://forge-play-backend.forgehub.in/humans/${params.userId}/${encodeURIComponent(
+//     `${API_BASE_URL}/humans/${params.userId}/${encodeURIComponent(
 //       params.startDate,
 //     )}${encodeURIComponent(params.endDate)}`,
 //   ).then((res) => {
@@ -61,7 +61,7 @@ const fetchSessions = async (params: {
   endDate: string;
 }) => {
   const apiResponse = await axios.get(
-    `https://forge-play-backend.forgehub.in/humans/${
+    `${API_BASE_URL}/humans/${
       params.userId
     }/plan-instances-within-date?start=${encodeURIComponent(
       params.startDate

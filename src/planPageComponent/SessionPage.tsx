@@ -30,7 +30,7 @@ import Header from "../planPageComponent/Header";
 import { useApiCalls } from "../store/axios";
 import PlanCreatorGrid from "./PlanCreatorGrid";
 import { useNavigate } from "react-router-dom";
-
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 function SessionPage() {
   const navigate = useNavigate();
   const [blocks, setBlocks] = useState(28);
@@ -66,7 +66,7 @@ function SessionPage() {
     const fetchLiterals = async () => {
       try {
         const response = await fetch(
-          "https://forge-play-backend.forgehub.in/session-template/getLiterlas"
+          `${API_BASE_URL}/session-template/getLiterlas`
         );
         const data = await response.json();
         setLiterals(data);
@@ -124,7 +124,7 @@ const searchSessions = async () => {
     };
 
     const response = await fetch(
-      "https://forge-play-backend.forgehub.in/session-templates/search",
+      `${API_BASE_URL}/session-templates/search`,
       {
         method: "POST",
         headers: {
