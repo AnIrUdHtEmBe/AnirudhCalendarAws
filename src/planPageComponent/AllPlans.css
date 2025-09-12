@@ -354,3 +354,25 @@
 .update-modal-btn.no:hover {
   background-color: #cbd5e0;
 }
+
+
+/* =====  CLEAN / FINAL  –  paste at the very end of AllPlans.css  ===== */
+
+/* one-line table: big font, micro width, tall rows */
+.table               { font-size: 0.9rem; table-layout: fixed; border-collapse: collapse; }
+.table th,
+.table td            { padding: 6px 6px !important; height: 42px !important; line-height: 1.2; }
+
+/* strip outer fat */
+.table-wrapper       { padding: 0; }
+.plan-section        { padding: 0.15rem; }
+
+/* ultra-narrow fixed columns (px) */
+.table colgroup col:nth-child(1) { width: 24px; }   /* checkbox */
+.table colgroup col:nth-child(2) { width: 110px; }  /* plan name */
+.table colgroup col:nth-child(3) { width: 48px; }   /* category */
+.table colgroup col:nth-child(4) { width: 38px; }   /* status */
+.table colgroup col:nth-child(5) { width: 20px; }   /* eye icon */
+
+/* eye button atom */
+.table td:last-child button { height: 16px; width: 16px; padding: 0; }

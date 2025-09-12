@@ -79,6 +79,7 @@ import AllActivities from "./sessionsPageComponets/AllActivities";
 import CellGridLatestP3 from "./BookingCalendarComponent/Performance3";
 
 import RmDashNew4 from "./RmDashboard/FilteredDashboard";
+import EnhancedActivityTable from "./sessionsPageComponets/EnhancedActivityTable";
 
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
@@ -114,9 +115,9 @@ function App() {
                 ) : selectComponent === "responses" ? (
                   <Responses />
                 ) : selectComponent === "planCreation" ? (
-                  // <PlansPage />
-                  <UserPersonalisedPlan></UserPersonalisedPlan>
-                ) : (
+                    // <PlansPage />
+                    <UserPersonalisedPlan></UserPersonalisedPlan>
+                  ) : (
                   <Dashboard />
                 )
               }
@@ -129,6 +130,8 @@ function App() {
                   <AllSessionsPage />
                 ) : selectComponent === "AllActivities" ? (
                   <AllActivities />
+                ) : selectComponent === "EnhancedSessionCreator" ? (
+                  <EnhancedActivityTable />
                 ) : (
                   <SessionsPage />
                 )
@@ -244,19 +247,6 @@ function App() {
             </Route>
             </Route>
 
-            <Route element={<PrivateRoute />}>
-              <Route
-                path="/sessions"
-                element={
-                  selectComponent === "AllSessions" ? (
-                    <AllSessionsPage />
-                  ) : (
-                    <SessionsPage />
-                  )
-                }
-              />
-            </Route>
-
             {/* <Route element={<PrivateRoute />}>
               <Route
                 path="/bookingCalendar"
@@ -318,5 +308,3 @@ function App() {
 }
 
 export default App;
-// changes in the code by aditi
-// changes in the code by aditi wqwww

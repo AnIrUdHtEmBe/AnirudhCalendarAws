@@ -380,6 +380,7 @@ const CellGridLatestP3 = () => {
   const urlParams = new URLSearchParams(location.search);
   const activeTab = urlParams.get("tab") || "All";
   const hasRetried = useRef(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   // Add this after the existing state declarations (around line 150)
   const [cellData, setCellData] = useState<{
@@ -3265,7 +3266,7 @@ useEffect(() => {
             {filteredCourtId.map((court) => (
               <div
                 key={court.courtId}
-                className="h-10 flex items-center justify-center border border-gray-200 text-xs text-center shrink-0"
+                className="h-10 flex items-center justify-center border border-gray-200 text-xs text-center shrink-0 p-2 font-roberto"
               >
                 {resolvedNames[court.courtId] ?? court.name}
               </div>
@@ -3927,18 +3928,37 @@ useEffect(() => {
                       </button>
                     )}
                     {["occupied", "booking"].includes(
-                      grid[firstSelected[0]][firstSelected[1]]
-                    ) && (
-                      <button
-                        className="w-full bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition-colors font-medium text-xs"
-                        onClick={() => {
-                          applyAction("unbook");
-                          setSelected([]);
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    )}
+  grid[firstSelected[0]][firstSelected[1]]
+) && (
+  !showConfirm ? (
+    <button
+      className="w-full bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition-colors font-medium text-xs"
+      onClick={() => setShowConfirm(true)}
+    >
+      Cancel
+    </button>
+  ) : (
+    <div className="flex gap-2 w-full">
+      <button
+        className="flex-1 bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 transition-colors font-medium text-xs"
+        onClick={() => setShowConfirm(false)}
+      >
+        Don't Cancel
+      </button>
+      <button
+        className="flex-1 bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors font-medium text-xs"
+        onClick={() => {
+          applyAction("unbook");
+          setSelected([]);
+          setShowConfirm(false);
+        }}
+      >
+        Yes, Cancel
+      </button>
+      
+    </div>
+  )
+)}
                   </div>
                 </div>
               )}

@@ -106,88 +106,87 @@ function SessionPage() {
   useEffect(() => {
     getSessions();
     getActivities();
-    searchSessions(); 
+    searchSessions();
   }, []);
 
   console.log(sessions_api_call);
   // grid and checked cell interaction
   const [activePlan, setActivePlan] = useState<Session_Api_call | null>(null);
-const searchSessions = async () => {
-  try {
-    const body = {
-      themes: theme ? [theme] : [],
-      goals: goal ? [goal] : [],
-      category: categoryFilter ? [categoryFilter] : [],
-      matchMode: "any",
-      skip: 0,
-      limit: 500
-    };
+  const searchSessions = async () => {
+    try {
+      const body = {
+        themes: theme ? [theme] : [],
+        goals: goal ? [goal] : [],
+        category: categoryFilter ? [categoryFilter] : [],
+        matchMode: "any",
+        skip: 0,
+        limit: 500,
+      };
 
-    const response = await fetch(
-      "https://forge-play-backend.forgehub.in/session-templates/search",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      }
-    );
-    
-    const data = await response.json();
-    setSessions_api_call(data);
-  } catch (error) {
-    console.error("Failed to search sessions:", error);
-  }
-};
+      const response = await fetch(
+        "https://forge-play-backend.forgehub.in/session-templates/search",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+
+      const data = await response.json();
+      setSessions_api_call(data);
+    } catch (error) {
+      console.error("Failed to search sessions:", error);
+    }
+  };
   // Updated filteredSessions applying *all* filters: your old searchTerm + activeFilter + new filters
-// const filteredSessions = sessions_api_call.filter((plan) => {
-//   const matchesSearchOrActiveFilter =
-//     plan.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     plan.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-//     (activeFilter
-//       ? plan.category?.toLowerCase() === activeFilter.toLowerCase()
-//       : true);
-//   const matchesPlanNameFilter = planNameFilter
-//     ? plan.title?.toLowerCase().includes(planNameFilter.toLowerCase())
-//     : true;
-//   const matchesCategoryFilter = categoryFilter
-//     ? plan.category?.toLowerCase().includes(categoryFilter.toLowerCase())
-//     : true;
-// const matchesThemeFilter = theme && theme !== "All"
-//   ? Array.isArray(plan.themes)
-//     ? plan.themes.map(String).includes(theme)
-//     : false
-//   : true; // Show all when theme is empty, "all", or "n/a"
-// const matchesGoalFilter = goal && goal !== "All" 
-//   ? Array.isArray(plan.goals)
-//     ? plan.goals.map(String).includes(goal)
-//     : false
-//   : true; // Show all when goal is empty, "all", or "n/a"
-//   return (
-//     matchesSearchOrActiveFilter &&
-//     matchesPlanNameFilter &&
-//     matchesCategoryFilter &&
-//     matchesThemeFilter &&
-//     matchesGoalFilter
-//   );
-// });
-const filteredSessions = sessions_api_call.filter((plan) => {
-  const matchesNameFilter = planNameFilter
-    ? plan.title?.toLowerCase().includes(planNameFilter.toLowerCase())
-    : true;
-  const matchesSearchTerm = searchTerm
-    ? plan.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.category?.toLowerCase().includes(searchTerm.toLowerCase())
-    : true;
-  
-  return matchesNameFilter && matchesSearchTerm;
-});
+  // const filteredSessions = sessions_api_call.filter((plan) => {
+  //   const matchesSearchOrActiveFilter =
+  //     plan.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     plan.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  //     (activeFilter
+  //       ? plan.category?.toLowerCase() === activeFilter.toLowerCase()
+  //       : true);
+  //   const matchesPlanNameFilter = planNameFilter
+  //     ? plan.title?.toLowerCase().includes(planNameFilter.toLowerCase())
+  //     : true;
+  //   const matchesCategoryFilter = categoryFilter
+  //     ? plan.category?.toLowerCase().includes(categoryFilter.toLowerCase())
+  //     : true;
+  // const matchesThemeFilter = theme && theme !== "All"
+  //   ? Array.isArray(plan.themes)
+  //     ? plan.themes.map(String).includes(theme)
+  //     : false
+  //   : true; // Show all when theme is empty, "all", or "n/a"
+  // const matchesGoalFilter = goal && goal !== "All"
+  //   ? Array.isArray(plan.goals)
+  //     ? plan.goals.map(String).includes(goal)
+  //     : false
+  //   : true; // Show all when goal is empty, "all", or "n/a"
+  //   return (
+  //     matchesSearchOrActiveFilter &&
+  //     matchesPlanNameFilter &&
+  //     matchesCategoryFilter &&
+  //     matchesThemeFilter &&
+  //     matchesGoalFilter
+  //   );
+  // });
+  const filteredSessions = sessions_api_call.filter((plan) => {
+    const matchesNameFilter = planNameFilter
+      ? plan.title?.toLowerCase().includes(planNameFilter.toLowerCase())
+      : true;
+    const matchesSearchTerm = searchTerm
+      ? plan.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        plan.category?.toLowerCase().includes(searchTerm.toLowerCase())
+      : true;
 
-useEffect(() => {
-  searchSessions();
-}, [theme, goal, categoryFilter]);
+    return matchesNameFilter && matchesSearchTerm;
+  });
 
+  useEffect(() => {
+    searchSessions();
+  }, [theme, goal, categoryFilter]);
 
   const filterPlansAccordingTo = (category: string) => {
     const categoryLower = category.toLowerCase();
@@ -604,7 +603,13 @@ useEffect(() => {
                       />
                     </td>
 
-                    <td className="plan-title" style={{ marginBottom: "18px" }}>
+                    <td
+                      className="plan-title"
+                      style={{
+                        marginBottom: "1px"
+                      }}
+                      
+                    >
                       {session.title}
                     </td>
                     <td>{session.category}</td>

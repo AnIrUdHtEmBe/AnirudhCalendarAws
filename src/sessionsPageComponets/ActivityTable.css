@@ -38,3 +38,48 @@
 .heya{
   border-radius: 2.1px;
 }
+
+.activity-table-container {
+  height: calc(100vh - 80px); /* Adjust based on your header height */
+  overflow: hidden;
+}
+
+/* Ensure proper scrolling for both panels */
+.activity-table-container .flex-1.overflow-auto {
+  max-height: calc(100vh - 200px); /* Adjust based on header + form heights */
+}
+
+
+.activity-table-container {
+  height: calc(100vh - 120px); /* Adjusted for padding */
+  overflow: hidden;
+  margin-top: 16px; /* Gap between header and content */
+}
+
+/* Add padding to the outer container */
+.w-full.h-screen.flex.flex-col {
+  background-color: #f3f4f6; /* Light gray background like in image */
+}
+
+
+/* =====  RESPONSIVE HELPERS  ===== */
+@media (max-width: 1024px) {
+  .hide-lg { display: none !important; }
+}
+@media (max-width: 768px) {
+  .hide-md { display: none !important; }
+}
+@media (max-width: 640px) {
+  .hide-sm { display: none !important; }
+}
+
+/* =====  NO-X-SCROLL  ===== */
+.no-x-scroll { overflow-x: hidden !important; }
+
+/* =====  FIXED-COLUMNS  ===== */
+.sticky-col {
+  position: sticky !important;
+  left: 0;
+  z-index: 11;
+  background: #fff;
+}

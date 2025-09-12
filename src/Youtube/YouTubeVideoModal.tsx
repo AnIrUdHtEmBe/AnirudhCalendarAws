@@ -15,11 +15,11 @@ const YouTubeVideoModal: React.FC<YouTubeVideoModalProps> = ({
   title = "Video Player"
 }) => {
   // Function to extract YouTube video ID from URL
-  const extractVideoId = (url: string): string | null => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return match && match[2].length === 11 ? match[2] : null;
-  };
+const extractVideoId = (url: string): string | null => {
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|&v=)([^#&?]*).*/;
+  const match = url.match(regExp);
+  return match && match[2].length === 11 ? match[2] : null;
+};
 
   // Handle modal close on overlay click
   const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {

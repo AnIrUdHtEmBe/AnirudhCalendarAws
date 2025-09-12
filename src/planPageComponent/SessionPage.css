@@ -48,8 +48,8 @@
   word-break: break-word;
   white-space: normal !important;
   overflow-wrap: break-word;
-  font-size: clamp(0.95rem, 2.3vw, 1.01rem);
-  line-height: 1.2;
+  font-size: clamp(0.45rem, 0.3vw, 0.2rem);
+  line-height: 0.6;
   display: block;
   width: 100%;
   min-width: 100px;
@@ -182,7 +182,7 @@
 .plans-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.92rem;
+  font-size: 0.4rem;
   table-layout: fixed;
   background: white;
   margin: 0;
@@ -308,7 +308,7 @@
 
 /* Other table data cells */
 .plans-table td {
-  padding: 8px 8px;
+  padding: 4px 4px;
   text-align: center;
   vertical-align: middle;
   border: 0;
@@ -736,3 +736,45 @@ body {
     padding: 0 10px 1rem 10px;
   }
 }
+
+/* ======  FINAL TIGHT BLOCK – END of SessionPage.css  ====== */
+
+/* force entire row to one 22px-high line */
+.plans-table        { font-size: 0.8rem; table-layout: fixed; border-collapse: collapse; }
+.plans-table th,
+.plans-table td     { padding: 0 2px !important; height: 22px !important; line-height: 22px; }
+
+/* single-line vertical centre for EVERY cell */
+.plans-table td     { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; vertical-align: middle !important; }
+
+/* checkbox dead centre */
+.session-checkbox   { height: 14px; width: 14px; margin: 0; vertical-align: middle; }
+
+/* title inline & centred */
+.plan-title         { font-size: 0.8rem; line-height: 22px; display: inline; vertical-align: middle; }
+
+/* eye icon dead centre */
+.p-icon             { height: 22px !important; line-height: 22px; }
+.p-icon button      { height: 18px; width: 18px; padding: 0; vertical-align: middle; }
+
+
+/* ======  FINAL SINGLE-LINE ROW – END of SessionPage.css  ====== */
+
+/* ultra-compact row: 20px high, everything on one line */
+.plans-table        { font-size: 0.55rem; table-layout: fixed; border-collapse: collapse; }
+.plans-table th,
+.plans-table td     { padding: 0 2px !important; height: 20px !important; line-height: 10px; }
+
+/* force single-line vertical centre */
+.plans-table td     { white-space: nowrap !important; overflow: hidden; text-overflow: ellipsis; vertical-align: middle !important; }
+
+/* checkbox dead centre */
+.session-checkbox   { height: 8px; width: 12px; margin: 0; vertical-align: middle; }
+
+/* title inline & centred */
+.plan-title         { font-size: 0.55rem; line-height: 6px; display: inline; vertical-align: middle; }
+
+/* eye icon dead centre */
+.p-icon             { height: 20px !important; line-height: 20px; margin-top: 15px; }
+.p-icon button      { height: 16px; width: 16px; padding: 0; vertical-align: middle; }
+
