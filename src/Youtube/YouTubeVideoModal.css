@@ -117,3 +117,31 @@
     height: 30px;
   }
 }
+
+/* Error state styles */
+.video-error-container {
+  padding: 2rem;
+  text-align: center;
+  background: #333;
+  color: white;
+  min-width: 300px;
+  border-radius: 8px;
+}
+
+.video-error-container p {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+
+.video-error-container button {
+  background: #ff6b6b;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.video-error-container button:hover {
+  background: #ff5252;
+}

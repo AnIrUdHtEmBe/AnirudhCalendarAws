@@ -29,8 +29,8 @@ import {
   DiamondPlus,
   CornerDownLeft,
 } from "lucide-react";
-import Header from "./Header";
-import "./AllActivities.css";
+import Header from "./NutritionHeader";
+import "./AllMeals.css";
 import { enqueueSnackbar } from "notistack";
 import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 import { DataContext } from "../store/DataContext";
@@ -45,6 +45,8 @@ interface Activity {
   target2: number;
   unit2: string;
   videoLink: string;
+  type: string;
+  vegNonVeg: string;
 }
 export interface CsvRowPatch {
   _id: string; // Mongo _id
@@ -55,6 +57,8 @@ export interface CsvRowPatch {
   target2?: number;
   unit2?: string;
   videoLink?: string;
+  type?: string;
+  vegNonVeg?: string;
 }
 // YouTube Video Modal Component
 // const YouTubeVideoModal = ({
@@ -136,7 +140,7 @@ const formatUnit = (unit: string) => {
   }
 };
 
-const BulkAddTable: React.FC = () => {
+const BulkAddMeals: React.FC = () => {
   const apiRef = useGridApiRef();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
@@ -189,10 +193,25 @@ const BulkAddTable: React.FC = () => {
     target2: 0,
     unit2: "",
     videoLink: "",
+    type: "",
+    vegNonVeg: "",
   });
 
-  const unitOptions = ["repetitions", "weight", "time", "distance"];
-
+  const unitOptions = ["grams", "meter", "litre", "millilitre", "glasses"];
+  const mealTypes = [
+    "breakfast",
+    "brunch",
+    "lunch",
+    "dinner",
+    "morning snack",
+    "evening snack",
+    "midnight snack",
+    "pre-bed snack",
+    "before workout",
+    "after workout",
+    "post dinner",
+  ];
+  const mealCategory = ["VEG", "EGG", "NONVEG"];
   useEffect(() => {
     if (context.activities_api_call && context.activities_api_call.length > 0) {
       const mapped: Activity[] = context.activities_api_call.map((a, i) => ({
@@ -204,6 +223,8 @@ const BulkAddTable: React.FC = () => {
         target2: a.target2 || 0,
         unit2: a.unit2 || "",
         videoLink: a.videoLink || "",
+        type: a.type || "",
+        vegNonVeg: a.vegNonVeg || "",
       }));
       setActivities(mapped);
       setFilteredActivities(mapped);
@@ -246,6 +267,10 @@ const BulkAddTable: React.FC = () => {
         !checkYoutubeLink(row.videoLink)
       )
         path.push({ rowId: row.activityId, field: "videoLink" });
+      if (row.type && !mealTypes.includes(row.type))
+        path.push({ rowId: row.activityId, field: "type" });
+      if (!mealCategory.includes(row.vegNonVeg))
+        path.push({ rowId: row.activityId, field: "vegNonVeg" });
     });
 
     // Track seen names to identify duplicates
@@ -330,8 +355,15 @@ const BulkAddTable: React.FC = () => {
     const name = newActivityData.name.trim();
     const description = newActivityData.description.trim();
     const unit = newActivityData.unit.trim();
-    if (!name || !description || newActivityData.target <= 0 || !unit) {
-      enqueueSnackbar("Fill required fields", { variant: "error" });
+    const vegNonVeg = newActivityData.vegNonVeg.trim();
+    if (
+      !name ||
+      !description ||
+      newActivityData.target <= 0 ||
+      !unit ||
+      !vegNonVeg
+    ) {
+      enqueueSnackbar("Fill required fields : name description target unit category", { variant: "error" });
       return false;
     }
 
@@ -345,6 +377,8 @@ const BulkAddTable: React.FC = () => {
         target2: Number(newActivityData.target2) || 0,
         unit2: newActivityData.unit2.trim() || "",
         videoLink: newActivityData.videoLink.trim() || "",
+        type: newActivityData.unit2.trim() || "",
+        vegNonVeg,
       });
 
       // 2. merge into local list so grid shows it instantly
@@ -357,6 +391,8 @@ const BulkAddTable: React.FC = () => {
         target2: created.target2 || 0,
         unit2: created.unit2 || "",
         videoLink: created.videoLink || "",
+        type: created.type || "",
+        vegNonVeg: created.vegNonVeg,
       };
       setActivities((prev) => [newRow, ...prev]);
 
@@ -673,20 +709,19 @@ const BulkAddTable: React.FC = () => {
       },
     },
     {
-      field: "videoLink",
-      headerName: "Video Link",
-      flex: 0.75,
-      minWidth: 200,
-      headerAlign: "left",
-      align: "left",
+      field: "type",
+      headerName: "Meal Timing",
+      width: 140,
+      headerAlign: "center",
+      align: "center",
       editable: isEditMode || isAddingActivity,
-      renderEditCell: (params) => (
-        <GridEditInputCell {...params} placeholder="Add video link" />
-      ),
+      type: "singleSelect",
+      valueOptions: mealTypes,
       renderCell: (params) => {
-        const hasError = hasCellError(params.row.activityId, "videoLink");
-
-        if (isEditMode || isAddingActivity) {
+        const hasError = hasCellError(params.row.activityId, "type");
+        const isEditable =
+          isEditMode || (isAddingActivity && params.row.id === "new-activity");
+        if (isEditable) {
           return (
             <div
               style={{
@@ -697,51 +732,57 @@ const BulkAddTable: React.FC = () => {
                 height: "100%",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+              }}
+            >
+              {params.value || (
+                <span style={{ color: "gray", fontStyle: "italic" }}>
+                  Select type
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                style={{ marginLeft: "4px", color: "gray" }}
+              />
+            </div>
+          );
+        } else {
+          return (
+            <div
+              style={{
+                border: hasError ? "1px solid red" : "none",
+                padding: hasError ? "3px" : "4px",
+                borderRadius: "3px",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
                 boxSizing: "border-box",
               }}
             >
               {params.value || "-"}
             </div>
           );
-        } else {
-          if (params.value) {
-            return (
-              <div
-                style={{
-                  border: hasError ? "1px solid red" : "none",
-                  padding: hasError ? "3px" : "4px",
-                  borderRadius: "3px",
-                  width: "100%",
-                  height: "100%",
-                  display: "flex",
-                  alignItems: "center",
-                  boxSizing: "border-box",
-                }}
-              >
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleVideoLinkClick(params.value, params.row.name);
-                  }}
-                  className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
-                  style={{
-                    textDecoration: "underline",
-                    background: "none",
-                    border: "none",
-                    color: "#3b82f6",
-                    cursor: "pointer",
-                    padding: 0,
-                    font: "inherit",
-                    textAlign: "left",
-                  }}
-                >
-                  {params.value.length > 30
-                    ? `${params.value.substring(0, 30)}...`
-                    : params.value}
-                </button>
-              </div>
-            );
-          }
+        }
+      },
+    },
+    {
+      field: "vegNonVeg",
+      headerName: "Veg/NonVeg",
+      width: 150,
+      headerAlign: "center",
+      align: "center",
+      editable: isEditMode || isAddingActivity,
+      type: "singleSelect",
+      valueOptions: mealCategory,
+      renderCell: (params) => {
+        const hasError = hasCellError(params.row.activityId, "vegNonVeg");
+        const isEditable =
+          isEditMode || (isAddingActivity && params.row.id === "new-activity");
+        const value = params.value || "";
+        if (isEditable) {
           return (
             <div
               style={{
@@ -752,10 +793,37 @@ const BulkAddTable: React.FC = () => {
                 height: "100%",
                 display: "flex",
                 alignItems: "center",
+                justifyContent: "center",
                 boxSizing: "border-box",
               }}
             >
-              -
+              {value || (
+                <span style={{ color: "gray", fontStyle: "italic" }}>
+                  Select category
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                style={{ marginLeft: "4px", color: "gray" }}
+              />
+            </div>
+          );
+        } else {
+          return (
+            <div
+              style={{
+                border: hasError ? "1px solid red" : "none",
+                padding: hasError ? "3px" : "4px",
+                borderRadius: "3px",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxSizing: "border-box",
+              }}
+            >
+              {value || "-"}
             </div>
           );
         }
@@ -820,6 +888,8 @@ const BulkAddTable: React.FC = () => {
       target2: activity.target2,
       unit2: activity.unit2,
       videoLink: activity.videoLink,
+      type: activity.type,
+      vegNonVeg: activity.vegNonVeg,
     }));
   }, [filteredActivities, isAddingActivity, newActivityData]);
 
@@ -856,12 +926,14 @@ const BulkAddTable: React.FC = () => {
       target2: a.target2 || undefined,
       unit2: a.unit2 || undefined,
       videoLink: a.videoLink || undefined,
+      type: a.type || undefined,
+      vegNonVeg: a.vegNonVeg,
       scratchId: a.activityId,
     }));
 
     try {
       const res = await fetch(
-        `${API_BASE_URL}/activity-templates:bulk-add?category=activity`,
+        `${API_BASE_URL}/activity-templates:bulk-add?category=nutrition`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -883,7 +955,7 @@ const BulkAddTable: React.FC = () => {
       if (totalPages === 1) {
         // only one page exists → go home
         context.setActivities_api_call([]);
-        setSelectComponent("AllActivities");
+        setSelectComponent("AllMeals");
         return;
       }
 
@@ -899,7 +971,7 @@ const BulkAddTable: React.FC = () => {
         const freshRes = await fetch(
           `${API_BASE_URL}/activity-templates:csv-scratch?ids=${remainingIds.join(
             ","
-          )}&category=act`
+          )}&category=nut`
         );
         if (!freshRes.ok) throw new Error("Failed to refresh");
         context.setActivities_api_call(await freshRes.json());
@@ -923,7 +995,7 @@ const BulkAddTable: React.FC = () => {
       target2: row.target2 || undefined,
       unit2: row.unit2 || undefined,
       videoLink: row.videoLink || undefined,
-      category: "act",
+      category: "nut",
     };
     const res = await fetch(
       `${API_BASE_URL}/activity-templates:csv-scratch:single`,
@@ -959,7 +1031,7 @@ const BulkAddTable: React.FC = () => {
               variant="outlined"
               startIcon={<CornerDownLeft size={16} />}
               onClick={() => {
-                setSelectComponent("AllActivities");
+                setSelectComponent("AllMeals");
               }}
               className="action-button"
             >
@@ -990,7 +1062,7 @@ const BulkAddTable: React.FC = () => {
                     onClick={handleAddActivity}
                     className="action-button"
                   >
-                    Add Activity
+                    Add New Meal
                   </Button>
                   <Button
                     variant="outlined"
@@ -1036,6 +1108,8 @@ const BulkAddTable: React.FC = () => {
                         target2: ch.target2,
                         unit2: ch.unit2,
                         videoLink: ch.videoLink,
+                        type: ch.type,
+                        vegNonVeg: ch.vegNonVeg,
                       }));
 
                       try {
@@ -1059,6 +1133,8 @@ const BulkAddTable: React.FC = () => {
                             target2: upd.target2,
                             unit2: upd.unit2,
                             videoLink: upd.videoLink,
+                            type: upd.type,
+                            vegNonVeg: upd.vegNonVeg,
                           };
                         });
 
@@ -1195,6 +1271,8 @@ const BulkAddTable: React.FC = () => {
                   target2: newRow.target2,
                   unit2: newRow.unit2,
                   videoLink: newRow.videoLink,
+                  type: newRow.type,
+                  vegNonVeg: newRow.vegNonVeg,
                 };
                 setNewActivityData(updatedNewActivity);
               } else if (isEditMode) {
@@ -1220,7 +1298,10 @@ const BulkAddTable: React.FC = () => {
                     changes.unit2 = newRow.unit2;
                   if (newRow.videoLink !== originalActivity.videoLink)
                     changes.videoLink = newRow.videoLink;
-
+                  if (newRow.type !== originalActivity.type)
+                    changes.type = newRow.type;
+                  if (newRow.vegNonVeg !== originalActivity.vegNonVeg)
+                    changes.vegNonVeg = newRow.vegNonVeg;
                   // Update changedActivities map
                   setChangedActivities((prev) => {
                     const newMap = new Map(prev);
@@ -1247,6 +1328,8 @@ const BulkAddTable: React.FC = () => {
                       target2: newRow.target2,
                       unit2: newRow.unit2,
                       videoLink: newRow.videoLink,
+                      type: newRow.type,
+                      vegNonVeg: newRow.vegNonVeg,
                     };
                     setEditedActivities(updatedEditedActivities);
                   }
@@ -1321,4 +1404,4 @@ const BulkAddTable: React.FC = () => {
   );
 };
 
-export default BulkAddTable;
+export default BulkAddMeals;

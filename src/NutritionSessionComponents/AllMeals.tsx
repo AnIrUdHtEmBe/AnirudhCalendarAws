@@ -13,8 +13,8 @@ import {
   Button,
 } from "@mui/material";
 import { SearchIcon, Plus, Save, Edit, ChevronDown } from "lucide-react";
-import Header from "./Header";
-import "./AllActivities.css";
+import Header from "./NutritionHeader";
+import "./AllMeals.css";
 import { enqueueSnackbar } from "notistack";
 import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 import { DataContext, Activity_Api_call } from "../store/DataContext";
@@ -36,72 +36,9 @@ interface Activity {
   target2: number;
   unit2: string;
   videoLink: string;
+  type: string;
+  vegNonVeg: string;
 }
-
-// YouTube Video Modal Component
-// const YouTubeVideoModal = ({
-//   isOpen,
-//   onClose,
-//   videoUrl,
-//   title,
-// }: {
-//   isOpen: boolean;
-//   onClose: () => void;
-//   videoUrl: string;
-//   title: string;
-// }) => {
-//   if (!isOpen) return null;
-
-//   // Extract YouTube video ID from URL
-//   const getYouTubeVideoId = (url: string) => {
-//     const regExp =
-//       /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
-//     const match = url.match(regExp);
-//     return match && match[2].length === 11 ? match[2] : null;
-//   };
-
-//   const videoId = getYouTubeVideoId(videoUrl);
-//   const embedUrl = videoId ? `https://www.youtube.com/embed/${videoId}` : "";
-
-//   return (
-//     <div
-//       className="fixed inset-0 flex items-center justify-center z-50"
-//       onClick={onClose}
-//     >
-//       <div
-//         className="bg-white rounded-lg p-4 max-w-4xl w-full max-h-[80vh] overflow-auto"
-//         onClick={(e) => e.stopPropagation()}
-//       >
-//         <div className="flex justify-between items-center mb-4">
-//           <h3 className="text-lg font-semibold">{title}</h3>
-//           <button
-//             onClick={onClose}
-//             className="text-gray-500 hover:text-gray-700 text-2xl cursor-pointer"
-//           >
-//             ×
-//           </button>
-//         </div>
-//         <div className="aspect-video">
-//           {embedUrl ? (
-//             <iframe
-//               width="100%"
-//               height="100%"
-//               src={embedUrl}
-//               title={title}
-//               frameBorder="0"
-//               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-//               allowFullScreen
-//             />
-//           ) : (
-//             <div className="flex items-center justify-center h-full bg-gray-100">
-//               <p className="text-gray-500">Invalid YouTube URL</p>
-//             </div>
-//           )}
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
 
 const formatUnit = (unit: string) => {
   switch (unit) {
@@ -118,7 +55,7 @@ const formatUnit = (unit: string) => {
   }
 };
 
-const AllActivities: React.FC = () => {
+const AllMeals: React.FC = () => {
   const apiRef = useGridApiRef();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [filteredActivities, setFilteredActivities] = useState<Activity[]>([]);
@@ -161,9 +98,25 @@ const AllActivities: React.FC = () => {
     target2: 0,
     unit2: "",
     videoLink: "",
+    type: "",
+    vegNonVeg: "",
   });
 
-  const unitOptions = ["repetitions", "weight", "time", "distance"];
+  const unitOptions = ["grams", "meter", "litre", "millilitre", "glasses"];
+  const mealTypes = [
+    "breakfast",
+    "brunch",
+    "lunch",
+    "dinner",
+    "morning snack",
+    "evening snack",
+    "midnight snack",
+    "pre-bed snack",
+    "before workout",
+    "after workout",
+    "post dinner",
+  ];
+  const mealCategory = ["VEG", "EGG", "NONVEG"];
   // 1.  memoise the countdown logic
   const startCountDown = React.useCallback(() => {
     let n = 5;
@@ -176,7 +129,7 @@ const AllActivities: React.FC = () => {
         setCountDown(0);
         setUploadOpen(false); // close modal
         enqueueSnackbar("CSV parsed successfully!", { variant: "success" });
-        context.setSelectComponent("BulkAddTable");
+        context.setSelectComponent("BulkAddMeals");
       }
     }, 1000);
   }, [context]);
@@ -197,7 +150,7 @@ const AllActivities: React.FC = () => {
     (async () => {
       try {
         const res = await fetch(
-          `${API_BASE_URL}/activity-templates:csv-scratch/count?category=act`
+          `${API_BASE_URL}/activity-templates:csv-scratch/count?category=nut`
         );
         const { pending } = await res.json();
         setPendingCount(pending);
@@ -210,7 +163,9 @@ const AllActivities: React.FC = () => {
   const fetchActivities = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE_URL}/activity-templates`);
+      const response = await fetch(
+        `${API_BASE_URL}/activity-templates?typeTitle=NUTRITION`
+      );
       console.log(API_BASE_URL);
 
       if (!response.ok) {
@@ -229,13 +184,16 @@ const AllActivities: React.FC = () => {
   };
   const createActivity = async (activityData: Omit<Activity, "activityId">) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/activity-templates`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(activityData),
-      });
+      const response = await fetch(
+        `${API_BASE_URL}/nutrition-activity-template`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(activityData),
+        }
+      );
       console.log(API_BASE_URL, "ADD");
       if (!response.ok) {
         throw new Error("Failed to create activity");
@@ -494,46 +452,79 @@ const AllActivities: React.FC = () => {
       },
     },
     {
-      field: "videoLink",
-      headerName: "Video Link",
-      flex: 0.75,
-      minWidth: 200,
-      headerAlign: "left",
-      align: "left",
+      field: "type",
+      headerName: "Meal Timing",
+      width: 140,
+      headerAlign: "center",
+      align: "center",
       editable: isEditMode || isAddingActivity,
-      renderEditCell: (params) => (
-        <GridEditInputCell {...params} placeholder="Add video link" />
-      ),
+      type: "singleSelect",
+      valueOptions: mealTypes,
       renderCell: (params) => {
-        if (isEditMode || isAddingActivity) {
-          return params.value || "-";
+        const isEditable =
+          isEditMode || (isAddingActivity && params.row.id === "new-activity");
+        if (isEditable) {
+          return (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+              }}
+            >
+              {params.value || (
+                <span style={{ color: "gray", fontStyle: "italic" }}>
+                  Select type
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                style={{ marginLeft: "4px", color: "gray" }}
+              />
+            </div>
+          );
         } else {
-          if (params.value) {
-            return (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleVideoLinkClick(params.value, params.row.name);
-                }}
-                className="text-blue-500 hover:text-blue-700 underline cursor-pointer"
-                style={{
-                  textDecoration: "underline",
-                  background: "none",
-                  border: "none",
-                  color: "#3b82f6",
-                  cursor: "pointer",
-                  padding: 0,
-                  font: "inherit",
-                  textAlign: "left",
-                }}
-              >
-                {params.value.length > 30
-                  ? `${params.value.substring(0, 30)}...`
-                  : params.value}
-              </button>
-            );
-          }
-          return "-";
+          return params.value || "-";
+        }
+      },
+    },
+    {
+      field: "vegNonVeg",
+      headerName: "Veg/NonVeg",
+      width: 150,
+      headerAlign: "center",
+      align: "center",
+      editable: isEditMode || isAddingActivity,
+      type: "singleSelect",
+      valueOptions: mealCategory,
+      renderCell: (params) => {
+        const isEditable =
+          isEditMode || (isAddingActivity && params.row.id === "new-activity");
+        const value = params.value || "";
+        if (isEditable) {
+          return (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width: "100%",
+              }}
+            >
+              {value || (
+                <span style={{ color: "gray", fontStyle: "italic" }}>
+                  Select category
+                </span>
+              )}
+              <ChevronDown
+                size={16}
+                style={{ marginLeft: "4px", color: "gray" }}
+              />
+            </div>
+          );
+        } else {
+          return value || "-";
         }
       },
     },
@@ -568,6 +559,8 @@ const AllActivities: React.FC = () => {
       target2: activity.target2,
       unit2: activity.unit2,
       videoLink: activity.videoLink,
+      type: activity.type,
+      vegNonVeg: activity.vegNonVeg,
     }));
   }, [filteredActivities, isAddingActivity, newActivityData]);
 
@@ -588,14 +581,15 @@ const AllActivities: React.FC = () => {
       "Unit",
       "Target2",
       "Unit2",
-      "VideoLink",
+      "MealType",
+      "MealCategory",
     ];
     const csvContent = headers.join(",");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = "sample_activities.csv";
+    link.download = "sample_meals.csv";
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -648,7 +642,8 @@ const AllActivities: React.FC = () => {
         "Unit",
         "Target2",
         "Unit2",
-        "VideoLink",
+        "MealType",
+        "MealCategory",
       ];
       const [firstRow] = rows;
       const normalizedIncoming = firstRow.map((h) => h.trim());
@@ -673,8 +668,9 @@ const AllActivities: React.FC = () => {
         unit: (r[3] ?? "").trim().toLowerCase(),
         target2: parseFloat(r[4]) || 0,
         unit2: (r[5] ?? "").trim().toLowerCase(),
-        videoLink: r[6] ?? "",
-        category: "act",
+        type: (r[6] ?? "").trim().toLowerCase(),
+        vegNonVeg: (r[7] ?? "").trim().toUpperCase(),
+        category: "nut",
       }));
 
       /* ----------  send to backend  ---------- */
@@ -692,7 +688,7 @@ const AllActivities: React.FC = () => {
       const freshRes = await fetch(
         `${API_BASE_URL}/activity-templates:csv-scratch?ids=${inserted_ids.join(
           ","
-        )}&category=act`
+        )}&category=nut`
       );
       const freshRows = await freshRes.json();
       context.setActivities_api_call(freshRows);
@@ -708,14 +704,14 @@ const AllActivities: React.FC = () => {
   const handleContinue = async () => {
     try {
       const res = await fetch(
-        `${API_BASE_URL}/activity-templates:csv-scratch?category=act`
+        `${API_BASE_URL}/activity-templates:csv-scratch?category=nut`
       );
       if (!res.ok) throw new Error("Could not fetch pending rows");
 
       const rows = await res.json(); // already in Activity_Api_call shape
       context.setActivities_api_call(rows); // fill bulk-add table
       setUploadOpen(false); // close modal if open
-      context.setSelectComponent("BulkAddTable"); // go to bulk-add page
+      context.setSelectComponent("BulkAddMeals"); // go to bulk-add page
     } catch (err) {
       enqueueSnackbar("Failed to load pending activities", {
         variant: "error",
@@ -753,7 +749,7 @@ const AllActivities: React.FC = () => {
                     onClick={handleAddActivity}
                     className="action-button"
                   >
-                    Add Activity
+                    Add New Meal
                   </Button>
                   <Button
                     variant="outlined"
@@ -1018,7 +1014,7 @@ const AllActivities: React.FC = () => {
                         VIEW AND RESOLVE
                       </Button>
                       <span className="pending-badge">
-                        {pendingCount} uploaded activities not in DB
+                        {pendingCount} uploaded meals not in DB
                       </span>
                     </div>
                   )}
@@ -1186,6 +1182,8 @@ const AllActivities: React.FC = () => {
                   target2: newRow.target2,
                   unit2: newRow.unit2,
                   videoLink: newRow.videoLink,
+                  type: newRow.type,
+                  vegNonVeg: newRow.vegNonVeg,
                 };
                 setNewActivityData(updatedNewActivity);
               } else if (isEditMode) {
@@ -1211,6 +1209,10 @@ const AllActivities: React.FC = () => {
                     changes.unit2 = newRow.unit2;
                   if (newRow.videoLink !== originalActivity.videoLink)
                     changes.videoLink = newRow.videoLink;
+                  if (newRow.type !== originalActivity.type)
+                    changes.type = newRow.type;
+                  if (newRow.videoLink !== originalActivity.videoLink)
+                    changes.vegNonVeg = newRow.vegNonVeg;
 
                   // Update changedActivities map
                   setChangedActivities((prev) => {
@@ -1238,6 +1240,8 @@ const AllActivities: React.FC = () => {
                       target2: newRow.target2,
                       unit2: newRow.unit2,
                       videoLink: newRow.videoLink,
+                      type: newRow.type,
+                      vegNonVeg: newRow.vegNonVeg,
                     };
                     setEditedActivities(updatedEditedActivities);
                   }
@@ -1405,4 +1409,4 @@ const AllActivities: React.FC = () => {
   );
 };
 
-export default AllActivities;
+export default AllMeals;

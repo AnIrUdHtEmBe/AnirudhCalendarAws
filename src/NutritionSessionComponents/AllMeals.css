@@ -1,0 +1,197 @@
+.all-acts-container {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 100px); /* Adjust based on your header height */
+  padding: 1rem;
+  background-color: #f9fafb;
+}
+
+.search-container {
+  margin-bottom: 1rem;
+  background-color: #f9fafb;
+  z-index: 10;
+  position: sticky;
+  top: 0;
+}
+
+.search-and-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.search-field {
+  background-color: white;
+  flex: 1;
+  max-width: 400px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.action-button {
+  white-space: nowrap;
+  min-width: auto;
+  height: 40px;
+}
+
+.save-button {
+  background-color: #2563eb;
+}
+
+.save-button:hover {
+  background-color: #1d4ed8;
+}
+
+.table-container {
+  flex: 1;
+  background-color: white;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  padding-top: 12px;
+}
+
+.data-grid {
+  height: 100%;
+  border: none;
+}
+
+/* Ensure the pagination stays at the bottom */
+.data-grid .MuiDataGrid-footerContainer {
+  position: sticky;
+  bottom: 0;
+  background-color: white;
+  z-index: 1;
+  border-top: 1px solid #e5e7eb;
+}
+
+/* Make table headers bold */
+.data-grid .MuiDataGrid-columnHeaderTitle {
+  font-weight: 700 !important;
+}
+
+/* Custom scrollbar for the table */
+.data-grid .MuiDataGrid-virtualScroller::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.data-grid .MuiDataGrid-virtualScroller::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.data-grid .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.data-grid .MuiDataGrid-virtualScroller::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 768px) {
+  .search-and-actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .search-field {
+    max-width: none;
+  }
+
+  .action-buttons {
+    justify-content: flex-end;
+  }
+}
+
+.edit-mode-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.action-button {
+  min-width: 120px;
+}
+
+.new-activity-row .MuiDataGrid-cell--editable {
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+.invalid-row {
+  background-color: #ffecec !important;
+  border-left: 4px solid red;
+}
+.excel-upload-container,
+.excel-download-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.excel-upload-container:hover,
+.excel-download-container:hover {
+  background-color: rgba(33, 163, 102, 0.1);
+}
+
+.excel-upload-icon,
+.excel-download-icon {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+.excel-upload-icon:hover,
+.excel-download-icon:hover {
+  transform: scale(1.1);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.2));
+}
+
+.excel-upload-icon:active,
+.excel-download-icon:active {
+  transform: scale(0.95);
+}
+
+.excel-action-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #21a366;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.excel-upload-icon.disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.excel-upload-container:has(.excel-upload-icon.disabled):hover {
+  background-color: transparent;
+}
+
+.pending-badge {
+  margin-left: 0.5rem;
+  background: #ff4d4f;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  margin-right: 0.5rem;
+}
+
+.pagination-extra {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -44px; /* align with MUI pagination */
+  margin-right: 360px;
+  position: relative;
+  z-index: 2;
+}

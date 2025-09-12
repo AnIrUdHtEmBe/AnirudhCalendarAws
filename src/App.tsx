@@ -81,6 +81,8 @@ import CellGridLatestP3 from "./BookingCalendarComponent/Performance3";
 import RmDashNew4 from "./RmDashboard/FilteredDashboard";
 import BulkAddTable from "./sessionsPageComponets/BulkAddTable";
 import EnhancedActivityTable from "./sessionsPageComponets/EnhancedActivityTable";
+import BulkAddMeals from "./NutritionSessionComponents/BulkAddMeals";
+import AllMeals from "./NutritionSessionComponents/AllMeals";
 
 
 // import CellGrid from "./BookingCalendarComponent/CellGridWithArena";
@@ -149,6 +151,10 @@ function App() {
                 element={
                   selectComponent === "All_nutrition_Sessions" ? (
                     <AllNutritionSessionsPage />
+                  ) : selectComponent === "AllMeals" ? (
+                    <AllMeals/>
+                  ) : selectComponent === "BulkAddMeals" ? (
+                    <BulkAddMeals />
                   ) : (
                     <NutritionSessionsPage />
                   )
