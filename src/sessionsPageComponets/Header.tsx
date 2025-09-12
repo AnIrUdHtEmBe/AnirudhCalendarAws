@@ -25,7 +25,7 @@ function Header() {
       } catch (e) {
         return false;
       }
-      return payload && payload.sub === "USER_ALBI32";
+      return payload && payload.sub === "USER_MHKN56";
     } catch (error) {
       console.error("Enhanced auth check error:", error);
       return false;
@@ -72,7 +72,7 @@ function Header() {
             }`}
             onClick={() => setSelectComponent("EnhancedSessionCreator")}
           >
-            Enhanced Session Creator
+            Enhanced Session Creator(Only for Naveen)
           </button>
         )}
         

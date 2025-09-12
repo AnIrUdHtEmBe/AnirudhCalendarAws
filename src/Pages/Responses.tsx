@@ -14,7 +14,6 @@ import { Comment, ReplayOutlined } from "@mui/icons-material";
 import { StickyNote } from "lucide-react";
 import { useApiCalls } from "../store/axios";
 
-
 function Responses() {
   const ScoreZoneData = [
     { name: "Kick Start", from: 0, to: 30 },
@@ -23,11 +22,20 @@ function Responses() {
     { name: "Elite", from: 81, to: 100 },
   ];
 
-  const [selectedDate, setselectedDate] = useState("")
-  const paperDetails = JSON.parse(localStorage.getItem("assessmentDetails"));
-  // console.log(paperDetails);
-  const userDetail = JSON.parse(localStorage.getItem("user"));
-  // console.log(userDetail);
+  const getLocalJson = (key: string) => {
+    const item = localStorage.getItem(key);
+    if (item === null) return null;
+    try {
+      return JSON.parse(item);
+    } catch (e) {
+      console.error(`Error parsing ${key}:`, e);
+      return null;
+    }
+  };
+
+  const [selectedDate, setselectedDate] = useState("");
+  const paperDetails = getLocalJson("assessmentDetails");
+  const userDetail = getLocalJson("user");
   const [loading, setLoading] = useState(true);
   const location = useLocation();
 
@@ -42,7 +50,7 @@ function Responses() {
     starting_assessment_by_user,
     assessments_intsnce_fetching,
     getPlansFull,
-    updateNextAssessmentDate
+    updateNextAssessmentDate,
   } = useApiCalls();
 
   const context = useContext(DataContext);
@@ -69,6 +77,17 @@ function Responses() {
     setCommentModal(true);
   };
 
+  const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedTheme, setSelectedTheme] = useState("");
+  const [selectedGoal, setSelectedGoal] = useState("");
+
+  const [categories, setCategories] = useState([]);
+  const [themes, setThemes] = useState([]);
+  const [goals, setGoals] = useState([]);
+  const [tempCategory, setTempCategory] = useState("");
+  const [tempTheme, setTempTheme] = useState("");
+  const [tempGoal, setTempGoal] = useState("");
+
   const saveSummaryNote = () => {
     setSummaryNote(tempComment);
     localStorage.setItem("summaryNote", tempComment); // persist it
@@ -79,9 +98,11 @@ function Responses() {
     setSelectComponent("Q&A");
   };
 
-  let latestAssessmentInstanceId = [
-    JSON.parse(localStorage.getItem("assessmentInstanceId")),
-  ];
+  let latestAssessmentInstanceId = null;
+  const assessmentInstanceId = getLocalJson("assessmentInstanceId");
+  if (assessmentInstanceId) {
+    latestAssessmentInstanceId = [assessmentInstanceId];
+  }
 
   console.log(latestAssessmentInstanceId);
 
@@ -109,6 +130,13 @@ function Responses() {
   );
 
   console.log("Plans Full API Call Data:", plans_full_api_call);
+
+  const filteredPlans = (plans_full_api_call || []).filter((plan) => {
+    if (selectedCategory && plan.category !== selectedCategory) return false;
+    if (selectedTheme && !plan.themes?.includes(selectedTheme)) return false;
+    if (selectedGoal && !plan.goals?.includes(selectedGoal)) return false;
+    return true;
+  });
 
   const handlePlanSelection = (plan: any) => {
     console.log("Selected Plan:", plan);
@@ -144,6 +172,56 @@ function Responses() {
     setCalcLoading(false);
   }, [assessmentInstance_expanded_Api_call]); // Add proper dependency
 
+  useEffect(() => {
+    if (plans_full_api_call && plans_full_api_call.length > 0) {
+      const themeSet = new Set();
+      const goalSet = new Set();
+
+      plans_full_api_call.forEach(plan => {
+        plan.themes?.forEach(t => themeSet.add(t));
+        plan.goals?.forEach(g => goalSet.add(g));
+      });
+
+      setCategories(["FITNESS", "SPORTS", "NUTRITION", "WELLNESS", "OTHER"]);
+      setThemes([
+  "NA",
+  "ALL",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+]);
+
+      setGoals(["ALL", "NA", "Strength & Conditioning", "Weight Loss", "Keto", "Weight Gain", "General Health"]);
+    }
+  }, [plans_full_api_call]);
+
+  useEffect(() => {
+    setTempCategory(selectedCategory);
+    setTempTheme(selectedTheme);
+    setTempGoal(selectedGoal);
+  }, [selectedCategory, selectedTheme, selectedGoal]);
+
+  // Add this useEffect after the previous new useEffect to reset selected plan if filtered out
+
+  useEffect(() => {
+    if (plann && !filteredPlans.some(p => p.templateId === plann.templateId)) {
+      setPlan(null);
+    }
+  }, [selectedCategory, selectedTheme, selectedGoal, plans_full_api_call, plann]);
+
+  // Add this computed filteredPlans before the return statement
+
+
+
   console.log("Total Score:", score);
   if (!context || loading) {
     return (
@@ -153,29 +231,24 @@ function Responses() {
     );
   }
 
-
-
   return (
     <div className="responses-root">
       {/* Fixed Header */}
       {/* <div className="sticky-header"> */}
 
       <Header />
-      
+
       {/* </div> */}
 
       <div className="main-containers">
-        
         <div className="main-card">
           {/* Top Info */}
           <div className="top">
             <div>
-              
               <div className="paper-title">
-                {paperDetails.name || paperDetails.template.name}
+                {paperDetails?.name || paperDetails?.template?.name || "Untitled Assessment"}
               </div>
               <div className="paper-subtitle">
-                
                 For adults, optimizing strength, metabolism, and diet.
               </div>
             </div>
@@ -183,7 +256,7 @@ function Responses() {
               <div className="flex space-x-2.5">
                 <span className="label-bhav">Taking For: </span>
                 <div>
-                  {userDetail.name} <br /> ID: {userDetail.userId}
+                  {userDetail?.name || "Unknown User"} <br /> ID: {userDetail?.userId || "N/A"}
                 </div>
               </div>
 
@@ -200,7 +273,7 @@ function Responses() {
             <div className="question-list">
               <div className="question-title">Responses</div>
               <div className="question-items">
-                {assessmentInstance_expanded_Api_call[0].answers?.map(
+                {assessmentInstance_expanded_Api_call?.[0]?.answers?.map(
                   (q, index) => (
                     <div key={q.questionId} className="question-box">
                       <div className="question-row">
@@ -228,7 +301,7 @@ function Responses() {
                       </div>
                     </div>
                   )
-                )}
+                ) || <div>No responses available</div>}
               </div>
             </div>
 
@@ -238,8 +311,7 @@ function Responses() {
                 <div className="summary-header">
                   <div className="summary-title">Summary</div>
                   <div className="summary-paper-title">
-                    {" "}
-                    {paperDetails.name || paperDetails.template.name}
+                    {paperDetails?.name || paperDetails?.template?.name || "Untitled Assessment"}
                   </div>
                 </div>
                 {calcLoading ? (
@@ -269,8 +341,9 @@ function Responses() {
                       {ScoreZoneData.map((zone, index) => (
                         <tr
                           key={index}
-                          className={`${score.index === index ? "highlight" : ""
-                            }`}
+                          className={`${
+                            score.index === index ? "highlight" : ""
+                          }`}
                         >
                           <td>{zone.name}</td>
                           <td>{zone.from}</td>
@@ -285,13 +358,62 @@ function Responses() {
               <div className="plan-text">
                 The Recommended Plan for this assessment is ready! Please refer
                 the monthly plan below.
+                <div className="filters flex space-x-4 mt-4">
+  <select
+    value={tempCategory}
+    onChange={(e) => setTempCategory(e.target.value)}
+    className="border border-gray-300 rounded px-3 py-2"
+  >
+    <option value="">All Categories</option>
+    {categories.map((cat) => (
+      <option key={cat} value={cat}>
+        {cat}
+      </option>
+    ))}
+  </select>
+  <select
+    value={tempTheme}
+    onChange={(e) => setTempTheme(e.target.value)}
+    className="border border-gray-300 rounded px-3 py-2"
+  >
+    <option value="">All Themes</option>
+    {themes.map((theme) => (
+      <option key={theme} value={theme}>
+        {theme}
+      </option>
+    ))}
+  </select>
+  <select
+    value={tempGoal}
+    onChange={(e) => setTempGoal(e.target.value)}
+    className="border border-gray-300 rounded px-3 py-2"
+  >
+    <option value="">All Goals</option>
+    {goals.map((goal) => (
+      <option key={goal} value={goal}>
+        {goal}
+      </option>
+    ))}
+  </select>
+  <button
+    onClick={() => {
+      setSelectedCategory(tempCategory);
+      setSelectedTheme(tempTheme);
+      setSelectedGoal(tempGoal);
+    }}
+    className="border border-gray-300 rounded px-3 py-2 bg-blue-600 text-white hover:bg-blue-700"
+  >
+    Apply Filter
+  </button>
+</div>
               </div>
               <div className="plan-options">
-                {plans_full_api_call.map((plan, i) => (
+                {filteredPlans.map((plan, i) => (
                   <button
                     key={i}
-                    className={`plan-box hover:cursor-pointer ${plann === plan ? "sel" : ""
-                      }`}
+                    className={`plan-box hover:cursor-pointer ${
+                      plann?.templateId === plan.templateId ? "sel" : ""
+                    }`}
                     onClick={() => handlePlanSelection(plan)}
                   >
                     {plan.title}
@@ -302,14 +424,14 @@ function Responses() {
               {/* where to dave the next assessment date? */}
               <div className="mt-12 flex space-x-4 items-center">
                 <Calendar></Calendar>{" "}
-                <div >
-
+                <div>
                   <span className="font-normal text-xl">
-                    Next assessment On:<input
+                    Next assessment On:
+                    <input
                       type="date"
-                      min={new Date().toISOString().split("T")[0]} 
+                      min={new Date().toISOString().split("T")[0]}
                       className="border border-gray-300 rounded px-3 py-2 text-lg"
-                      onChange={(e) => (setselectedDate(e.target.value))}
+                      onChange={(e) => setselectedDate(e.target.value)}
                     />
                   </span>
                 </div>
@@ -320,16 +442,22 @@ function Responses() {
               </div>
               <div className="proceed-button-wrapper">
                 <button
-                  className={`flex items-center bg-blue-600 px-4 py-3 text-white rounded-xl space-x-4 absolute bottom-4 right-4 transition-opacity ${plann === null
+                  className={`flex items-center bg-blue-600 px-4 py-3 text-white rounded-xl space-x-4 absolute bottom-4 right-4 transition-opacity ${
+                    plann === null
                       ? "opacity-50 cursor-not-allowed"
                       : "hover:bg-blue-700"
-                    }`}
+                  }`}
                   disabled={plann === null}
                   onClick={async () => {
-                    setLoading(true)
+                    setLoading(true);
                     try {
+                      const instanceId = getLocalJson("assessmentInstanceId");
+                      if (!instanceId) {
+                        console.error("No assessment instance ID found");
+                        return;
+                      }
                       const res = await updateNextAssessmentDate(
-                        JSON.parse(localStorage.getItem("assessmentInstanceId")),
+                        instanceId,
                         selectedDate
                       );
 
@@ -340,6 +468,8 @@ function Responses() {
                       }
                     } catch (err) {
                       console.error("Error updating date:", err);
+                    } finally {
+                      setLoading(false);
                     }
                   }}
                 >

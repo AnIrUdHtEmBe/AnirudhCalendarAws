@@ -189,6 +189,8 @@ export type Plan_Api_call = {
   description : string;
   category : string;
   sessions : object[];
+  themes?: any;
+  goals?: any;
 }
 
 

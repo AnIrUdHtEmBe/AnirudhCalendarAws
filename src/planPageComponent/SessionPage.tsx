@@ -47,6 +47,9 @@ function SessionPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sessionName, setSessionName] = useState("");
   const [category, setCategory] = useState("");
+  const [planCategory, setPlanCategory] = useState("");
+  const [planTheme, setPlanTheme] = useState("");
+  const [planGoal, setPlanGoal] = useState("");
 
   // *** NEW FILTER STATES ***
   const [planNameFilter, setPlanNameFilter] = useState("");
@@ -214,18 +217,34 @@ function SessionPage() {
     }
   }, [selectedIds, filteredSessions.length]);
 
-  const createANewPlan = () => {
-    const planToSubmit: Plan_Api_call = {
-      title: planName,
-      description: "",
-      category: "FITNESS",
-      sessions: sessions.map((session) => ({
-        sessionId: session.sessionId,
-        scheduledDay: session.scheduledDay,
-      })),
-    };
-    createPlan(planToSubmit);
+const createANewPlan = () => {
+  const planToSubmit: Plan_Api_call = {
+    title: planName,
+    description: "",
+    category: planCategory || "FITNESS",
+    themes: planTheme ? [planTheme] : ["NA"],
+    goals: planGoal ? [planGoal] : ["NA"],
+    sessions: sessions.map((session) => ({
+      sessionId: session.sessionId,
+      scheduledDay: session.scheduledDay,
+    })),
   };
+  createPlan(planToSubmit);
+  setPlanName("");
+  setSessions([]);
+  setSessionSelected(null);
+  setBlocks(28);
+  setTheme("");
+  setGoal("");
+  setCategoryFilter("");
+  setActiveFilter(null);
+  setPlanNameFilter("");
+  setSearchTerm("");
+  setSelectedIds([]);
+  setPlanCategory("");
+  setPlanTheme("");
+  setPlanGoal("");
+};
 
   const toggleSelectAll = () => {
     // setSelectedIds(isAllSelected ? [] : filteredSessions.map((p) => p.id));
@@ -628,9 +647,8 @@ function SessionPage() {
         {/* Right Panel: Plan Details & Calendar */}
         <div className="right-panel">
           <div className="plan-details">
-            <div className=" right-panel-headerr">
-              <div className="plan-name-input">
-                {/* <label htmlFor="planName">Plan Name</label> */}
+                        <div className=" right-panel-headerr">
+              <div className="plan-name-input flex gap-4 items-end">
                 <input
                   type="text"
                   id="planName"
@@ -639,6 +657,59 @@ function SessionPage() {
                   placeholder="Plan name "
                   className="placeholder:font-semibold placeholder:text-gray-950"
                 />
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <InputLabel shrink>Category</InputLabel>
+                  <Select
+                    value={planCategory}
+                    onChange={(e) => setPlanCategory(e.target.value)}
+                    label="Category"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {literals.category.map((cat, i) => (
+                      <MenuItem key={i} value={cat}>
+                        {cat}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <InputLabel shrink>Theme</InputLabel>
+                  <Select
+                    value={planTheme}
+                    onChange={(e) => setPlanTheme(e.target.value)}
+                    displayEmpty
+                    label="Theme"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {literals.themes.map((th, i) => (
+                      <MenuItem key={i} value={th}>
+                        {th}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                  <InputLabel shrink>Goal</InputLabel>
+                  <Select
+                    value={planGoal}
+                    onChange={(e) => setPlanGoal(e.target.value)}
+                    displayEmpty
+                    label="Goal"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {literals.goals.map((gl, i) => (
+                      <MenuItem key={i} value={gl}>
+                        {gl}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </div>
             </div>
             {/* Plan Name Input */}

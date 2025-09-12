@@ -33,7 +33,7 @@ function EnhancedActivityTable() {
       const payload = JSON.parse(atob(token.split(".")[1]));
       console.log(payload, "token log 2");
 
-      return payload.sub === "USER_ALBI32";
+      return payload.sub === "USER_MHKN56";
     } catch (error) {
       console.error("Auth check error:", error);
       return false;
@@ -67,6 +67,7 @@ function EnhancedActivityTable() {
   const [goal, setGoal] = useState("");
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
+  const [selectKey, setSelectKey] = useState(0);
   const [literals, setLiterals] = useState({
     themes: [],
     goals: [],
@@ -168,22 +169,48 @@ function EnhancedActivityTable() {
     setSelectComponent("AllSessions");
   };
 
-  const handleSessionCreation = async () => {
-    const activityIds: string[] = emptyArr
-      .map((item) => item.activityId)
-      .filter((id): id is string => typeof id === "string");
+const handleSessionCreation = async () => {
+  const activityIds: string[] = emptyArr
+    .map((item) => item.activityId)
+    .filter((id): id is string => typeof id === "string");
 
-    const sessionToBeCreated: Session_Api_call = {
-      title: planName,
-      description: "",
-      category: category,
-      activityIds: activityIds,
-      themes: theme ? [theme] : [],
-      goals: goal ? [goal] : [],
-    };
-    console.log(sessionToBeCreated);
-    await createSession(sessionToBeCreated);
+  const sessionToBeCreated: Session_Api_call = {
+    title: planName,
+    description: "",
+    category: category,
+    activityIds: activityIds,
+    themes: theme ? [theme] : [],
+    goals: goal ? [goal] : [],
   };
+  console.log(sessionToBeCreated);
+  try {
+    await createSession(sessionToBeCreated);
+    // Clear input fields
+    setPlanName("");
+    setCategory("Fitness");
+    setTheme("");
+    setGoal("");
+    setEmptyArr([
+      {
+        name: "",
+        description: "",
+        target: null,
+        target2: null,
+        unit: "",
+        unit2: "",
+        icon: "",
+        videoLink: "",
+      },
+    ]);
+    setSelectedActivities({});
+    setSelectedActivityIds(new Set());
+    setActivityForTable(undefined);
+    setSelectedFilter(""); // Clear Select Activity
+    setSelectKey((prev) => prev + 1);
+  } catch (error) {
+    console.error("Error creating session:", error);
+  }
+};
 
   const handleAddNewRow = () => {
     setNewActivities((prev) => [
@@ -380,7 +407,7 @@ function EnhancedActivityTable() {
     }
   };
 
-return (
+  return (
     <div className="w-full h-screen flex flex-col">
       <Header />
       <div className="activity-table-container bg-white w-full flex flex-1 rounded-2xl shadow-lg overflow-hidden gap-3 p-3">
@@ -393,12 +420,14 @@ return (
               <div className="flex items-center gap-2">
                 {/* Select Activity Autocomplete */}
                 <Autocomplete
+                  key={selectKey}
                   options={uniqueActivities}
                   getOptionLabel={(option) => option.name || ""}
                   value={null}
                   onChange={(_, newValue) => {
                     if (newValue) {
                       handleActivitySelect(newValue);
+                      setActivityForTable(undefined); // Clear dropdown after selection
                     }
                   }}
                   filterOptions={(options, { inputValue }) => {
@@ -407,9 +436,9 @@ return (
                     }
 
                     const lowerInput = inputValue.toLowerCase();
-                    const exactMatches = [];
-                    const startsMatches = [];
-                    const containsMatches = [];
+                    const exactMatches: any[] = [];
+                    const startsMatches: any[] = [];
+                    const containsMatches: any[] = [];
 
                     for (const option of options) {
                       const nameLower = option.name.toLowerCase();
@@ -448,6 +477,7 @@ return (
                       variant="outlined"
                       size="small"
                       sx={{ width: 200 }}
+                      value="" // Ensure input is cleared
                     />
                   )}
                   sx={{ width: 200, backgroundColor: "white" }}
@@ -458,6 +488,7 @@ return (
                   noOptionsText="Type 2+ characters to search..."
                   disablePortal
                   blurOnSelect
+                  clearOnBlur // Clear input on blur
                 />
 
                 {/* Create New Activity Button */}
@@ -742,8 +773,7 @@ return (
                   <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[7%] text-center">
                     Video
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[5%] text-center">
-                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[5%] text-center"></th>
                 </tr>
               </thead>
               <tbody>
