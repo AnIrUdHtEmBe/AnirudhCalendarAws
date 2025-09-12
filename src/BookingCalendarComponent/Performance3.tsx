@@ -303,7 +303,7 @@ const Cell = React.memo(
           state && colorMap[state],
           showRing &&
             isSelected &&
-            "ring-4 ring-blue-500 ring-offset-2 ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
+            "ring-4 ring-blue-500 ring-offset ring-offset-white shadow-lg animate-pulse [animation-duration:5.8s]"
         )}
         style={style}
         onClick={() => {

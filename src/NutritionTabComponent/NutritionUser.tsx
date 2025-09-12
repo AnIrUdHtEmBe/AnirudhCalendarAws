@@ -4,7 +4,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import TopBar from "../BookingCalendarComponent/Topbar";
 import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
 import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
-
+import { API_BASE_URL ,API_BASE_URL2 } from "../store/axios";
 interface Activity {
   activityId: string;
   activityInstanceId: string;
@@ -103,7 +103,7 @@ const UserNutrition = () => {
   const fetchUserName = async () => {
     try {
       const response = await fetch(
-        `https://play-os-backend.forgehub.in/human/${userId}`
+        `${API_BASE_URL2}/human/${userId}`
       );
       const userData = await response.json();
       setUserName(userData.name || "Unknown User");
@@ -118,7 +118,7 @@ const UserNutrition = () => {
     try {
       const dateStr = currentDate.toISOString().split("T")[0];
       const nutritionResponse = await fetch(
-        `https://forge-play-backend.forgehub.in/getNutritionForAllUser/${dateStr}`
+        `${API_BASE_URL}/getNutritionForAllUser/${dateStr}`
       );
       const nutritionData: UserNutritionData[] = await nutritionResponse.json();
 
@@ -151,7 +151,7 @@ const UserNutrition = () => {
           allActivitiesWithSession.map(async (activity) => {
             try {
               const activityResponse = await fetch(
-                `https://forge-play-backend.forgehub.in/activity-templates/${activity.activityId}`
+                `${API_BASE_URL}/activity-templates/${activity.activityId}`
               );
               const activityTemplate: ActivityTemplate =
                 await activityResponse.json();

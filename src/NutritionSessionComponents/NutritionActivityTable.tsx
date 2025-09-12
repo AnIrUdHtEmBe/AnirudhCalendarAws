@@ -6,7 +6,7 @@ import {
   Session_Api_call,
 } from "../store/DataContext";
 import { ActivityUtils } from "../Utils/ActivityUtils";
-
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 import {
   Autocomplete,
   FormControl,
@@ -52,7 +52,7 @@ function NutritionActivityTable() {
     const fetchLiterals = async () => {
       try {
         const response = await fetch(
-          "https://forge-play-backend.forgehub.in/session-template/getLiterlas"
+          `${API_BASE_URL}/session-template/getLiterlas`
         );
         const data = await response.json();
         setLiterals(data);

@@ -79,6 +79,7 @@ import AllActivities from "./sessionsPageComponets/AllActivities";
 import CellGridLatestP3 from "./BookingCalendarComponent/Performance3";
 
 import RmDashNew4 from "./RmDashboard/FilteredDashboard";
+import BulkAddTable from "./sessionsPageComponets/BulkAddTable";
 import EnhancedActivityTable from "./sessionsPageComponets/EnhancedActivityTable";
 
 
@@ -132,6 +133,8 @@ function App() {
                   <AllActivities />
                 ) : selectComponent === "EnhancedSessionCreator" ? (
                   <EnhancedActivityTable />
+                ) : selectComponent === "BulkAddTable" ? (
+                  <BulkAddTable />
                 ) : (
                   <SessionsPage />
                 )

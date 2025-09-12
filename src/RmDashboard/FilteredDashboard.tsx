@@ -32,7 +32,7 @@ import {
 } from "@ably/chat/react";
 import { AblyProvider } from "ably/react";
 import UserChats from "../GoToChat/UserChats";
-
+import { API_BASE_URL , API_BASE_URL2 } from "../store/axios";
 // Types (duplicated from main for isolation)
 interface User {
   userId: string;
@@ -112,7 +112,7 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
       timeStamp: Date.now(),
     }];
 
-    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+    const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
     if (useBeacon && navigator.sendBeacon) {
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
@@ -205,7 +205,7 @@ useEffect(() => {
 
       try {
         const res = await axios.get(
-          `https://play-os-backend.forgehub.in/human/${clientId}`
+          `${API_BASE_URL2}/human/${clientId}`
         );
         if (res.data?.name) {
           setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
@@ -229,7 +229,7 @@ useEffect(() => {
 
         try {
           const userRes = await axios.get(
-            `https://play-os-backend.forgehub.in/human/human/${userId}`
+            `${API_BASE_URL2}/human/human/${userId}`
           );
           const userRooms = userRes.data.rooms || userRes.data;
           const currentRoom = userRooms.find(
@@ -599,7 +599,7 @@ const FilteredDashboard = ({
     const fetchRms = async () => {
       try {
         const response = await axios.get(
-          "https://play-os-backend.forgehub.in/human/all?type=RM"
+          `${API_BASE_URL2}/human/all?type=RM`
         );
         setRms(
           response.data.map((rm: any) => ({ userId: rm.userId, name: rm.name }))
@@ -630,7 +630,7 @@ const fetchUsers = async () => {
 
       if (selectedRms.includes('all')) {
         const response = await axios.get(
-          "https://play-os-backend.forgehub.in/human/all?type=forge"
+          `${API_BASE_URL2}/human/all?type=forge`
         );
         users = response.data
           .map((user: any) => ({
@@ -643,7 +643,7 @@ const fetchUsers = async () => {
         let allAssignedUsers: any[] = [];
         for (const rmId of selectedRms) {
           const response = await axios.get(
-            `https://play-os-backend.forgehub.in/human/rm/getassignedusers?userID=${rmId}`
+            `${API_BASE_URL2}/human/rm/getassignedusers?userID=${rmId}`
           );
           allAssignedUsers = [...allAssignedUsers, ...response.data.assignedUsers];
         }
@@ -681,7 +681,7 @@ const fetchUsers = async () => {
         const batchPromises = batch.map(async (user) => {
           try {
             const response = await axios.get(
-              `https://play-os-backend.forgehub.in/human/human/${user.userId}`
+              `${API_BASE_URL2}/human/human/${user.userId}`
             );
             const rooms = Array.isArray(response.data)
               ? response.data
@@ -1066,7 +1066,7 @@ const applyFilters = () => {
     setOpenChat(null);
     try {
       await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
+        `${API_BASE_URL2}/human/human/mark-seen`,
         {
           userId: handleChatModal.userId,
           roomType: handleChatModal.roomType,
@@ -1113,7 +1113,7 @@ const applyFilters = () => {
   ) => {
     try {
       const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
+        `${API_BASE_URL2}/human/human/${userId}`
       );
       const updatedRooms = Array.isArray(response.data)
         ? response.data

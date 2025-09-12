@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
 import YouTubeVideoModal from "../Youtube/YouTubeVideoModal";
-
+import { API_BASE_URL,API_BASE_URL2 } from "../store/axios";
 function ActivityTable() {
   const context = useContext(DataContext);
   if (!context) {
@@ -50,7 +50,7 @@ function ActivityTable() {
     const fetchLiterals = async () => {
       try {
         const response = await fetch(
-          "https://forge-play-backend.forgehub.in/session-template/getLiterlas"
+          `${API_BASE_URL}/session-template/getLiterlas`
         );
         const data = await response.json();
         setLiterals(data);

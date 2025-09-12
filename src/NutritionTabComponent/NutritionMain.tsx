@@ -28,7 +28,7 @@ import { Send, X } from "lucide-react";
 import axios from "axios";
 import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
 import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
-
+import { API_BASE_URL ,API_BASE_URL2 } from "../store/axios";
 interface User {
   userId: string;
   name: string;
@@ -103,7 +103,7 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
       timeStamp: Date.now(),
     }];
 
-    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+    const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
     if (useBeacon && navigator.sendBeacon) {
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
@@ -206,7 +206,7 @@ useEffect(() => {
 
       try {
         const res = await axios.get(
-          `https://play-os-backend.forgehub.in/human/${clientId}`
+          `${API_BASE_URL2}/human/${clientId}`
         );
         if (res.data?.name) {
           setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
@@ -227,7 +227,7 @@ useEffect(() => {
     console.log(`markSeenByTeam called for userId: ${targetUserId}`);
     try {
       const res = await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
+        `${API_BASE_URL2}/human/human/mark-seen`,
         {
           userId: targetUserId,
           roomType: "NUTRITION",
@@ -250,7 +250,7 @@ useEffect(() => {
   const fetchUserRoomData = useCallback(async (targetUserId: string) => {
     try {
       const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${targetUserId}`
+        `${API_BASE_URL2}/human/human/${targetUserId}`
       );
       const rooms = Array.isArray(response.data)
         ? response.data
@@ -658,7 +658,7 @@ const NutritionMain = () => {
     try {
       const dateStr = currentDate.toISOString().split("T")[0];
       const nutritionResponse = await fetch(
-        `https://forge-play-backend.forgehub.in/getNutritionForAllUser/${dateStr}`
+        `${API_BASE_URL}/getNutritionForAllUser/${dateStr}`
       );
       const nutritionData: NutritionData[] = await nutritionResponse.json();
 
@@ -666,7 +666,7 @@ const NutritionMain = () => {
         nutritionData.map(async (item) => {
           try {
             const userResponse = await fetch(
-              `https://play-os-backend.forgehub.in/human/${item.userId}`
+              `${API_BASE_URL2}/human/${item.userId}`
             );
             const userData = await userResponse.json();
 
@@ -891,7 +891,7 @@ const NutritionMain = () => {
   const fetchUserChatRooms = async (userId: string) => {
     try {
       const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${userId}`
+        `${API_BASE_URL2}/human/human/${userId}`
       );
       const rooms = Array.isArray(response.data)
         ? response.data
@@ -913,7 +913,7 @@ const NutritionMain = () => {
   const handleUserAction = async (userId: string, message: string) => {
     try {
       await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
+        `${API_BASE_URL2}/human/human/mark-seen`,
         {
           userId: userId,
           roomType: "NUTRITION",

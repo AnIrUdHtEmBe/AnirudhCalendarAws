@@ -130,7 +130,7 @@ const CellModal3: React.FC<CellModalProps> = ({
       // Get court and sport info for room type matching - MOVED HERE
       const courtId = bookingData.courtId;
       const courtRes = await axios.get(
-        `https://play-os-backend.forgehub.in/court/${courtId}`
+        `${API_BASE_URL_Latest}/court/${courtId}`
       );
 
       const allowedSports = courtRes.data.allowedSports;
@@ -140,7 +140,7 @@ const CellModal3: React.FC<CellModalProps> = ({
       if (firstSportId) {
         try {
           const sportRes = await axios.get(
-            `https://play-os-backend.forgehub.in/sports/id/${firstSportId}`
+            `${API_BASE_URL_Latest}/sports/id/${firstSportId}`
           );
           roomType = sportRes.data.category || "SPORTS";
           setDirectChatRoomType(roomType);
@@ -526,7 +526,7 @@ const CellModal3: React.FC<CellModalProps> = ({
 
         try {
           const response = await axios.get(
-            `https://play-os-backend.forgehub.in/human/human/${user.userId}`
+            `${API_BASE_URL_Latest}/human/human/${user.userId}`
           );
           const rooms = Array.isArray(response.data)
             ? response.data
@@ -1027,7 +1027,7 @@ const CellModal3: React.FC<CellModalProps> = ({
 
             // Get user's room data to find handledAt
             const userRes = await axios.get(
-              `https://play-os-backend.forgehub.in/human/human/${userId}`
+              `${API_BASE_URL_Latest}/human/human/${userId}`
             );
 
             const userRooms = Array.isArray(userRes.data)
@@ -1096,7 +1096,7 @@ const CellModal3: React.FC<CellModalProps> = ({
 
           // Mark as seen by team after sending
           await axios.patch(
-            `https://play-os-backend.forgehub.in/human/human/mark-seen`,
+            `${API_BASE_URL_Latest}/human/human/mark-seen`,
             {
               userId: userId,
               roomType: roomType,
@@ -1335,7 +1335,7 @@ const CellModal3: React.FC<CellModalProps> = ({
     try {
       // Mark chat as handled with comment
       await axios.patch(
-        "https://play-os-backend.forgehub.in/human/human/mark-seen",
+        `${API_BASE_URL_Latest}/human/human/mark-seen`,
         {
           userId: smallChatBoxData.userId,
           roomType: smallChatBoxData.roomType,
@@ -1346,7 +1346,7 @@ const CellModal3: React.FC<CellModalProps> = ({
 
       // Refresh user room data to get updated handledAt
       const response = await axios.get(
-        `https://play-os-backend.forgehub.in/human/human/${smallChatBoxData.userId}`
+        `${API_BASE_URL_Latest}/human/human/${smallChatBoxData.userId}`
       );
       const updatedRooms = Array.isArray(response.data)
         ? response.data

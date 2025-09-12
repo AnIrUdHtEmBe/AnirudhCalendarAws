@@ -5,9 +5,11 @@ import "./Header.css"; // Assuming this is the path to your CSS file
 
 function Header() {
   const context = useContext(DataContext);
+
   if (!context) {
     return <div>Loading...</div>;
   }
+
   const { selectComponent, setSelectComponent } = context;
 
   // Authentication check for enhanced features
@@ -37,6 +39,7 @@ function Header() {
     "AllSessions": "All Sessions",
     "AllActivities": "All Activities",
     "EnhancedSessionCreator": "Enhanced Session Creator",
+    "BulkAddTable": "Excel Sheet Data",
   };
 
   const headerTitle = headerTitles[selectComponent] || "All Sessions";
@@ -84,16 +87,23 @@ function Header() {
         >
           All Sessions
         </button>
-        
-        <button 
+        <button
           className={`text-xl font-medium ${
-            selectComponent === "AllActivities" 
-              ? "border-b-3 " 
+            selectComponent === "AllActivities" ||
+            selectComponent === "BulkAddTable"
+              ? "border-b-3 "
               : ""
           }`}
           onClick={() => setSelectComponent("AllActivities")}
         >
-          All Activities
+          {selectComponent === "BulkAddTable" ? (
+            <>
+              All Activities <span style={{ margin: "0 8px" }}>→</span> Excel
+              Sheet Data
+            </>
+          ) : (
+            "All Activities"
+          )}
         </button>
       </div>
     </div>

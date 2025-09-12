@@ -30,7 +30,7 @@ import {
 } from "react-icons/gi";
 import { MdSportsTennis } from "react-icons/md";
 import { TbSkateboard } from "react-icons/tb";
-
+import { API_BASE_URL ,API_BASE_URL2 } from "../store/axios";
 export const PLAY_CONFIG = {
   startTime: "6:00",
   endTime: "24:00",
@@ -177,7 +177,7 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
       timeStamp: Date.now(),
     }];
 
-    const url = "https://play-os-backend.forgehub.in/chatV1/presence/record";
+    const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
     if (useBeacon && navigator.sendBeacon) {
       const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
