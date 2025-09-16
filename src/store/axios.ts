@@ -23,7 +23,7 @@ import { enqueueSnackbar } from "notistack";
 // export const API_BASE_URL2 = "https://testplaybackend.forgehub.in";
 
 
-const mode = "production";  // or "development", or other
+const mode = "development";  // or "development", or other
 let API_BASE_URL: string;
 let API_BASE_URL2: string;
 
@@ -61,51 +61,34 @@ export const useApiCalls = () => {
   } = context;
 
 const customer_creation = async (customer: any) => {
-
-    // console.log("Creating customer with data:", customer);
-    const data={
-      type:customer.type,
-      name:customer.name,
-      dob: customer.dob, 
-      age:customer.age,
-      gender:customer.gender,
-      mobile:customer.mobile,
-      email:customer.email,
-      password:customer.password
-    }
-    const data2={
-       type:customer.type,
-      name:customer.name,
-      age:customer.age,
-      gender:customer.gender,
-      mobile:customer.mobile,
-      email:customer.email,
-      height: customer.height,
-      weight: customer.weight,
-      healthCondition: customer.healthCondition,
-      membershipType: customer.membershipType,
-    }
-    try {
-      const res = await axios.post(`${API_BASE_URL2}/human/register`, data);
-      // console.log("Customer created successfully:", res.data);
-      // alert("Customer created successfully!");
-      enqueueSnackbar("Customer created successfully!", {
-        variant: "success",
-        autoHideDuration: 3000,
-      });
- const userId = res.data.userId.userId;
-      const res_2=await axios.patch(`${API_BASE_URL2}/human/${res.data.userId.userId}`,data2);
-      // console.log("Customer updated successfully:", res_2.data);
-      customers_fetching(); // Refresh the customer list after creation
-      return { ...res_2, userId };
-    } catch (error) {
-       enqueueSnackbar("Please fill all details!", {
-        variant: "warning",
-        autoHideDuration: 3000,
-      });
-      console.error("❌ Error creating customer:", error);
-    }
+  const data = {
+    ...customer, // Spread full payload including nutritionKYC
+    password: customer.password || undefined, // Include password only if provided
   };
+  try {
+    const res = await axios.post(`${API_BASE_URL2}/human/register`, data);
+    enqueueSnackbar("Customer created successfully!", {
+      variant: "success",
+      autoHideDuration: 3000,
+    });
+    const userId = res.data.userId.userId;
+    const data2 = {
+      ...customer, // Spread full payload for PATCH
+      password: undefined, // Exclude password from update
+    };
+    const res_2 = await axios.patch(`${API_BASE_URL2}/human/${res.data.userId.userId}`, data2);
+    customers_fetching(); // Refresh the customer list after creation
+    return { ...res_2, userId };
+  } catch (error) {
+    enqueueSnackbar("Please fill all details!", {
+      variant: "warning",
+      autoHideDuration: 3000,
+    });
+    console.error("❌ Error creating customer:", error);
+  }
+};
+
+
   const patch_user = async (userId: string) => {
     try {
       // Send PATCH requests for each userId in parallel
@@ -318,28 +301,27 @@ const patch_customer = async (userId: string, customerData: any) => {
     }
   };
 
-const AddActivityToSession=async(
-  activityId:string,
-    sessionId:string,
-    planInstanceId:string,
-    type?:string,
-)=>{
-  try{
-    const res=await axios.patch(`${API_BASE_URL}/add-activity-to-session/${activityId}/${sessionId}/${planInstanceId}`,null,{
-    params:{
-      //  activityId:activityId,
-      //   sessionId:sessionId,
-      //   planInstanceId:planInstanceId,
-        type:type
-    }
-  })
-  return res
-
-  }catch(err){
-    console.log(err)
+const AddActivityToSession = async (
+  activityId: string,
+  sessionId: string,
+  planInstanceId: string,
+  type?: string,
+  vegNonVeg?: string
+) => {
+  try {
+    const payload = vegNonVeg ? { vegNonVeg } : null;
+    const res = await axios.patch(
+      `${API_BASE_URL}/add-activity-to-session/${activityId}/${sessionId}/${planInstanceId}`,
+      payload,
+      {
+        params: { type: type }
+      }
+    );
+    return res;
+  } catch (err) {
+    console.log(err);
   }
-  
-}
+};
   const RemoveActivityFromSession=async(
     activityId:string,
     sessionId:string,
