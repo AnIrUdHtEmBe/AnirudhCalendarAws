@@ -8,17 +8,26 @@ import {
   Button,
   CircularProgress,
   InputAdornment,
+  ListItemIcon,
+  ListItemText,
   MenuItem,
   Select,
   SelectChangeEvent,
   TextField,
+  Typography,
 } from "@mui/material";
 import { SearchIcon } from "lucide-react";
 import FileDownloadIcon from "@mui/icons-material/FileDownload";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import { Password, People } from "@mui/icons-material";
+import {
+  EmojiFoodBeverage,
+  Fastfood,
+  Password,
+  People,
+  Restaurant,
+} from "@mui/icons-material";
 import Modal from "./Modal";
 import {
   Dialog,
@@ -99,6 +108,24 @@ const ActionsContainer = ({
 };
 
 const CustomerTable = () => {
+  const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+
+  const defaultWeeklyPlan = {
+    MON: 0,
+    TUE: 0,
+    WED: 0,
+    THU: 0,
+    FRI: 0,
+    SAT: 0,
+    SUN: 0,
+  };
+
+  const mealTypes = [
+    { value: 0, label: "Veg", icon: <Restaurant fontSize="small" /> },
+    { value: 1, label: "Egg", icon: <EmojiFoodBeverage fontSize="small" /> },
+    { value: 2, label: "Non Veg", icon: <Fastfood fontSize="small" /> },
+  ];
+
   const { setSelectComponent, customers_Api_call } = useContext(DataContext);
   const [columns, setColumns] = useState<GridColDef[]>([]);
   const [rows, setRows] = useState<any[]>([]);
@@ -113,6 +140,11 @@ const CustomerTable = () => {
   const [editingCustomer, setEditingCustomer] = useState<any>(null);
   const [adminUsers, setAdminUsers] = useState([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
+  const [weeklyModalOpen, setWeeklyModalOpen] = useState(false);
+  const [currentWeeklyPlan, setCurrentWeeklyPlan] = useState(defaultWeeklyPlan);
+  const [isCreatingWeekly, setIsCreatingWeekly] = useState(false);
+  const [isCreateWeeklySaved, setIsCreateWeeklySaved] = useState(false);
+  const [isEditWeeklySaved, setIsEditWeeklySaved] = useState(false);
   // console.log("Customers API Call:", customers_Api_call);
 
   const [formData, setFormData] = useState({
@@ -131,6 +163,7 @@ const CustomerTable = () => {
     startDate: "",
     endDate: "",
     assignedRM: "",
+    nutritionKYC: defaultWeeklyPlan,
   });
 
   const [editFormData, setEditFormData] = useState({
@@ -149,43 +182,44 @@ const CustomerTable = () => {
     startDate: "",
     endDate: "",
     assignedRM: "",
+    nutritionKYC: defaultWeeklyPlan,
   });
 
-const fetchAdminUsers = async () => {
-  setLoadingAdmins(true);
-  try {
-    // Fetch both admin and RM users in parallel
-    const [adminResponse, rmResponse] = await Promise.all([
-      fetch(`${API_BASE_URL2}/human/all?type=admin`), // Fetch admins
-      fetch(`${API_BASE_URL2}/human/all?type=RM`),    // Fetch RMs
-    ]);
+  const fetchAdminUsers = async () => {
+    setLoadingAdmins(true);
+    try {
+      // Fetch both admin and RM users in parallel
+      const [adminResponse, rmResponse] = await Promise.all([
+        fetch(`${API_BASE_URL2}/human/all?type=admin`), // Fetch admins
+        fetch(`${API_BASE_URL2}/human/all?type=RM`), // Fetch RMs
+      ]);
 
-    const adminData = await adminResponse.json();
-    const rmData = await rmResponse.json();
+      const adminData = await adminResponse.json();
+      const rmData = await rmResponse.json();
 
-    // Add correct type property to each user
-    const adminUsers = adminData.map((user) => ({
-      ...user,
-      userType: "admin",  // Correctly label as admin
-    }));
-    const rmUsers = rmData.map((user) => ({
-      ...user,
-      userType: "RM",     // Correctly label as RM
-    }));
+      // Add correct type property to each user
+      const adminUsers = adminData.map((user) => ({
+        ...user,
+        userType: "admin", // Correctly label as admin
+      }));
+      const rmUsers = rmData.map((user) => ({
+        ...user,
+        userType: "RM", // Correctly label as RM
+      }));
 
-    // Combine both arrays
-    const combinedUsers = [...adminUsers, ...rmUsers];
-    setAdminUsers(combinedUsers);
-  } catch (error) {
-    console.error("Failed to fetch admin users:", error);
-    enqueueSnackbar("Failed to load admin users", {
-      variant: "error",
-      autoHideDuration: 3000,
-    });
-  } finally {
-    setLoadingAdmins(false);
-  }
-};
+      // Combine both arrays
+      const combinedUsers = [...adminUsers, ...rmUsers];
+      setAdminUsers(combinedUsers);
+    } catch (error) {
+      console.error("Failed to fetch admin users:", error);
+      enqueueSnackbar("Failed to load admin users", {
+        variant: "error",
+        autoHideDuration: 3000,
+      });
+    } finally {
+      setLoadingAdmins(false);
+    }
+  };
 
   // Function to calculate age from DOB
   const calculateAge = (dob: string) => {
@@ -293,19 +327,16 @@ const fetchAdminUsers = async () => {
   };
   const assignUserToRM = async (rmId: string, userId: string) => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL2}/human/rm/assignusers`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            rmId: rmId,
-            userIds: [userId],
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL2}/human/rm/assignusers`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          rmId: rmId,
+          userIds: [userId],
+        }),
+      });
 
       if (!response.ok) {
         throw new Error("Failed to assign user to RM");
@@ -332,6 +363,7 @@ const fetchAdminUsers = async () => {
       height: Number(formData.height) || null,
       weight: Number(formData.weight) || null,
       healthCondition: formData.healthCondition || null,
+      nutritionKYC: formData.nutritionKYC,
     };
     const phoneRegex = /^[0-9]{10}$/; // 10-digit numeric only
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -361,6 +393,7 @@ const fetchAdminUsers = async () => {
         await assignUserToRM(formData.assignedRM, res.userId);
       }
       setModalOpen(false);
+      setIsCreateWeeklySaved(false);
       // Clear the form by resetting formData to initial empty values
       setFormData({
         name: "",
@@ -378,6 +411,7 @@ const fetchAdminUsers = async () => {
         startDate: "",
         endDate: "",
         assignedRM: "",
+        nutritionKYC: defaultWeeklyPlan,
       });
     }
     // Optionally, reset form fields here
@@ -392,6 +426,7 @@ const fetchAdminUsers = async () => {
       height: Number(editFormData.height) || null,
       weight: Number(editFormData.weight) || null,
       healthCondition: editFormData.healthCondition || null,
+      nutritionKYC: editFormData.nutritionKYC,
     };
 
     console.log("Edit payload:", payload);
@@ -400,6 +435,7 @@ const fetchAdminUsers = async () => {
       await assignUserToRM(editFormData.assignedRM, editingCustomer.userId);
     }
     setEditModalOpen(false);
+    setIsEditWeeklySaved(false);
     setEditingCustomer(null);
     // Clear the edit form
     setEditFormData({
@@ -418,10 +454,15 @@ const fetchAdminUsers = async () => {
       startDate: "",
       endDate: "",
       assignedRM: "",
+      nutritionKYC: defaultWeeklyPlan,
     });
   };
 
-  const handleCloseModal = () => setModalOpen(false);
+  const handleCloseModal = () => {
+    setModalOpen(false);
+    setFormData((prev) => ({ ...prev, nutritionKYC: defaultWeeklyPlan }));
+    setIsCreateWeeklySaved(false);
+  };
   const handleCloseEditModal = () => {
     setEditModalOpen(false);
     setEditingCustomer(null);
@@ -441,7 +482,9 @@ const fetchAdminUsers = async () => {
       startDate: "",
       endDate: "",
       assignedRM: "",
+      nutritionKYC: defaultWeeklyPlan,
     });
+    setIsEditWeeklySaved(false);
   };
 
   const {
@@ -501,6 +544,7 @@ const fetchAdminUsers = async () => {
       startDate: customer.startDate || "",
       endDate: customer.endDate || "",
       assignedRM: customer.assignedRM || "",
+      nutritionKYC: customer.nutritionKYC || defaultWeeklyPlan,
     });
     console.log("Opening edit modal");
     setEditModalOpen(true);
@@ -778,6 +822,24 @@ const fetchAdminUsers = async () => {
 
     // Format date to YYYY-MM-DD for input field
     return endDate.toISOString().split("T")[0];
+  };
+
+  const getWeeklyPlanSummary = (plan) => {
+    const dayLabels = {
+      MON: "Mon",
+      TUE: "Tue",
+      WED: "Wed",
+      THU: "Thu",
+      FRI: "Fri",
+      SAT: "Sat",
+      SUN: "Sun",
+    };
+    const valueLabels = { 0: "Veg", 1: "Egg", 2: "Non Veg" };
+
+    return Object.entries(plan)
+      .filter(([_, value]) => value !== null && value !== undefined)
+      .map(([day, value]) => `${dayLabels[day]}: ${valueLabels[value]}`)
+      .join(", ");
   };
 
   return (
@@ -1088,6 +1150,26 @@ const fetchAdminUsers = async () => {
                   value={formData.healthCondition}
                   onChange={handleInputChange}
                 />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setCurrentWeeklyPlan(formData.nutritionKYC);
+                    setIsCreatingWeekly(true);
+                    setWeeklyModalOpen(true);
+                  }}
+                >
+                  Weekly Meal Plan
+                </Button>
+                {isCreateWeeklySaved &&
+                  getWeeklyPlanSummary(formData.nutritionKYC) && (
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "gray", mt: -1, mb: 1 }}
+                    >
+                      {getWeeklyPlanSummary(formData.nutritionKYC)}
+                    </Typography>
+                  )}
               </Box>
             </DialogContent>
 
@@ -1313,6 +1395,26 @@ const fetchAdminUsers = async () => {
                   value={editFormData.healthCondition}
                   onChange={handleEditInputChange}
                 />
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={() => {
+                    setCurrentWeeklyPlan(editFormData.nutritionKYC);
+                    setIsCreatingWeekly(false);
+                    setWeeklyModalOpen(true);
+                  }}
+                >
+                  Weekly Meal Plan
+                </Button>
+                {isEditWeeklySaved &&
+                  getWeeklyPlanSummary(editFormData.nutritionKYC) && (
+                    <Typography
+                      variant="body2"
+                      sx={{ color: "gray", mt: -1, mb: 1 }}
+                    >
+                      {getWeeklyPlanSummary(editFormData.nutritionKYC)}
+                    </Typography>
+                  )}
               </Box>
             </DialogContent>
 
@@ -1332,6 +1434,332 @@ const fetchAdminUsers = async () => {
                 form="edit-customer-form"
               >
                 Edit
+              </Button>
+            </DialogActions>
+          </Dialog>
+          <Dialog
+            open={weeklyModalOpen}
+            onClose={() => setWeeklyModalOpen(false)}
+            maxWidth="lg"
+            fullWidth
+          >
+            <DialogTitle>
+              Weekly Meal Plan
+              <IconButton
+                aria-label="close"
+                onClick={() => setWeeklyModalOpen(false)}
+                sx={{
+                  position: "absolute",
+                  right: 8,
+                  top: 8,
+                  color: (theme) => theme.palette.grey[500],
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent>
+              <Box
+                sx={{
+                  p: 2,
+                }}
+              >
+                {/* Quick Selection Buttons */}
+                <Box
+                  sx={{
+                    mb: 2,
+                    display: "flex",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      backgroundColor:
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 0
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                          ? "#007bff"
+                          : "transparent",
+                      color:
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 0
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                          ? "white"
+                          : "inherit",
+                    }}
+                    onClick={() => {
+                      const allVeg = days.reduce(
+                        (acc, day) => ({ ...acc, [day]: 0 }),
+                        {}
+                      );
+                      setCurrentWeeklyPlan(allVeg);
+                    }}
+                  >
+                    All Veg
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      backgroundColor:
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 2
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                          ? "#007bff"
+                          : "transparent",
+                      color:
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 2
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                          ? "white"
+                          : "inherit",
+                    }}
+                    onClick={() => {
+                      const allNonVeg = days.reduce(
+                        (acc, day) => ({ ...acc, [day]: 2 }),
+                        {}
+                      );
+                      setCurrentWeeklyPlan(allNonVeg);
+                    }}
+                  >
+                    All Non-Veg
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      backgroundColor:
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 1
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                          ? "#007bff"
+                          : "transparent",
+                      color:
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 1
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                          ? "white"
+                          : "inherit",
+                    }}
+                    onClick={() => {
+                      const allEgg = days.reduce(
+                        (acc, day) => ({ ...acc, [day]: 1 }),
+                        {}
+                      );
+                      setCurrentWeeklyPlan(allEgg);
+                    }}
+                  >
+                    All Egg
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      backgroundColor:
+                        !(
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day === 0
+                          ) &&
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day !== null
+                          )
+                        ) &&
+                        !(
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day === 2
+                          ) &&
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day !== null
+                          )
+                        ) &&
+                        !(
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day === 1
+                          ) &&
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day !== null
+                          )
+                        ) &&
+                        Object.values(currentWeeklyPlan).some(
+                          (day) => day !== null
+                        )
+                          ? "#007bff"
+                          : "transparent",
+                      color:
+                        !(
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day === 0
+                          ) &&
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day !== null
+                          )
+                        ) &&
+                        !(
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day === 2
+                          ) &&
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day !== null
+                          )
+                        ) &&
+                        !(
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day === 1
+                          ) &&
+                          Object.values(currentWeeklyPlan).every(
+                            (day) => day !== null
+                          )
+                        ) &&
+                        Object.values(currentWeeklyPlan).some(
+                          (day) => day !== null
+                        )
+                          ? "white"
+                          : "inherit",
+                    }}
+                    onClick={() => {
+                      const custom = days.reduce(
+                        (acc, day) => ({ ...acc, [day]: null }),
+                        {}
+                      );
+                      setCurrentWeeklyPlan(custom);
+                    }}
+                  >
+                    Custom
+                  </Button>
+                </Box>
+
+                {/* Weekly Calendar Grid */}
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 2,
+                    border: "1px solid #e0e0e0",
+                    borderRadius: "8px",
+                    p: 2,
+                    bgcolor: "#fafafa",
+                  }}
+                >
+                  {days.map((day) => (
+                    <Box key={day} sx={{ textAlign: "left" }}>
+                      <Typography
+                        variant="subtitle2"
+                        gutterBottom
+                        sx={{
+                          fontWeight: 600,
+                          fontSize: "0.875rem",
+                          color: "#333",
+                        }}
+                      >
+                        {day.charAt(0).toUpperCase() +
+                          day.slice(1).substring(0, 2)}
+                      </Typography>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 0.5,
+                        }}
+                      >
+                        {[0, 1, 2].map((option) => (
+                          <Box
+                            key={option}
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              fontSize: "0.75rem",
+                              cursor: "pointer",
+                              p: 0.25,
+                            }}
+                            onClick={() => {
+                              setCurrentWeeklyPlan((prev) => ({
+                                ...prev,
+                                [day]: prev[day] === option ? null : option,
+                              }));
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 16,
+                                height: 16,
+                                border: "1px solid #ccc",
+                                borderRadius: "2px",
+                                mr: 0.75,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                bgcolor:
+                                  currentWeeklyPlan[day] === option
+                                    ? "#007bff"
+                                    : "white",
+                                color:
+                                  currentWeeklyPlan[day] === option
+                                    ? "white"
+                                    : "transparent",
+                                fontSize: "12px",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              ✓
+                            </Box>
+                            <span style={{ userSelect: "none" }}>
+                              {option === 0
+                                ? "Veg"
+                                : option === 2
+                                ? "Non-Veg"
+                                : "Egg"}
+                            </span>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setWeeklyModalOpen(false)}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  if (isCreatingWeekly) {
+                    setFormData((prev) => ({
+                      ...prev,
+                      nutritionKYC: currentWeeklyPlan,
+                    }));
+                    setIsCreateWeeklySaved(true);
+                  } else {
+                    setEditFormData((prev) => ({
+                      ...prev,
+                      nutritionKYC: currentWeeklyPlan,
+                    }));
+                    setIsEditWeeklySaved(true);
+                  }
+                  setWeeklyModalOpen(false);
+                }}
+                variant="contained"
+              >
+                Save
               </Button>
             </DialogActions>
           </Dialog>

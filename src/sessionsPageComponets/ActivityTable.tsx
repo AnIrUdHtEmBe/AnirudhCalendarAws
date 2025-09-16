@@ -1,4 +1,4 @@
-import { LucideCircleMinus, Plus, Save, X, Eye } from "lucide-react";
+import { LucideCircleMinus, Plus, Save, X, Eye, Edit } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import {
   Activity_Api_call,
@@ -18,7 +18,7 @@ import {
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
 import YouTubeVideoModal from "../Youtube/YouTubeVideoModal";
-import { API_BASE_URL,API_BASE_URL2 } from "../store/axios";
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 function ActivityTable() {
   const context = useContext(DataContext);
   if (!context) {
@@ -37,6 +37,7 @@ function ActivityTable() {
   const [goal, setGoal] = useState("");
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const [literals, setLiterals] = useState({
     themes: [],
     goals: [],
@@ -45,6 +46,7 @@ function ActivityTable() {
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [currentVideoUrl, setCurrentVideoUrl] = useState("");
   const [videoTitle, setVideoTitle] = useState("");
+  const [editedActivities, setEditedActivities] = useState([]);
   useEffect(() => {});
   useEffect(() => {
     const fetchLiterals = async () => {
@@ -101,22 +103,48 @@ function ActivityTable() {
     setSelectComponent("AllSessions");
   };
 
-  const handleSessionCreation = async () => {
-    const activityIds: string[] = emptyArr
-      .map((item) => item.activityId)
-      .filter((id): id is string => typeof id === "string");
+const handleSessionCreation = async () => {
+  const activityIds: string[] = emptyArr
+    .map((item) => item.activityId)
+    .filter((id): id is string => typeof id === "string");
 
-    const sessionToBeCreated: Session_Api_call = {
-      title: planName,
-      description: "",
-      category: category,
-      activityIds: activityIds,
-      themes: theme ? [theme] : [],
-      goals: goal ? [goal] : [],
-    };
-    console.log(sessionToBeCreated);
-    await createSession(sessionToBeCreated);
+  const sessionToBeCreated: Session_Api_call = {
+    title: planName,
+    description: "",
+    category: category,
+    activityIds: activityIds,
+    themes: theme ? [theme] : [],
+    goals: goal ? [goal] : [],
   };
+  if (editedActivities.length > 0) {
+    sessionToBeCreated.editedActivities = editedActivities;
+  }
+  console.log(sessionToBeCreated);
+  await createSession(sessionToBeCreated);
+  
+  // Clear all form data after successful save
+  setPlanName("");
+  setCategory("Fitness");
+  setTheme("");
+  setGoal("");
+  setEmptyArr([
+    {
+      name: "",
+      description: "",
+      target: null,
+      target2: null,
+      unit: "",
+      unit2: "",
+      icon: "",
+      videoLink: "",
+    },
+  ]);
+  setSelectedActivities({});
+  setEditedActivities([]);
+  setIsEditMode(false);
+  setOriginalEmptyArr([]);
+  setResetKey(prev => prev + 1);
+};
 
   const handleAddNewRow = () => {
     setNewActivities((prev) => [
@@ -290,7 +318,9 @@ function ActivityTable() {
         return "";
     }
   };
-
+  const supportedUnits = ActivityUtils.filter(
+    (unit) => formatUnit(unit) !== ""
+  );
   console.log(newActivities);
   useEffect(() => {
     console.log(theme);
@@ -317,6 +347,12 @@ function ActivityTable() {
   useEffect(() => {
     console.log(emptyArr, "this is emort");
   }, [emptyArr]);
+
+  //new edit mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [originalEmptyArr, setOriginalEmptyArr] = useState<Activity_Api_call[]>(
+    []
+  );
 
   // --- JSX RETURN (unchanged from your version) ---
   return (
@@ -417,6 +453,70 @@ function ActivityTable() {
               </Select>
             </FormControl>
           </div>
+          <div className="flex items-center gap-3 mt-4 lg:mt-0">
+            {!isEditMode ? (
+              <button
+                className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
+                onClick={() => {
+                  setOriginalEmptyArr(JSON.parse(JSON.stringify(emptyArr)));
+                  setIsEditMode(true);
+                }}
+              >
+                <Edit size={20} />
+                <span>Edit Mode</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  className="flex items-center justify-center space-x-2 text-white px-4 py-3 rounded-xl text-sm md:text-base btn2 whitespace-nowrap"
+                  onClick={() => {
+                    const changes = [];
+                    emptyArr.forEach((activity, index) => {
+                      const original = originalEmptyArr[index];
+                      if (original) {
+                        const changedFields = {};
+                        if (activity.name !== original.name)
+                          changedFields.name = activity.name;
+                        if (activity.description !== original.description)
+                          changedFields.description = activity.description;
+                        if (activity.target !== original.target)
+                          changedFields.target = activity.target;
+                        if (activity.unit !== original.unit)
+                          changedFields.unit = activity.unit;
+                        if (activity.target2 !== original.target2)
+                          changedFields.target2 = activity.target2;
+                        if (activity.unit2 !== original.unit2)
+                          changedFields.unit2 = activity.unit2;
+                        if (activity.videoLink !== original.videoLink)
+                          changedFields.videoLink = activity.videoLink;
+                        if (Object.keys(changedFields).length > 0) {
+                          changes.push({
+                            activityTemplateId: activity.activityId,
+                            ...changedFields,
+                          });
+                        }
+                      }
+                    });
+                    setEditedActivities(changes);
+                    setIsEditMode(false);
+                  }}
+                >
+                  <Save size={20} />
+                  <span>Save</span>
+                </button>
+                <button
+                  className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
+                  onClick={() => {
+                    setEmptyArr(JSON.parse(JSON.stringify(originalEmptyArr)));
+                    setIsEditMode(false);
+                    setEditedActivities([]);
+                  }}
+                >
+                  <span>Cancel</span>
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Right Buttons */}
@@ -474,142 +574,343 @@ function ActivityTable() {
                   key={index}
                   className="text-sm text-gray-800 hover:bg-gray-50"
                 >
+                  {/* Sl No. remains unchanged */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     {index + 1}
                   </td>
 
+                  {/* Activity Name/Select - Conditional for edit mode */}
                   <td
                     className="px-4 py-7 border-b border-b-gray-200 align-middle"
                     style={{ minWidth: "280px" }}
                   >
                     <div className="flex justify-center">
-                      <Autocomplete
-                        options={uniqueActivities}
-                        getOptionLabel={(option) => option.name || ""}
-                        value={
-                          uniqueActivities.find(
-                            (a) => a.activityId === selectedActivities[index]
-                          ) || null
-                        }
-                        onChange={(_, newValue) => {
-                          handleActivitySelectChange(
-                            index,
-                            newValue ? newValue.activityId : ""
-                          );
-                          setActivityForTable(newValue);
-                        }}
-                        filterOptions={(options, { inputValue }) => {
-                          if (!inputValue || inputValue.length < 2) {
-                            return options.slice(0, 15);
+                      {!isEditMode ? (
+                        /* Your original Autocomplete code here - paste it unchanged */
+                        <Autocomplete
+                        key={`activity-${index}-${resetKey}`}
+                          options={uniqueActivities}
+                          getOptionLabel={(option) =>
+                            typeof option === "string"
+                              ? option
+                              : option.name || ""
                           }
-
-                          const lowerInput = inputValue.toLowerCase();
-                          const exactMatches: any[] = [];
-                          const startsMatches: any[] = [];
-                          const containsMatches: any[] = [];
-
-                          for (const option of options) {
-                            const nameLower = option.name.toLowerCase();
-
-                            if (nameLower === lowerInput) {
-                              exactMatches.push(option);
-                            } else if (nameLower.startsWith(lowerInput)) {
-                              startsMatches.push(option);
-                            } else if (nameLower.includes(lowerInput)) {
-                              containsMatches.push(option);
+                          isOptionEqualToValue={(option, value) => {
+                            if (typeof value === "string") return false;
+                            return option.activityId === value.activityId;
+                          }}
+                          value={
+                            selectedActivities[index]
+                              ? uniqueActivities.find(
+                                  (a) =>
+                                    a.activityId === selectedActivities[index]
+                                ) || null
+                              : activity.name || null
+                          }
+                          onChange={(_, newValue) => {
+                            if (typeof newValue === "string") {
+                              const updated = [...emptyArr];
+                              updated[index].name = newValue;
+                              setEmptyArr(updated);
+                              setSelectedActivities((prev) => {
+                                const newPrev = { ...prev };
+                                delete newPrev[index];
+                                return newPrev;
+                              });
+                            } else {
+                              handleActivitySelectChange(
+                                index,
+                                newValue ? newValue.activityId : ""
+                              );
+                              setActivityForTable(newValue);
+                            }
+                          }}
+                          filterOptions={(options, { inputValue }) => {
+                            if (!inputValue || inputValue.length < 2) {
+                              return options.slice(0, 15);
                             }
 
-                            if (
-                              exactMatches.length +
-                                startsMatches.length +
-                                containsMatches.length >=
-                              20
-                            )
-                              break;
-                          }
+                            const lowerInput = inputValue.toLowerCase();
+                            const exactMatches: any[] = [];
+                            const startsMatches: any[] = [];
+                            const containsMatches: any[] = [];
 
-                          return [
-                            ...exactMatches,
-                            ...startsMatches.sort((a, b) =>
-                              a.name.localeCompare(b.name)
-                            ),
-                            ...containsMatches.sort((a, b) =>
-                              a.name.localeCompare(b.name)
-                            ),
-                          ].slice(0, 20);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Select Activity"
-                            variant="outlined"
-                            size="small"
-                            sx={{ width: 250 }}
-                          />
-                        )}
-                        sx={{ width: 250, backgroundColor: "white" }}
-                        isOptionEqualToValue={(option, value) =>
-                          option.activityId === value.activityId
-                        }
-                        freeSolo
-                        noOptionsText="Type 2+ characters to search..."
-                        disablePortal
-                        blurOnSelect
-                      />
+                            for (const option of options) {
+                              const nameLower = option.name.toLowerCase();
+
+                              if (nameLower === lowerInput) {
+                                exactMatches.push(option);
+                              } else if (nameLower.startsWith(lowerInput)) {
+                                startsMatches.push(option);
+                              } else if (nameLower.includes(lowerInput)) {
+                                containsMatches.push(option);
+                              }
+
+                              if (
+                                exactMatches.length +
+                                  startsMatches.length +
+                                  containsMatches.length >=
+                                20
+                              )
+                                break;
+                            }
+
+                            return [
+                              ...exactMatches,
+                              ...startsMatches.sort((a, b) =>
+                                a.name.localeCompare(b.name)
+                              ),
+                              ...containsMatches.sort((a, b) =>
+                                a.name.localeCompare(b.name)
+                              ),
+                            ].slice(0, 20);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Select Activity"
+                              variant="outlined"
+                              size="small"
+                              sx={{ width: 250 }}
+                            />
+                          )}
+                          sx={{ width: 250, backgroundColor: "white" }}
+                          isOptionEqualToValue={(option, value) =>
+                            option.activityId === value.activityId
+                          }
+                          freeSolo
+                          noOptionsText="Type 2+ characters to search..."
+                          disablePortal
+                          blurOnSelect
+                        />
+                      ) : (
+                        <TextField
+                          label="Activity Name"
+                          variant="outlined"
+                          size="small"
+                          value={activity.name || ""}
+                          onChange={(e) => {
+                            const updated = [...emptyArr];
+                            updated[index].name = e.target.value;
+                            setEmptyArr(updated);
+                            // Clear id to treat as custom
+                            setSelectedActivities((prev) => {
+                              const newPrev = { ...prev };
+                              delete newPrev[index];
+                              return newPrev;
+                            });
+                          }}
+                          sx={{ width: 250 }}
+                        />
+                      )}
                     </div>
                   </td>
 
+                  {/* Description - Conditional */}
                   <td
                     className="px-4 py-7 border-b border-b-gray-200 text-center align-middle"
                     style={{ minWidth: "200px" }}
                   >
-                    <div className="break-words">{activity.description}</div>
+                    {!isEditMode ? (
+                      <div className="break-words">{activity.description}</div>
+                    ) : (
+                      <TextField
+                        label="Description"
+                        variant="outlined"
+                        size="small"
+                        value={activity.description || ""}
+                        onChange={(e) => {
+                          const updated = [...emptyArr];
+                          updated[index].description = e.target.value;
+                          setEmptyArr(updated);
+                        }}
+                        fullWidth
+                      />
+                    )}
                   </td>
+
+                  {/* Target 1 - Conditional */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {activity.target}
+                    {!isEditMode ? (
+                      activity.target
+                    ) : (
+                      <TextField
+                        type="number"
+                        label="Target 1"
+                        variant="outlined"
+                        size="small"
+                        value={activity.target ?? ""}
+                        onChange={(e) => {
+                          const updated = [...emptyArr];
+                          updated[index].target = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setEmptyArr(updated);
+                        }}
+                      />
+                    )}
                   </td>
+
+                  {/* Unit 1 - Conditional */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {formatUnit(activity.unit)}
+                    {!isEditMode ? (
+                      formatUnit(activity.unit)
+                    ) : (
+                      <Autocomplete
+                        options={supportedUnits}
+                        getOptionLabel={(option) => formatUnit(option) || ""}
+                        value={activity.unit || ""}
+                        onChange={(_, newValue) => {
+                          const updated = [...emptyArr];
+                          updated[index].unit = newValue || "";
+                          setEmptyArr(updated);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Unit 1"
+                            variant="outlined"
+                            size="small"
+                          />
+                        )}
+                        sx={{ minWidth: 120 }}
+                      />
+                    )}
                   </td>
+
+                  {/* Target 2 - Conditional */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {activity.target2}
+                    {!isEditMode ? (
+                      activity.target2
+                    ) : (
+                      <TextField
+                        type="number"
+                        label="Target 2"
+                        variant="outlined"
+                        size="small"
+                        value={activity.target2 ?? ""}
+                        onChange={(e) => {
+                          const updated = [...emptyArr];
+                          updated[index].target2 = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setEmptyArr(updated);
+                        }}
+                      />
+                    )}
                   </td>
+
+                  {/* Unit 2 - Conditional */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {formatUnit(activity.unit2)}
+                    {!isEditMode ? (
+                      formatUnit(activity.unit2)
+                    ) : (
+                      <Autocomplete
+                        options={supportedUnits}
+                        getOptionLabel={(option) => formatUnit(option) || ""}
+                        value={activity.unit2 || ""}
+                        onChange={(_, newValue) => {
+                          const updated = [...emptyArr];
+                          updated[index].unit2 = newValue || "";
+                          setEmptyArr(updated);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Unit 2"
+                            variant="outlined"
+                            size="small"
+                          />
+                        )}
+                        sx={{ minWidth: 120 }}
+                      />
+                    )}
                   </td>
+
+                  {/* Video - Conditional */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     <div className="flex justify-center items-center">
-                      {activity.videoLink && (
-                        <button
-                          onClick={() =>
-                            handleVideoLinkClick(
-                              activity.videoLink,
-                              activity.name
-                            )
-                          }
-                          className="video-link-button"
-                          title="Watch Video"
-                          style={{
-                            background: "none",
-                            border: "none",
-                            cursor: "pointer",
-                            padding: "8px",
-                            borderRadius: "4px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            height: "32px",
-                            width: "32px",
-                          }}
-                        >
-                          <Eye
-                            size={16}
-                            className="text-blue-500 hover:text-blue-700"
+                      {!isEditMode ? (
+                        <>
+                          {activity.videoLink && (
+                            <button
+                              onClick={() =>
+                                handleVideoLinkClick(
+                                  activity.videoLink,
+                                  activity.name
+                                )
+                              }
+                              className="video-link-button"
+                              title="Watch Video"
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: "8px",
+                                borderRadius: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                height: "32px",
+                                width: "32px",
+                              }}
+                            >
+                              <Eye
+                                size={16}
+                                className="text-blue-500 hover:text-blue-700"
+                              />
+                            </button>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <TextField
+                            label="Video Link"
+                            variant="outlined"
+                            size="small"
+                            value={activity.videoLink || ""}
+                            onChange={(e) => {
+                              const updated = [...emptyArr];
+                              updated[index].videoLink = e.target.value;
+                              setEmptyArr(updated);
+                            }}
+                            sx={{ width: 200 }}
                           />
-                        </button>
+                          {activity.videoLink && (
+                            <button
+                              onClick={() =>
+                                handleVideoLinkClick(
+                                  activity.videoLink,
+                                  activity.name
+                                )
+                              }
+                              className="video-link-button"
+                              title="Watch Video"
+                              style={{
+                                background: "none",
+                                border: "none",
+                                cursor: "pointer",
+                                padding: "8px",
+                                borderRadius: "4px",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                height: "32px",
+                                width: "32px",
+                              }}
+                            >
+                              <Eye
+                                size={16}
+                                className="text-blue-500 hover:text-blue-700"
+                              />
+                            </button>
+                          )}
+                        </>
                       )}
                     </div>
                   </td>
+
+                  {/* Delete remains unchanged */}
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     <div className="flex justify-center items-center">
                       <button onClick={() => handleDelete(index)}>

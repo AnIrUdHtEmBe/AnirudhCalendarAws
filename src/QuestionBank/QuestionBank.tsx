@@ -52,6 +52,11 @@ const questionTypes = [
   { label: "Number Input", value: "number", icon: <NumbersIcon /> },
   { label: "Yes No", value: "yesno", icon: <RadioButtonCheckedIcon /> },
   { label: "Date Selector", value: "date", icon: <CalendarTodayIcon /> },
+  {
+    label: "Weekly Meal Calendar",
+    value: "weekly_meal",
+    icon: <CalendarTodayIcon />,
+  },
 ];
 
 const QuestionBank = () => {
@@ -103,6 +108,16 @@ const QuestionBank = () => {
     }
   }, [questionsForAPICall]);
 
+  const [mealCalendar, setMealCalendar] = useState({
+    sunday: "",
+    monday: "",
+    tuesday: "",
+    wednesday: "",
+    thursday: "",
+    friday: "",
+    saturday: "",
+  });
+
   const {
     Question_creation_Api_call,
     questions,
@@ -151,6 +166,17 @@ const QuestionBank = () => {
     setType(selectedQuestion.answerType);
     setOptions(selectedQuestion.options || []);
     setScoreZones(selectedQuestion.scoreZones || []);
+    setMealCalendar(
+      selectedQuestion.options?.mealCalendar || {
+        sunday: "",
+        monday: "",
+        tuesday: "",
+        wednesday: "",
+        thursday: "",
+        friday: "",
+        saturday: "",
+      }
+    );
     setChecked(selectedQuestion.checked);
     setEditingIndex(index); // track which question is being edited
   };
@@ -192,14 +218,18 @@ const QuestionBank = () => {
       return;
     }
 
-    const filteredOptions =
-      type === "choose_one" || type === "choose_many"
-        ? options
-            .map((opt) =>
-              typeof opt === "string" ? opt.trim() : typeof opt === "object"
-            )
-            .filter((opt) => opt !== "")
-        : [];
+    let filteredOptions;
+    if (type === "choose_one" || type === "choose_many") {
+      filteredOptions = options
+        .map((opt) =>
+          typeof opt === "string" ? opt.trim() : typeof opt === "object"
+        )
+        .filter((opt) => opt !== "");
+    } else if (type === "weekly_meal") {
+      filteredOptions = { mealCalendar };
+    } else {
+      filteredOptions = [];
+    }
 
     const newQuestion = {
       checked: true,
@@ -226,6 +256,15 @@ const QuestionBank = () => {
     setValue("");
     setType("");
     setOptions([]);
+    setMealCalendar({
+      sunday: "",
+      monday: "",
+      tuesday: "",
+      wednesday: "",
+      thursday: "",
+      friday: "",
+      saturday: "",
+    });
     setChecked(false);
     setShouldEdit(true); // Trigger edit mode for the newly added question
   };
@@ -234,6 +273,15 @@ const QuestionBank = () => {
     setValue("");
     setType("");
     setOptions([]);
+    setMealCalendar({
+      sunday: "",
+      monday: "",
+      tuesday: "",
+      wednesday: "",
+      thursday: "",
+      friday: "",
+      saturday: "",
+    });
     setChecked(false);
     if (editingIndex !== null) {
       const updatedQuestions = [...question];
@@ -410,50 +458,61 @@ const QuestionBank = () => {
                     )}
 
                     <FormControl size="small" sx={{ width: "200px" }}>
-                      <InputLabel id="question-type-label">
-                        Select Question Type
-                      </InputLabel>
-                      <Select
-                        labelId="question-type-label"
-                        id="question-type-select"
-                        value={type}
-                        label="Select Question Type"
-                        onChange={(e) => setType(e.target.value)}
-                        renderValue={(selected) => {
-                          const selectedItem = questionTypes.find(
-                            (item) => item.value === selected
-                          );
-                          return (
-                            <Box
-                              sx={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 1,
-                              }}
-                            >
-                              {selectedItem?.icon}
-                              {selectedItem?.label}
-                            </Box>
-                          );
-                        }}
-                      >
-                        {questionTypes.map((item) => (
-                          <MenuItem
-                            key={item.value}
-                            value={item.value}
-                            sx={{ fontSize: "0.875rem", py: 0.5 }}
-                          >
-                            <ListItemIcon sx={{ minWidth: 28 }}>
-                              {item.icon}
-                            </ListItemIcon>
-                            <ListItemText
-                              primary={item.label}
-                              primaryTypographyProps={{ fontSize: "0.875rem" }}
-                            />
-                          </MenuItem>
-                        ))}
-                      </Select>
-                    </FormControl>
+  <InputLabel id="question-type-label">
+    Select Question Type
+  </InputLabel>
+  <Select
+    labelId="question-type-label"
+    id="question-type-select"
+    value={type}
+    label="Select Question Type"
+    onChange={(e) => setType(e.target.value)}
+    renderValue={(selected) => {
+      const selectedItem = questionTypes.find(
+        (item) => item.value === selected
+      );
+      return (
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            flexWrap: "wrap",
+          }}
+        >
+          {selectedItem?.icon}
+          <span style={{ 
+            wordBreak: "break-word",
+            whiteSpace: "normal",
+            lineHeight: "1.2"
+          }}>
+            {selectedItem?.label}
+          </span>
+        </Box>
+      );
+    }}
+  >
+    {questionTypes.map((item) => (
+      <MenuItem
+        key={item.value}
+        value={item.value}
+        sx={{ fontSize: "0.875rem", py: 0.5 }}
+      >
+        <ListItemIcon sx={{ minWidth: 28 }}>
+          {item.icon}
+        </ListItemIcon>
+        <ListItemText
+          primary={item.label}
+          primaryTypographyProps={{ 
+            fontSize: "0.875rem",
+            whiteSpace: "normal",
+            wordBreak: "break-word"
+          }}
+        />
+      </MenuItem>
+    ))}
+  </Select>
+</FormControl>
                   </div>
 
                   <div className="question-bank-main-body-right-content">
@@ -605,6 +664,371 @@ const QuestionBank = () => {
                           <Plus size={13}></Plus>
                           <span>Add</span>
                         </button>
+                      </div>
+                    ) : (
+                      ""
+                    )}
+
+                    {type === "weekly_meal" ? (
+                      <div className="question-option-container">
+                        {/* Quick Selection Buttons */}
+                        {/* Quick Selection Buttons */}
+                        <div
+                          style={{
+                            marginBottom: "16px",
+                            display: "flex",
+                            gap: "8px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <button
+                            className={`add-option-button ${
+                              Object.values(mealCalendar).every(
+                                (day) => day === "veg"
+                              ) &&
+                              Object.values(mealCalendar).every(
+                                (day) => day !== ""
+                              )
+                                ? "active"
+                                : ""
+                            }`}
+                            style={{
+                              backgroundColor:
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "veg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                                  ? "#007bff"
+                                  : "",
+                              color:
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "veg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                                  ? "white"
+                                  : "",
+                            }}
+                            onClick={() => {
+                              const allVeg = {
+                                sunday: "veg",
+                                monday: "veg",
+                                tuesday: "veg",
+                                wednesday: "veg",
+                                thursday: "veg",
+                                friday: "veg",
+                                saturday: "veg",
+                              };
+                              setMealCalendar(allVeg);
+                            }}
+                          >
+                            All Veg
+                          </button>
+                          <button
+                            className={`add-option-button ${
+                              Object.values(mealCalendar).every(
+                                (day) => day === "nonveg"
+                              ) &&
+                              Object.values(mealCalendar).every(
+                                (day) => day !== ""
+                              )
+                                ? "active"
+                                : ""
+                            }`}
+                            style={{
+                              backgroundColor:
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "nonveg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                                  ? "#007bff"
+                                  : "",
+                              color:
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "nonveg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                                  ? "white"
+                                  : "",
+                            }}
+                            onClick={() => {
+                              const allNonVeg = {
+                                sunday: "nonveg",
+                                monday: "nonveg",
+                                tuesday: "nonveg",
+                                wednesday: "nonveg",
+                                thursday: "nonveg",
+                                friday: "nonveg",
+                                saturday: "nonveg",
+                              };
+                              setMealCalendar(allNonVeg);
+                            }}
+                          >
+                            All Non-Veg
+                          </button>
+                          <button
+                            className={`add-option-button ${
+                              Object.values(mealCalendar).every(
+                                (day) => day === "egg"
+                              ) &&
+                              Object.values(mealCalendar).every(
+                                (day) => day !== ""
+                              )
+                                ? "active"
+                                : ""
+                            }`}
+                            style={{
+                              backgroundColor:
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "egg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                                  ? "#007bff"
+                                  : "",
+                              color:
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "egg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                                  ? "white"
+                                  : "",
+                            }}
+                            onClick={() => {
+                              const allEgg = {
+                                sunday: "egg",
+                                monday: "egg",
+                                tuesday: "egg",
+                                wednesday: "egg",
+                                thursday: "egg",
+                                friday: "egg",
+                                saturday: "egg",
+                              };
+                              setMealCalendar(allEgg);
+                            }}
+                          >
+                            All Egg
+                          </button>
+                          <button
+                            className={`add-option-button ${
+                              !(
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "veg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                              ) &&
+                              !(
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "nonveg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                              ) &&
+                              !(
+                                Object.values(mealCalendar).every(
+                                  (day) => day === "egg"
+                                ) &&
+                                Object.values(mealCalendar).every(
+                                  (day) => day !== ""
+                                )
+                              ) &&
+                              Object.values(mealCalendar).some(
+                                (day) => day !== ""
+                              )
+                                ? "active"
+                                : ""
+                            }`}
+                            style={{
+                              backgroundColor:
+                                !(
+                                  Object.values(mealCalendar).every(
+                                    (day) => day === "veg"
+                                  ) &&
+                                  Object.values(mealCalendar).every(
+                                    (day) => day !== ""
+                                  )
+                                ) &&
+                                !(
+                                  Object.values(mealCalendar).every(
+                                    (day) => day === "nonveg"
+                                  ) &&
+                                  Object.values(mealCalendar).every(
+                                    (day) => day !== ""
+                                  )
+                                ) &&
+                                !(
+                                  Object.values(mealCalendar).every(
+                                    (day) => day === "egg"
+                                  ) &&
+                                  Object.values(mealCalendar).every(
+                                    (day) => day !== ""
+                                  )
+                                ) &&
+                                Object.values(mealCalendar).some(
+                                  (day) => day !== ""
+                                )
+                                  ? "#007bff"
+                                  : "",
+                              color:
+                                !(
+                                  Object.values(mealCalendar).every(
+                                    (day) => day === "veg"
+                                  ) &&
+                                  Object.values(mealCalendar).every(
+                                    (day) => day !== ""
+                                  )
+                                ) &&
+                                !(
+                                  Object.values(mealCalendar).every(
+                                    (day) => day === "nonveg"
+                                  ) &&
+                                  Object.values(mealCalendar).every(
+                                    (day) => day !== ""
+                                  )
+                                ) &&
+                                !(
+                                  Object.values(mealCalendar).every(
+                                    (day) => day === "egg"
+                                  ) &&
+                                  Object.values(mealCalendar).every(
+                                    (day) => day !== ""
+                                  )
+                                ) &&
+                                Object.values(mealCalendar).some(
+                                  (day) => day !== ""
+                                )
+                                  ? "white"
+                                  : "",
+                            }}
+                            onClick={() => {
+                              const customCalendar = {
+                                sunday: "",
+                                monday: "",
+                                tuesday: "",
+                                wednesday: "",
+                                thursday: "",
+                                friday: "",
+                                saturday: "",
+                              };
+                              setMealCalendar(customCalendar);
+                            }}
+                          >
+                            Custom
+                          </button>
+                        </div>
+
+                        {/* Weekly Calendar Grid */}
+                        <div
+                          style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(7, 1fr)",
+                            gap: "12px",
+                            border: "1px solid #e0e0e0",
+                            borderRadius: "8px",
+                            padding: "16px",
+                            backgroundColor: "#fafafa",
+                          }}
+                        >
+                          {[
+                            "Sunday",
+                            "Monday",
+                            "Tuesday",
+                            "Wednesday",
+                            "Thursday",
+                            "Friday",
+                            "Saturday",
+                          ].map((day, index) => {
+                            const dayKey = day.toLowerCase();
+                            return (
+                              <div key={day} style={{ textAlign: "left" }}>
+                                <div
+                                  style={{
+                                    fontWeight: "600",
+                                    fontSize: "0.875rem",
+                                    marginBottom: "8px",
+                                    color: "#333",
+                                  }}
+                                >
+                                  {day.substring(0, 3)}
+                                </div>
+                                <div
+                                  style={{
+                                    display: "flex",
+                                    flexDirection: "column",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  {["veg", "nonveg", "egg"].map((option) => (
+                                    <div
+                                      key={option}
+                                      style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        fontSize: "0.75rem",
+                                        cursor: "pointer",
+                                        padding: "2px 0",
+                                      }}
+                                      onClick={() => {
+                                        setMealCalendar({
+                                          ...mealCalendar,
+                                          [dayKey]:
+                                            mealCalendar[dayKey] === option
+                                              ? ""
+                                              : option,
+                                        });
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          width: "16px",
+                                          height: "16px",
+                                          border: "1px solid #ccc",
+                                          borderRadius: "2px",
+                                          marginRight: "6px",
+                                          display: "flex",
+                                          alignItems: "center",
+                                          justifyContent: "center",
+                                          backgroundColor:
+                                            mealCalendar[dayKey] === option
+                                              ? "#007bff"
+                                              : "white",
+                                          color:
+                                            mealCalendar[dayKey] === option
+                                              ? "white"
+                                              : "transparent",
+                                          fontSize: "12px",
+                                          fontWeight: "bold",
+                                        }}
+                                      >
+                                        ✓
+                                      </div>
+                                      <span style={{ userSelect: "none" }}>
+                                        {option === "veg"
+                                          ? "Veg"
+                                          : option === "nonveg"
+                                          ? "Non-Veg"
+                                          : "Egg"}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
                     ) : (
                       ""

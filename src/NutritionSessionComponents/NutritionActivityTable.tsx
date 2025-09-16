@@ -1,5 +1,6 @@
 import { LucideCircleMinus, Plus, Save, X } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
+import { Edit } from "lucide-react";
 import {
   Activity_Api_call,
   DataContext,
@@ -41,8 +42,24 @@ function NutritionActivityTable() {
   const [theme, setTheme] = useState("");
   const [goal, setGoal] = useState("");
 
+  const [mealType, setMealType] = useState("");
+const mealTypes = [
+  "breakfast",
+  "brunch",
+  "lunch",
+  "dinner",
+  "morning snack",
+  "evening snack",
+  "midnight snack",
+  "pre-bed snack",
+  "before workout",
+  "after workout",
+  "post dinner",
+];
+
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
+  const [resetKey, setResetKey] = useState(0);
   const [literals, setLiterals] = useState({
     themes: [],
     goals: [],
@@ -71,10 +88,17 @@ function NutritionActivityTable() {
       target2: null,
       unit: "",
       unit2: "",
-      type: "",
+      // type: "",
       videoLink: "",
+      vegNonVeg: "VEG",
     },
   ]);
+
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [originalEmptyArr, setOriginalEmptyArr] = useState<Activity_Api_call[]>(
+    []
+  );
+  const [editedActivities, setEditedActivities] = useState([]);
 
   const [emptyArr, setEmptyArr] = useState<Activity_Api_call[]>([
     {
@@ -85,8 +109,9 @@ function NutritionActivityTable() {
       unit: "",
       unit2: "",
       icon: "",
-      type: "",
+      // type: "",
       videoLink: "",
+      vegNonVeg: "VEG",
     },
   ]);
 
@@ -109,6 +134,20 @@ function NutritionActivityTable() {
       .map((item) => item.activityId)
       .filter((id): id is string => typeof id === "string");
 
+    // Determine session-level vegNonVeg
+    const hasNonVeg = emptyArr.some(
+      (activity) => (activity.vegNonVeg || "VEG") === "NONVEG"
+    );
+    const hasEgg = emptyArr.some(
+      (activity) => (activity.vegNonVeg || "VEG") === "EGG"
+    );
+    let sessionVegNonVeg = "VEG";
+    if (hasNonVeg) {
+      sessionVegNonVeg = "NONVEG";
+    } else if (hasEgg) {
+      sessionVegNonVeg = "EGG";
+    }
+
     const sessionToBeCreated: Session_Api_call = {
       title: planName,
       description: "",
@@ -116,9 +155,42 @@ function NutritionActivityTable() {
       activityIds: activityIds,
       themes: theme ? [theme] : [],
       goals: goal ? [goal] : [],
+      vegNonVeg: sessionVegNonVeg,
+      type: mealType
     };
+    if (editedActivities.length > 0) {
+      sessionToBeCreated.editedActivities = editedActivities.map(
+        (activity) => ({
+          ...activity,
+          vegNonVeg: activity.vegNonVeg || "VEG", // Default to "Veg" if undefined
+        })
+      );
+    }
     console.log(sessionToBeCreated);
     await createSession(sessionToBeCreated);
+    // Clear all fields
+    setPlanName("");
+    setTheme("");
+    setGoal("");
+    setMealType("");
+    setEmptyArr([
+      {
+        name: "",
+        description: "",
+        target: null,
+        target2: null,
+        unit: "",
+        unit2: "",
+        icon: "",
+        //type: "",
+        videoLink: "",
+        vegNonVeg: "VEG",
+        activityId: "",
+      },
+    ]);
+    setSelectedActivities({});
+    setEditedActivities([]);
+    setResetKey((prev) => prev + 1);
   };
 
   const handleAddNewRow = () => {
@@ -133,8 +205,9 @@ function NutritionActivityTable() {
         unit: "",
         unit2: "",
         icon: "",
-        type: "",
+        // type: "",
         videoLink: "",
+        vegNonVeg: "VEG",
       },
     ]);
   };
@@ -151,8 +224,9 @@ function NutritionActivityTable() {
         unit: "",
         unit2: "",
         icon: "",
-        type: "",
+        // type: "",
         videoLink: "",
+        vegNonVeg: "VEG",
       },
     ]);
   };
@@ -181,23 +255,22 @@ function NutritionActivityTable() {
     }
 
     const newItems = validActivities.map((activity) => {
-      // Ensure all fields have proper values and types
       const item = {
         name: activity.name.trim(),
         description: activity.description.trim(),
-        target: Number(activity.target), // Convert to number
+        target: Number(activity.target),
         unit: activity.unit,
-        type: activity.type || "",
-        videoLink: "", // Always pass empty string for nutrition
+        // type: activity.type || "",
+        videoLink: "",
+        vegNonVeg: activity.vegNonVeg || "VEG", // Default to "Veg" if undefined
       };
 
-      // Only include target2 and unit2 if they have values
       if (
         activity.target2 &&
         activity.target2 !== "" &&
         activity.target2 !== null
       ) {
-        item.target2 = Number(activity.target2); // Convert to number
+        item.target2 = Number(activity.target2);
       }
 
       if (activity.unit2 && activity.unit2 !== "" && activity.unit2 !== null) {
@@ -217,16 +290,13 @@ function NutritionActivityTable() {
       } catch (error) {
         console.error("Error posting activities:", error);
         console.error("Failed item data:", newItems);
-        // Still show user feedback but don't break the flow
         alert(
           "Some activities could not be saved. Please check the console for details."
         );
-        throw error; // Re-throw to prevent continuing
+        throw error;
       }
     };
-    // ✅ Wait for posting to finish
     await postEachActivity();
-    // ✅ Then update the state
     await getActivities("", "", "NUTRITION");
     setNewActivities([
       {
@@ -236,8 +306,9 @@ function NutritionActivityTable() {
         target2: null,
         unit: "",
         unit2: "",
-        type: "",
         videoLink: "",
+        vegNonVeg: "VEG",
+        activityId: "",
       },
     ]);
     setShowModal(false);
@@ -275,10 +346,14 @@ function NutritionActivityTable() {
   };
 
   const updateTheActivitityById = async (activityId: string, index: number) => {
+    if (!activityId) return;
     const activity = await getActivityById(activityId);
     console.log(activity, "['pilkujhgfd");
     if (activity) {
-      emptyArr[index] = activity;
+      emptyArr[index] = {
+        ...activity,
+        vegNonVeg: activity.vegNonVeg || "VEG", // Default to "Veg" if API returns undefined
+      };
       setEmptyArr([...emptyArr]);
     } else {
       console.error("Activity not found");
@@ -291,7 +366,26 @@ function NutritionActivityTable() {
 
   const handleActivitySelectChange = (id: number, value: string) => {
     setSelectedActivities((prev) => ({ ...prev, [id]: value }));
-    updateTheActivitityById(value, id);
+    if (value) {
+      updateTheActivitityById(value, id);
+    } else {
+      // Clear the row if no activity is selected
+      const updated = [...emptyArr];
+      updated[id] = {
+        name: "",
+        description: "",
+        target: null,
+        target2: null,
+        unit: "",
+        unit2: "",
+        icon: "",
+        // type: "",
+        videoLink: "",
+        vegNonVeg: "VEG",
+        activityId: "",
+      };
+      setEmptyArr(updated);
+    }
   };
 
   const formatUnit = (unit: string) => {
@@ -323,26 +417,6 @@ function NutritionActivityTable() {
   useEffect(() => {
     console.log(theme);
     console.log(goal);
-  }, [theme, goal]);
-
-  //controlling acitivites with theme adn goal
-  useEffect(() => {
-    if (theme && goal) {
-      console.log("Theme and Goal are set:", theme, goal);
-      getActivities(theme, goal, "NUTRITION");
-      return;
-    }
-    if (theme) {
-      console.log("Theme is set:", theme);
-      getActivities(theme, "", "NUTRITION");
-      return;
-    }
-    if (goal) {
-      console.log("Goal is set:", goal);
-      getActivities("", goal, "NUTRITION");
-      return;
-    }
-    getActivities("", "", "NUTRITION");
   }, [theme, goal]);
 
   useEffect(() => {
@@ -439,10 +513,112 @@ function NutritionActivityTable() {
               </Select>
             </FormControl>
           </div>
+
+          <div className="flex flex-col w-full lg:w-auto min-w-0">
+  <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
+    <InputLabel id="meal-type-select-label" shrink={true}>
+      Type
+    </InputLabel>
+    <Select
+      labelId="meal-type-select-label"
+      value={mealType}
+      onChange={(e) => setMealType(e.target.value)}
+      displayEmpty
+      renderValue={(selected) => {
+        if (!selected) {
+          return <span></span>;
+        }
+        return selected;
+      }}
+      sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
+    >
+      <MenuItem value="">None</MenuItem>
+      {mealTypes.map((type, i) => (
+        <MenuItem key={i} value={type}>
+          {type}
+        </MenuItem>
+      ))}
+    </Select>
+  </FormControl>
+</div>
         </div>
 
         {/* Right Buttons */}
         <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
+          <div className="flex items-center gap-3">
+            {!isEditMode ? (
+              <button
+                className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
+                onClick={() => {
+                  setOriginalEmptyArr(JSON.parse(JSON.stringify(emptyArr)));
+                  setIsEditMode(true);
+                }}
+              >
+                <Edit size={20} />
+                <span>Edit Mode</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  className="flex items-center justify-center space-x-2 text-white px-4 py-3 rounded-xl text-sm md:text-base btn2 whitespace-nowrap"
+                  onClick={() => {
+                    const changes = [];
+                    emptyArr.forEach((activity, index) => {
+                      const original = originalEmptyArr[index];
+                      if (original) {
+                        const changedFields = {};
+                        if (activity.name !== original.name) {
+                          changedFields.name = activity.name;
+                          setSelectedActivities((prev) => ({
+                            ...prev,
+                            [index]:
+                              activity.activityId ||
+                              prev[index] ||
+                              Date.now().toString(),
+                          }));
+                        }
+                        if (activity.description !== original.description)
+                          changedFields.description = activity.description;
+                        if (activity.target !== original.target)
+                          changedFields.target = activity.target;
+                        if (activity.unit !== original.unit)
+                          changedFields.unit = activity.unit;
+                        if (activity.target2 !== original.target2)
+                          changedFields.target2 = activity.target2;
+                        if (activity.unit2 !== original.unit2)
+                          changedFields.unit2 = activity.unit2;
+                        // if (activity.type !== original.type)
+                        //   changedFields.type = activity.type;
+                        if (activity.vegNonVeg !== original.vegNonVeg)
+                          changedFields.vegNonVeg = activity.vegNonVeg || "VEG";
+                        if (Object.keys(changedFields).length > 0) {
+                          changes.push({
+                            activityTemplateId: activity.activityId,
+                            ...changedFields,
+                          });
+                        }
+                      }
+                    });
+                    setEditedActivities(changes);
+                    setIsEditMode(false);
+                  }}
+                >
+                  <Save size={20} />
+                  <span>Save</span>
+                </button>
+                <button
+                  className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
+                  onClick={() => {
+                    setEmptyArr(JSON.parse(JSON.stringify(originalEmptyArr)));
+                    setIsEditMode(false);
+                    setEditedActivities([]);
+                  }}
+                >
+                  <span>Cancel</span>
+                </button>
+              </>
+            )}
+          </div>
           <button
             className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
             onClick={() => setShowModal(true)}
@@ -466,29 +642,29 @@ function NutritionActivityTable() {
           <table className="w-full table-auto border-collapse">
             <thead className="sticky top-0 bg-white z-10">
               <tr className="text-left text-gray-700 text-sm md:text-base">
-                {[
-                  "Sl No.",
-                  "Item",
-                  "Description",
-                  "Target 1",
-                  "Unit 1",
-                  "Target 2",
-                  "Unit 2",
-                  "Type",
-                  "",
-                ].map((item, index) => (
-                  <th
-                    key={index}
-                    className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
-                    style={{
-                      minWidth:
-                        index === 1 ? "280px" : index === 2 ? "200px" : "auto",
-                    }}
-                  >
-                    {item}
-                  </th>
-                ))}
-              </tr>
+  {[
+    "Sl No.",
+    "Item",
+    "Description",
+    "Target 1",
+    "Unit 1",
+    "Target 2",
+    "Unit 2",
+    "VegNonVeg",
+    "",
+  ].map((item, index) => (
+    <th
+      key={index}
+      className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
+      style={{
+        minWidth:
+          index === 1 ? "280px" : index === 2 ? "200px" : "auto",
+      }}
+    >
+      {item}
+    </th>
+  ))}
+</tr>
             </thead>
             <tbody>
               {emptyArr.map((activity, index) => (
@@ -505,79 +681,124 @@ function NutritionActivityTable() {
                     style={{ minWidth: "280px" }}
                   >
                     <div className="flex justify-center">
-                      <Autocomplete
-                        options={uniqueActivities}
-                        getOptionLabel={(option) => option.name || ""}
-                        value={
-                          uniqueActivities.find(
-                            (a) => a.activityId === selectedActivities[index]
-                          ) || null
-                        }
-                        onChange={(_, newValue) => {
-                          handleActivitySelectChange(
-                            index,
-                            newValue ? newValue.activityId : ""
-                          );
-                          setActivityForTable(newValue);
-                        }}
-                        filterOptions={(options, { inputValue }) => {
-                          if (!inputValue || inputValue.length < 2) {
-                            return options.slice(0, 15);
+                      {!isEditMode ? (
+                        <Autocomplete
+                          key={`nutrition-${index}-${resetKey}`}
+                          options={uniqueActivities}
+                          getOptionLabel={(option) => option.name || ""}
+                          value={
+                            uniqueActivities.find(
+                              (a) => a.activityId === selectedActivities[index]
+                            ) ||
+                            (activity.name
+                              ? {
+                                  name: activity.name,
+                                  activityId: activity.activityId,
+                                }
+                              : null)
                           }
-
-                          const lowerInput = inputValue.toLowerCase();
-                          const exactMatches: any[] = [];
-                          const startsMatches: any[] = [];
-                          const containsMatches: any[] = [];
-
-                          for (const option of options) {
-                            const nameLower = option.name.toLowerCase();
-
-                            if (nameLower === lowerInput) {
-                              exactMatches.push(option);
-                            } else if (nameLower.startsWith(lowerInput)) {
-                              startsMatches.push(option);
-                            } else if (nameLower.includes(lowerInput)) {
-                              containsMatches.push(option);
+                          onChange={(_, newValue) => {
+                            if (newValue && typeof newValue === "string") {
+                              const updated = [...emptyArr];
+                              updated[index].name = newValue;
+                              const newId = Date.now().toString();
+                              updated[index].activityId = newId;
+                              setEmptyArr(updated);
+                              setSelectedActivities((prev) => ({
+                                ...prev,
+                                [index]: newId,
+                              }));
+                              setActivityForTable({
+                                name: newValue,
+                                activityId: newId,
+                              });
+                            } else {
+                              handleActivitySelectChange(
+                                index,
+                                newValue ? newValue.activityId : ""
+                              );
+                              setActivityForTable(newValue);
+                            }
+                          }}
+                          filterOptions={(options, { inputValue }) => {
+                            if (!inputValue || inputValue.length < 2) {
+                              return options.slice(0, 15);
                             }
 
-                            if (
-                              exactMatches.length +
-                                startsMatches.length +
-                                containsMatches.length >=
-                              20
-                            )
-                              break;
-                          }
+                            const lowerInput = inputValue.toLowerCase();
+                            const exactMatches: any[] = [];
+                            const startsMatches: any[] = [];
+                            const containsMatches: any[] = [];
 
-                          return [
-                            ...exactMatches,
-                            ...startsMatches.sort((a, b) =>
-                              a.name.localeCompare(b.name)
-                            ),
-                            ...containsMatches.sort((a, b) =>
-                              a.name.localeCompare(b.name)
-                            ),
-                          ].slice(0, 20);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Select Item"
-                            variant="outlined"
-                            size="small"
-                            sx={{ width: 250 }}
-                          />
-                        )}
-                        sx={{ width: 250, backgroundColor: "white" }}
-                        isOptionEqualToValue={(option, value) =>
-                          option.activityId === value.activityId
-                        }
-                        freeSolo
-                        noOptionsText="Type 2+ characters to search..."
-                        disablePortal
-                        blurOnSelect
-                      />
+                            for (const option of options) {
+                              const nameLower = option.name.toLowerCase();
+
+                              if (nameLower === lowerInput) {
+                                exactMatches.push(option);
+                              } else if (nameLower.startsWith(lowerInput)) {
+                                startsMatches.push(option);
+                              } else if (nameLower.includes(lowerInput)) {
+                                containsMatches.push(option);
+                              }
+
+                              if (
+                                exactMatches.length +
+                                  startsMatches.length +
+                                  containsMatches.length >=
+                                20
+                              )
+                                break;
+                            }
+
+                            return [
+                              ...exactMatches,
+                              ...startsMatches.sort((a, b) =>
+                                a.name.localeCompare(b.name)
+                              ),
+                              ...containsMatches.sort((a, b) =>
+                                a.name.localeCompare(b.name)
+                              ),
+                            ].slice(0, 20);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Select Item"
+                              variant="outlined"
+                              size="small"
+                              sx={{ width: 250 }}
+                            />
+                          )}
+                          sx={{ width: 250, backgroundColor: "white" }}
+                          isOptionEqualToValue={(option, value) =>
+                            option.activityId === value.activityId
+                          }
+                          freeSolo
+                          noOptionsText="Type 2+ characters to search..."
+                          disablePortal
+                          blurOnSelect
+                        />
+                      ) : (
+                        <TextField
+                          label="Item Name"
+                          variant="outlined"
+                          size="small"
+                          value={activity.name || ""}
+                          onChange={(e) => {
+                            const updated = [...emptyArr];
+                            updated[index].name = e.target.value;
+                            if (!updated[index].activityId) {
+                              updated[index].activityId = Date.now().toString();
+                            }
+                            setEmptyArr(updated);
+                            setSelectedActivities((prev) => ({
+                              ...prev,
+                              [index]: updated[index].activityId,
+                            }));
+                          }}
+                          sx={{ width: 250 }}
+                        />
+                      )}
                     </div>
                   </td>
 
@@ -585,23 +806,172 @@ function NutritionActivityTable() {
                     className="px-4 py-7 border-b border-b-gray-200 text-center align-middle"
                     style={{ minWidth: "200px" }}
                   >
-                    <div className="break-words">{activity.description}</div>
+                    {!isEditMode ? (
+                      <div className="break-words">{activity.description}</div>
+                    ) : (
+                      <TextField
+                        label="Description"
+                        variant="outlined"
+                        size="small"
+                        value={activity.description || ""}
+                        onChange={(e) => {
+                          const updated = [...emptyArr];
+                          updated[index].description = e.target.value;
+                          setEmptyArr(updated);
+                        }}
+                        fullWidth
+                      />
+                    )}
                   </td>
+
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {activity.target}
+                    {!isEditMode ? (
+                      activity.target
+                    ) : (
+                      <TextField
+                        type="number"
+                        label="Target 1"
+                        variant="outlined"
+                        size="small"
+                        value={activity.target ?? ""}
+                        onChange={(e) => {
+                          const updated = [...emptyArr];
+                          updated[index].target = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setEmptyArr(updated);
+                        }}
+                      />
+                    )}
                   </td>
+
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {formatUnit(activity.unit)}
+                    {!isEditMode ? (
+                      formatUnit(activity.unit)
+                    ) : (
+                      <Autocomplete
+                        options={NutritionUnits}
+                        getOptionLabel={(option) => formatUnit(option) || ""}
+                        value={activity.unit || ""}
+                        onChange={(_, newValue) => {
+                          const updated = [...emptyArr];
+                          updated[index].unit = newValue || "";
+                          setEmptyArr(updated);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Unit 1"
+                            variant="outlined"
+                            size="small"
+                            sx={{ width: 120 }}
+                          />
+                        )}
+                      />
+                    )}
                   </td>
+
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {activity.target2}
+                    {!isEditMode ? (
+                      activity.target2
+                    ) : (
+                      <TextField
+                        type="number"
+                        label="Target 2"
+                        variant="outlined"
+                        size="small"
+                        value={activity.target2 ?? ""}
+                        onChange={(e) => {
+                          const updated = [...emptyArr];
+                          updated[index].target2 = e.target.value
+                            ? Number(e.target.value)
+                            : null;
+                          setEmptyArr(updated);
+                        }}
+                      />
+                    )}
                   </td>
+
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {formatUnit(activity.unit2)}
+                    {!isEditMode ? (
+                      formatUnit(activity.unit2)
+                    ) : (
+                      <Autocomplete
+                        options={NutritionUnits}
+                        getOptionLabel={(option) => formatUnit(option) || ""}
+                        value={activity.unit2 || ""}
+                        onChange={(_, newValue) => {
+                          const updated = [...emptyArr];
+                          updated[index].unit2 = newValue || "";
+                          setEmptyArr(updated);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Unit 2"
+                            variant="outlined"
+                            size="small"
+                            sx={{ width: 120 }}
+                          />
+                        )}
+                      />
+                    )}
                   </td>
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {activity.type}
-                  </td>
+
+<td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+  {!isEditMode ? (
+    activity.vegNonVeg || "VEG"
+  ) : (
+    <Autocomplete
+      options={["VEG", "NONVEG", "EGG"]}
+      getOptionLabel={(option) => option || ""}
+      value={activity.vegNonVeg || "VEG"}
+      onChange={(_, newValue) => {
+        const updated = [...emptyArr];
+        updated[index].vegNonVeg = newValue || "VEG";
+        setEmptyArr(updated);
+      }}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label="Veg/NonVeg"
+          variant="outlined"
+          size="small"
+          sx={{ width: 120 }}
+        />
+      )}
+    />
+  )}
+</td>
+
+                  {/* {(selectedActivities[index] || activity.activityId) && (
+                    <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+                      {!isEditMode ? (
+                        activity.vegNonVeg || ""
+                      ) : (
+                        <Autocomplete
+                          options={["Veg", "NonVeg", "Egg"]}
+                          getOptionLabel={(option) => option || ""}
+                          value={activity.vegNonVeg || ""}
+                          onChange={(_, newValue) => {
+                            const updated = [...emptyArr];
+                            updated[index].vegNonVeg = newValue || "";
+                            setEmptyArr(updated);
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Veg/NonVeg"
+                              variant="outlined"
+                              size="small"
+                              sx={{ width: 120 }}
+                            />
+                          )}
+                        />
+                      )}
+                    </td>
+                  )} */}
+
                   <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
                     <div className="flex justify-center items-center">
                       <button onClick={() => handleDelete(index)}>
@@ -613,14 +983,14 @@ function NutritionActivityTable() {
               ))}
               <tr className="border-b border-b-gray-300">
                 <td className="p-3" colSpan={9}>
-                  <button
-                    className="flex items-center space-x-2 px-4 py-2 add-row"
-                    onClick={addNewRow}
-                  >
-                    <Plus />
-                    <span>Add Row</span>
-                  </button>
-                </td>
+  <button
+    className="flex items-center space-x-2 px-4 py-2 add-row"
+    onClick={addNewRow}
+  >
+    <Plus />
+    <span>Add Row</span>
+  </button>
+</td>
               </tr>
             </tbody>
           </table>
@@ -664,7 +1034,8 @@ function NutritionActivityTable() {
                       <th className="px-4 py-2 text-center">Unit 1</th>
                       <th className="px-4 py-2 text-center">Target 2</th>
                       <th className="px-4 py-2 text-center">Unit 2</th>
-                      <th className="px-4 py-2 text-center">Type</th>
+                      
+                      <th className="px-4 py-2 text-center">VegNonVeg</th>
                       <th className="px-4 py-2 text-center"></th>
                     </tr>
                   </thead>
@@ -768,7 +1139,9 @@ function NutritionActivityTable() {
                           <div className="flex justify-center">
                             <Autocomplete
                               options={NutritionUnits}
-                              getOptionsLable={(option: any) => option || ""}
+                              getOptionLabel={(option) =>
+                                formatUnit(option) || ""
+                              }
                               value={activity.unit || ""}
                               onChange={(_, newValue) => {
                                 const updated = [...newActivities];
@@ -805,7 +1178,9 @@ function NutritionActivityTable() {
                           <div className="flex justify-center">
                             <Autocomplete
                               options={NutritionUnits}
-                              getOptionsLable={(option: any) => option || ""}
+                              getOptionLabel={(option) =>
+                                formatUnit(option) || ""
+                              }
                               value={activity.unit2 || ""}
                               onChange={(_, newValue) => {
                                 const updated = [...newActivities];
@@ -824,11 +1199,11 @@ function NutritionActivityTable() {
                             />
                           </div>
                         </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                        {/* <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
                           <div className="flex justify-center">
                             <Autocomplete
                               options={NutritionUtils}
-                              getOptionsLable={(option: any) => option || ""}
+                              getOptionLabel={(option) => option || ""}
                               value={activity.type || ""}
                               onChange={(_, newValue) => {
                                 const updated = [...newActivities];
@@ -839,6 +1214,29 @@ function NutritionActivityTable() {
                                 <TextField
                                   {...params}
                                   label="Select Type"
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{ width: 120 }}
+                                />
+                              )}
+                            />
+                          </div>
+                        </td> */}
+                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                          <div className="flex justify-center">
+                            <Autocomplete
+                              options={["VEG", "NONVEG", "EGG"]}
+                              getOptionLabel={(option) => option || ""}
+                              value={activity.vegNonVeg || ""}
+                              onChange={(_, newValue) => {
+                                const updated = [...newActivities];
+                                updated[index].vegNonVeg = newValue || "";
+                                setNewActivities(updated);
+                              }}
+                              renderInput={(params) => (
+                                <TextField
+                                  {...params}
+                                  label="Veg/NonVeg"
                                   variant="outlined"
                                   size="small"
                                   sx={{ width: 120 }}
