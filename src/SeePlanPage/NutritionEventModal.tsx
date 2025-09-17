@@ -186,10 +186,11 @@ useEffect(() => {
     // console.log(res, "this is res from get")
     if (res) {
       setDetails(res);
-      // Set meal type from session instance
-      if (res.mealType) {
-        setSelectedMealType(res.mealType);
-        setOriginalMealType(res.mealType);
+      // Set meal type from session details - check both type and mealType fields
+      const mealTypeValue = res.type || res.mealType || "";
+      if (mealTypeValue) {
+        setSelectedMealType(mealTypeValue);
+        setOriginalMealType(mealTypeValue);
       }
     } else {
       console.error("Failed to fetch meal details");
