@@ -45,7 +45,7 @@ interface Activity {
   target2: number;
   unit2: string;
   videoLink: string;
-  type: string;
+  // type: string;
   vegNonVeg: string;
 }
 export interface CsvRowPatch {
@@ -57,7 +57,7 @@ export interface CsvRowPatch {
   target2?: number;
   unit2?: string;
   videoLink?: string;
-  type?: string;
+  // type?: string;
   vegNonVeg?: string;
 }
 // YouTube Video Modal Component
@@ -193,24 +193,24 @@ const BulkAddMeals: React.FC = () => {
     target2: 0,
     unit2: "",
     videoLink: "",
-    type: "",
+    // type: "",
     vegNonVeg: "",
   });
 
   const unitOptions = ["grams", "meter", "litre", "millilitre", "glasses"];
-  const mealTypes = [
-    "breakfast",
-    "brunch",
-    "lunch",
-    "dinner",
-    "morning snack",
-    "evening snack",
-    "midnight snack",
-    "pre-bed snack",
-    "before workout",
-    "after workout",
-    "post dinner",
-  ];
+  // const mealTypes = [
+  //   "breakfast",
+  //   "brunch",
+  //   "lunch",
+  //   "dinner",
+  //   "morning snack",
+  //   "evening snack",
+  //   "midnight snack",
+  //   "pre-bed snack",
+  //   "before workout",
+  //   "after workout",
+  //   "post dinner",
+  // ];
   const mealCategory = ["VEG", "EGG", "NONVEG"];
   useEffect(() => {
     if (context.activities_api_call && context.activities_api_call.length > 0) {
@@ -223,7 +223,7 @@ const BulkAddMeals: React.FC = () => {
         target2: a.target2 || 0,
         unit2: a.unit2 || "",
         videoLink: a.videoLink || "",
-        type: a.type || "",
+        // type: a.type || "",
         vegNonVeg: a.vegNonVeg || "",
       }));
       setActivities(mapped);
@@ -267,8 +267,8 @@ const BulkAddMeals: React.FC = () => {
         !checkYoutubeLink(row.videoLink)
       )
         path.push({ rowId: row.activityId, field: "videoLink" });
-      if (row.type && !mealTypes.includes(row.type))
-        path.push({ rowId: row.activityId, field: "type" });
+      // if (row.type && !mealTypes.includes(row.type))
+      //   path.push({ rowId: row.activityId, field: "type" });
       if (!mealCategory.includes(row.vegNonVeg))
         path.push({ rowId: row.activityId, field: "vegNonVeg" });
     });
@@ -377,7 +377,7 @@ const BulkAddMeals: React.FC = () => {
         target2: Number(newActivityData.target2) || 0,
         unit2: newActivityData.unit2.trim() || "",
         videoLink: newActivityData.videoLink.trim() || "",
-        type: newActivityData.unit2.trim() || "",
+        // type: newActivityData.unit2.trim() || "",
         vegNonVeg,
       });
 
@@ -391,7 +391,7 @@ const BulkAddMeals: React.FC = () => {
         target2: created.target2 || 0,
         unit2: created.unit2 || "",
         videoLink: created.videoLink || "",
-        type: created.type || "",
+        // type: created.type || "",
         vegNonVeg: created.vegNonVeg,
       };
       setActivities((prev) => [newRow, ...prev]);
@@ -708,66 +708,66 @@ const BulkAddMeals: React.FC = () => {
         );
       },
     },
-    {
-      field: "type",
-      headerName: "Meal Timing",
-      width: 140,
-      headerAlign: "center",
-      align: "center",
-      editable: isEditMode || isAddingActivity,
-      type: "singleSelect",
-      valueOptions: mealTypes,
-      renderCell: (params) => {
-        const hasError = hasCellError(params.row.activityId, "type");
-        const isEditable =
-          isEditMode || (isAddingActivity && params.row.id === "new-activity");
-        if (isEditable) {
-          return (
-            <div
-              style={{
-                border: hasError ? "1px solid red" : "none",
-                padding: hasError ? "3px" : "4px",
-                borderRadius: "3px",
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-              }}
-            >
-              {params.value || (
-                <span style={{ color: "gray", fontStyle: "italic" }}>
-                  Select type
-                </span>
-              )}
-              <ChevronDown
-                size={16}
-                style={{ marginLeft: "4px", color: "gray" }}
-              />
-            </div>
-          );
-        } else {
-          return (
-            <div
-              style={{
-                border: hasError ? "1px solid red" : "none",
-                padding: hasError ? "3px" : "4px",
-                borderRadius: "3px",
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxSizing: "border-box",
-              }}
-            >
-              {params.value || "-"}
-            </div>
-          );
-        }
-      },
-    },
+    // {
+    //   field: "type",
+    //   headerName: "Meal Timing",
+    //   width: 140,
+    //   headerAlign: "center",
+    //   align: "center",
+    //   editable: isEditMode || isAddingActivity,
+    //   type: "singleSelect",
+    //   valueOptions: mealTypes,
+    //   renderCell: (params) => {
+    //     const hasError = hasCellError(params.row.activityId, "type");
+    //     const isEditable =
+    //       isEditMode || (isAddingActivity && params.row.id === "new-activity");
+    //     if (isEditable) {
+    //       return (
+    //         <div
+    //           style={{
+    //             border: hasError ? "1px solid red" : "none",
+    //             padding: hasError ? "3px" : "4px",
+    //             borderRadius: "3px",
+    //             width: "100%",
+    //             height: "100%",
+    //             display: "flex",
+    //             alignItems: "center",
+    //             justifyContent: "center",
+    //             boxSizing: "border-box",
+    //           }}
+    //         >
+    //           {params.value || (
+    //             <span style={{ color: "gray", fontStyle: "italic" }}>
+    //               Select type
+    //             </span>
+    //           )}
+    //           <ChevronDown
+    //             size={16}
+    //             style={{ marginLeft: "4px", color: "gray" }}
+    //           />
+    //         </div>
+    //       );
+    //     } else {
+    //       return (
+    //         <div
+    //           style={{
+    //             border: hasError ? "1px solid red" : "none",
+    //             padding: hasError ? "3px" : "4px",
+    //             borderRadius: "3px",
+    //             width: "100%",
+    //             height: "100%",
+    //             display: "flex",
+    //             alignItems: "center",
+    //             justifyContent: "center",
+    //             boxSizing: "border-box",
+    //           }}
+    //         >
+    //           {params.value || "-"}
+    //         </div>
+    //       );
+    //     }
+    //   },
+    // },
     {
       field: "vegNonVeg",
       headerName: "Veg/NonVeg",
@@ -888,7 +888,7 @@ const BulkAddMeals: React.FC = () => {
       target2: activity.target2,
       unit2: activity.unit2,
       videoLink: activity.videoLink,
-      type: activity.type,
+      // type: activity.type,
       vegNonVeg: activity.vegNonVeg,
     }));
   }, [filteredActivities, isAddingActivity, newActivityData]);
@@ -926,7 +926,7 @@ const BulkAddMeals: React.FC = () => {
       target2: a.target2 || undefined,
       unit2: a.unit2 || undefined,
       videoLink: a.videoLink || undefined,
-      type: a.type || undefined,
+      // type: a.type || undefined,
       vegNonVeg: a.vegNonVeg,
       scratchId: a.activityId,
     }));
@@ -995,6 +995,7 @@ const BulkAddMeals: React.FC = () => {
       target2: row.target2 || undefined,
       unit2: row.unit2 || undefined,
       videoLink: row.videoLink || undefined,
+      vegNonVeg: row.vegNonVeg,
       category: "nut",
     };
     const res = await fetch(
@@ -1133,7 +1134,7 @@ const BulkAddMeals: React.FC = () => {
                             target2: upd.target2,
                             unit2: upd.unit2,
                             videoLink: upd.videoLink,
-                            type: upd.type,
+                            // type: upd.type,
                             vegNonVeg: upd.vegNonVeg,
                           };
                         });
@@ -1271,7 +1272,7 @@ const BulkAddMeals: React.FC = () => {
                   target2: newRow.target2,
                   unit2: newRow.unit2,
                   videoLink: newRow.videoLink,
-                  type: newRow.type,
+                  // type: newRow.type,
                   vegNonVeg: newRow.vegNonVeg,
                 };
                 setNewActivityData(updatedNewActivity);
@@ -1298,8 +1299,8 @@ const BulkAddMeals: React.FC = () => {
                     changes.unit2 = newRow.unit2;
                   if (newRow.videoLink !== originalActivity.videoLink)
                     changes.videoLink = newRow.videoLink;
-                  if (newRow.type !== originalActivity.type)
-                    changes.type = newRow.type;
+                  // if (newRow.type !== originalActivity.type)
+                  //   changes.type = newRow.type;
                   if (newRow.vegNonVeg !== originalActivity.vegNonVeg)
                     changes.vegNonVeg = newRow.vegNonVeg;
                   // Update changedActivities map
@@ -1328,7 +1329,7 @@ const BulkAddMeals: React.FC = () => {
                       target2: newRow.target2,
                       unit2: newRow.unit2,
                       videoLink: newRow.videoLink,
-                      type: newRow.type,
+                      // type: newRow.type,
                       vegNonVeg: newRow.vegNonVeg,
                     };
                     setEditedActivities(updatedEditedActivities);

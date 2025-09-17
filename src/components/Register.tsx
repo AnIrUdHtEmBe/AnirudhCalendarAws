@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { enqueueSnackbar } from "notistack";
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 
 const USER_TYPES = [
   "employee",
@@ -72,7 +73,7 @@ const Register: React.FC = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/human/register",
+        `${API_BASE_URL2}/human/register`,
         formData
       );
 

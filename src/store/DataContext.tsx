@@ -25,7 +25,7 @@ export type Activity_Api_call = {
   target: number | null,
   unit: string,
   icon?: string,
-  type?:string,
+  // type?:string,
 }
 
 export type Session_Api_call = {
@@ -35,6 +35,17 @@ export type Session_Api_call = {
   category: string;
   activityIds?: string[];
   activities?: Activity_Api_call[];
+  type?: string;
+  editedActivities?: {
+  activityId: string;
+  target?: number;
+  target2?: number;
+  unit?: string;
+  unit2?: string;
+  description?: string;
+  vegNonVeg?: string;
+  name?: string;
+}[];
 }
 export type Customers_Api_call ={
   userId: string;

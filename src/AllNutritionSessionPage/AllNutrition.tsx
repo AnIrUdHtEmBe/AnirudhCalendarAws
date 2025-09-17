@@ -4,7 +4,7 @@ import {
   DataContext,
   Session_Api_call,
 } from "../store/DataContext";
-import { useApiCalls } from "../store/axios";
+import { API_BASE_URL, useApiCalls } from "../store/axios";
 import { MinusCircle, Plus } from "lucide-react";
 import {
   CircularProgress,
@@ -12,8 +12,16 @@ import {
   MenuItem,
   Select,
   TextField,
+  Checkbox,
+  ListItemText,
+  OutlinedInput,
+  InputLabel,
 } from "@mui/material";
-
+interface LiteralsResponse {
+  themes: string[];
+  goals: string[];
+  category: string[];
+}
 function AllNutrition() {
   const context = useContext(DataContext);
   const { getNutrition, patchSession, getActivities, getActivityById } =
@@ -23,12 +31,21 @@ function AllNutrition() {
     return <div>Loading...</div>;
   }
 
-  const {
-    activities_api_call,
-    nutrition_api_call,
-    setSelectComponent,
-  } = context;
-
+  const { activities_api_call, nutrition_api_call, setSelectComponent } =
+    context;
+  const MEAL_TYPES = [
+    "breakfast",
+    "brunch",
+    "lunch",
+    "dinner",
+    "morning snack",
+    "evening snack",
+    "midnight snack",
+    "pre-bed snack",
+    "before workout",
+    "after workout",
+    "post dinner",
+  ];
   const [searchTerm, setSearchTerm] = useState(""); // KEEP original
   const [selecteddPlan, setSelectedPlan] = useState<Session_Api_call | null>(
     null
@@ -38,9 +55,31 @@ function AllNutrition() {
     selecteddPlan?.category || "Nutrition"
   );
   const [loadingRowIndex, setLoadingRowIndex] = useState<number | null>(null);
+  const [themes, setThemes] = useState<string[]>(selecteddPlan?.themes || []);
+  const [goals, setGoals] = useState<string[]>(selecteddPlan?.goals || []);
 
+  const [mealType, setMealType] = useState<string>(selecteddPlan?.type || "");
+  const [allThemes, setAllThemes] = useState<string[]>([]);
+  const [allGoals, setAllGoals] = useState<string[]>([]);
+  const [allCategories, setAllCategories] = useState<string[]>([]);
+  const fetchLiterals = async () => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/session-template/getLiterlas`
+      );
+      const data: LiteralsResponse = await response.json();
+      setAllThemes(
+        data.themes.filter((theme) => theme !== "All" && theme !== "NA")
+      );
+      setAllGoals(data.goals.filter((goal) => goal !== "All" && goal !== "NA"));
+      setAllCategories(data.category);
+    } catch (error) {
+      console.error("Error fetching literals:", error);
+    }
+  };
   useEffect(() => {
     getNutrition();
+    fetchLiterals();
   }, []);
 
   useEffect(() => {
@@ -85,19 +124,61 @@ function AllNutrition() {
     }
   };
 
-  const handleSave = async () => {
-    try {
-      await patchSession(selecteddPlan?.sessionId, {
-        title: planName,
-        category: "NUTRITION",
-        activityIds: selecteddPlan?.activityIds,
-      });
-      console.log("Session updated successfully");
-    } catch (error) {
-      console.error("❌ Error updating session:", error);
-    }
-    getNutrition();
+  const handleThemeChange = (event: any) => {
+    const value = event.target.value;
+    setThemes(typeof value === "string" ? value.split(",") : value);
   };
+
+  const handleGoalChange = (event: any) => {
+    const value = event.target.value;
+    setGoals(typeof value === "string" ? value.split(",") : value);
+  };
+
+  const handleSave = async () => {
+  try {
+    // Calculate session-level vegNonVeg based on activities
+    const hasNonVeg = selecteddPlan?.activities?.some(
+      (activity) => {
+        const edited = selecteddPlan.editedActivities?.find(
+          (e) => (e.activityId ?? e.activityTemplateId) === activity.activityId
+        );
+        const mergedActivity = mergeEditedActivity(activity, edited);
+        return (mergedActivity.vegNonVeg || "VEG") === "NONVEG";
+      }
+    );
+    
+    const hasEgg = selecteddPlan?.activities?.some(
+      (activity) => {
+        const edited = selecteddPlan.editedActivities?.find(
+          (e) => (e.activityId ?? e.activityTemplateId) === activity.activityId
+        );
+        const mergedActivity = mergeEditedActivity(activity, edited);
+        return (mergedActivity.vegNonVeg || "VEG") === "EGG";
+      }
+    );
+
+    let sessionVegNonVeg = "VEG";
+    if (hasNonVeg) {
+      sessionVegNonVeg = "NONVEG";
+    } else if (hasEgg) {
+      sessionVegNonVeg = "EGG";
+    }
+
+    await patchSession(selecteddPlan?.sessionId, {
+      title: planName,
+      category: "NUTRITION",
+      activityIds: selecteddPlan?.activityIds,
+      themes: themes,
+      goals: goals,
+      type: mealType,
+      vegNonVeg: sessionVegNonVeg, 
+    });
+    console.log("Session updated successfully");
+  } catch (error) {
+    console.error("❌ Error updating session:", error);
+  }
+  getNutrition();
+};
 
   // ✅ Added missing fields here
   const emptyActivity: Activity_Api_call = {
@@ -108,8 +189,9 @@ function AllNutrition() {
     target2: null,
     unit: "",
     unit2: "",
-    type: "",
+    //type: "",
     icon: "",
+    vegNonVeg: "",
   };
 
   const addEmptyActivityRow = () => {
@@ -135,7 +217,41 @@ function AllNutrition() {
   };
 
   let slNo = 1;
+  const mergeEditedActivity = (
+    activity: Activity_Api_call,
+    editedActivity?: {
+      activityId: string;
+      target?: number;
+      target2?: number;
+      unit?: string;
+      unit2?: string;
+      description?: string;
+      vegNonVeg?: string;
+      name?: string;
+    }
+  ): Activity_Api_call => {
+    if (!editedActivity) return activity;
 
+    return {
+      ...activity,
+      target: editedActivity.target ?? activity.target,
+      target2: editedActivity.target2 ?? activity.target2,
+      unit: editedActivity.unit ?? activity.unit,
+      unit2: editedActivity.unit2 ?? activity.unit2,
+      description: editedActivity.description ?? activity.description,
+      vegNonVeg: editedActivity.vegNonVeg ?? activity.vegNonVeg,
+      name: editedActivity.name ?? activity.name,
+    };
+  };
+  useEffect(() => {
+    if (selecteddPlan) {
+      setPlanName(selecteddPlan.title || "");
+      setCategory(selecteddPlan.category || "");
+      setThemes(selecteddPlan.themes || []);
+      setGoals(selecteddPlan.goals || []);
+      setMealType(selecteddPlan.type || "");
+    }
+  }, [selecteddPlan]);
   return (
     <div className="all-session-container">
       {/* Left Panel */}
@@ -203,6 +319,62 @@ function AllNutrition() {
                 onChange={(e) => setCategory(e.target.value)}
               />
             </FormControl>
+            <FormControl fullWidth sx={{ width: "200px" }}>
+              <InputLabel id="meal-type-label">Meal Type</InputLabel>
+              <Select
+                labelId="meal-type-label"
+                id="meal-type-select"
+                value={mealType}
+                onChange={(e) => setMealType(e.target.value as string)}
+                label="Meal Type"
+              >
+                {MEAL_TYPES.map((type) => (
+                  <MenuItem key={type} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={{ width: "200px" }}>
+              <InputLabel id="themes-label">Themes</InputLabel>
+              <Select
+                labelId="themes-label"
+                id="themes-select"
+                multiple
+                value={themes}
+                onChange={handleThemeChange}
+                input={<OutlinedInput label="Themes" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
+              >
+                {allThemes.map((theme) => (
+                  <MenuItem key={theme} value={theme}>
+                    <Checkbox checked={themes.indexOf(theme) > -1} />
+                    <ListItemText primary={theme} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            {/* NEW: Goals Multi-Select */}
+            <FormControl fullWidth sx={{ width: "200px" }}>
+              <InputLabel id="goals-label">Goals</InputLabel>
+              <Select
+                labelId="goals-label"
+                id="goals-select"
+                multiple
+                value={goals}
+                onChange={handleGoalChange}
+                input={<OutlinedInput label="Goals" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
+              >
+                {allGoals.map((goal) => (
+                  <MenuItem key={goal} value={goal}>
+                    <Checkbox checked={goals.indexOf(goal) > -1} />
+                    <ListItemText primary={goal} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
           </div>
           <button onClick={handleSave} className="save-button">
             Save Changes
@@ -216,103 +388,136 @@ function AllNutrition() {
               <thead className="activities-table-header">
                 <tr>
                   <th className="actone">Sl.No</th>
-                  <th id="acttwo">Activity</th>
-                  <th className="actthree" id="acttwo">Description</th>
+                  <th id="acttwo">Food Item</th>
+                  <th className="actthree" id="acttwo">
+                    Description
+                  </th>
                   <th>Target 1</th>
                   <th>Unit 1</th>
                   <th>Target 2</th>
                   <th>Unit 2</th>
-                  <th>Type</th>
+                  {/* <th>Type</th> */}
+                  <th>VegNonVeg</th>
                   <th></th>
                 </tr>
               </thead>
               <tbody className="activities-table-header">
                 {selecteddPlan.activities?.map(
-                  (item: Activity_Api_call, index: number) => (
-                    <tr key={index} className="activity-row">
-                      {loadingRowIndex === index ? (
-                        <td colSpan={9} className="activity-cell text-center py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            <CircularProgress size={30} />
-                          </div>
-                        </td>
-                      ) : (
-                        <>
-                          <td className="activity-cell font-bold">{slNo++}</td>
-                          <td className="activity-cell" id="acttwo">
-                            <FormControl fullWidth>
-                              <Select
-                                labelId={`activity-select-label-${index}`}
-                                value={item.activityId}
-                                MenuProps={{
-                                  PaperProps: {
-                                    style: { maxHeight: 200, overflowY: "auto" },
-                                  },
-                                }}
-                                onChange={async (e) => {
-                                  const selectedId = e.target.value;
-                                  setLoadingRowIndex(index);
-                                  try {
-                                    const edittedActivity =
-                                      await getActivityById(selectedId);
-                                    const updatedActivities = [
-                                      ...selecteddPlan.activities,
-                                    ];
-                                    updatedActivities[index] = edittedActivity;
+                  (item: Activity_Api_call, index: number) => {
+                    const edited = selecteddPlan.editedActivities?.find(
+                      (e) =>
+                        (e.activityId ?? e.activityTemplateId) ===
+                        item.activityId
+                    );
+                    const mergedActivity = mergeEditedActivity(item, edited);
 
-                                    const updatedActivityIds = [
-                                      ...selecteddPlan.activityIds,
-                                    ];
-                                    updatedActivityIds[index] =
-                                      edittedActivity.activityId;
+                    return (
+                      <tr key={index} className="activity-row">
+                        {loadingRowIndex === index ? (
+                          <td
+                            colSpan={9}
+                            className="activity-cell text-center py-4"
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              <CircularProgress size={30} />
+                            </div>
+                          </td>
+                        ) : (
+                          <>
+                            <td className="activity-cell font-bold">
+                              {slNo++}
+                            </td>
+                            <td className="activity-cell" id="acttwo">
+                              <FormControl fullWidth>
+                                <Select
+                                  labelId={`activity-select-label-${index}`}
+                                  value={mergedActivity.activityId}
+                                  MenuProps={{
+                                    PaperProps: {
+                                      style: {
+                                        maxHeight: 200,
+                                        overflowY: "auto",
+                                      },
+                                    },
+                                  }}
+                                  onChange={async (e) => {
+                                    const selectedId = e.target.value;
+                                    setLoadingRowIndex(index);
+                                    try {
+                                      const edittedActivity =
+                                        await getActivityById(selectedId);
+                                      const updatedActivities = [
+                                        ...selecteddPlan.activities,
+                                      ];
+                                      updatedActivities[index] =
+                                        edittedActivity;
 
-                                    setSelectedPlan({
-                                      ...selecteddPlan,
-                                      activities: updatedActivities,
-                                      activityIds: updatedActivityIds,
-                                    });
-                                  } catch (err) {
-                                    console.error("Failed to fetch activity:", err);
-                                  } finally {
-                                    setLoadingRowIndex(null);
-                                  }
-                                }}
-                              >
-                                {activities_api_call.map(
-                                  (activity: Activity_Api_call, idx: number) => (
-                                    <MenuItem
-                                      key={idx}
-                                      value={activity.activityId}
-                                    >
-                                      {activity.name}
-                                    </MenuItem>
-                                  )
-                                )}
-                              </Select>
-                            </FormControl>
-                          </td>
-                          <td className="activity-cell" id="acttwo">
-                            {item.description}
-                          </td>
-                          <td className="activity-cell">{item.target}</td>
-                          <td className="activity-cell">
-                            {formatUnit(item.unit)}
-                          </td>
-                          <td className="activity-cell">{item.target2}</td>
-                          <td className="activity-cell">
-                            {formatUnit(item.unit2)}
-                          </td>
-                          <td className="activity-cell">{item.type}</td>
-                          <td>
-                            <MinusCircle
-                              className="text-red-500 cursor-pointer hover:text-red-700"
-                              onClick={() => handleDelete(index)}
-                            />
-                          </td>
-                        </>
-                      )}
-                    </tr>
-                  )
+                                      const updatedActivityIds = [
+                                        ...selecteddPlan.activityIds,
+                                      ];
+                                      updatedActivityIds[index] =
+                                        edittedActivity.activityId;
+
+                                      setSelectedPlan({
+                                        ...selecteddPlan,
+                                        activities: updatedActivities,
+                                        activityIds: updatedActivityIds,
+                                      });
+                                    } catch (err) {
+                                      console.error(
+                                        "Failed to fetch activity:",
+                                        err
+                                      );
+                                    } finally {
+                                      setLoadingRowIndex(null);
+                                    }
+                                  }}
+                                >
+                                  {activities_api_call.map(
+                                    (
+                                      activity: Activity_Api_call,
+                                      idx: number
+                                    ) => (
+                                      <MenuItem
+                                        key={idx}
+                                        value={activity.activityId}
+                                      >
+                                        {activity.name}
+                                      </MenuItem>
+                                    )
+                                  )}
+                                </Select>
+                              </FormControl>
+                            </td>
+                            <td className="activity-cell" id="acttwo">
+                              {mergedActivity.description}
+                            </td>
+                            <td className="activity-cell">
+                              {mergedActivity.target}
+                            </td>
+                            <td className="activity-cell">
+                              {formatUnit(mergedActivity.unit)}
+                            </td>
+                            <td className="activity-cell">
+                              {mergedActivity.target2}
+                            </td>
+                            <td className="activity-cell">
+                              {formatUnit(mergedActivity.unit2)}
+                            </td>
+                            <td className="activity-cell">
+                              {mergedActivity.vegNonVeg}
+                            </td>
+                            <td>
+                              <MinusCircle
+                                className="text-red-500 cursor-pointer hover:text-red-700"
+                                onClick={() => handleDelete(index)}
+                              />
+                            </td>
+                          </>
+                        )}
+                      </tr>
+                    );
+                  }
                 )}
                 <tr>
                   <td colSpan={9} className="activity-cell">
@@ -321,14 +526,16 @@ function AllNutrition() {
                       className="add-activity-button"
                     >
                       <Plus size={18} />
-                      <span>Add Activity</span>
+                      <span>Add Food Item</span>
                     </button>
                   </td>
                 </tr>
               </tbody>
             </table>
           ) : (
-            <div className="empty-state">Select a daily plan to view details.</div>
+            <div className="empty-state">
+              Select a daily plan to view details.
+            </div>
           )}
         </div>
       </div>

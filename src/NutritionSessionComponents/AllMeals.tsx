@@ -36,7 +36,7 @@ interface Activity {
   target2: number;
   unit2: string;
   videoLink: string;
-  type: string;
+  // type: string;
   vegNonVeg: string;
 }
 
@@ -98,24 +98,24 @@ const AllMeals: React.FC = () => {
     target2: 0,
     unit2: "",
     videoLink: "",
-    type: "",
+    // type: "",
     vegNonVeg: "",
   });
 
   const unitOptions = ["grams", "meter", "litre", "millilitre", "glasses"];
-  const mealTypes = [
-    "breakfast",
-    "brunch",
-    "lunch",
-    "dinner",
-    "morning snack",
-    "evening snack",
-    "midnight snack",
-    "pre-bed snack",
-    "before workout",
-    "after workout",
-    "post dinner",
-  ];
+  // const mealTypes = [
+  //   "breakfast",
+  //   "brunch",
+  //   "lunch",
+  //   "dinner",
+  //   "morning snack",
+  //   "evening snack",
+  //   "midnight snack",
+  //   "pre-bed snack",
+  //   "before workout",
+  //   "after workout",
+  //   "post dinner",
+  // ];
   const mealCategory = ["VEG", "EGG", "NONVEG"];
   // 1.  memoise the countdown logic
   const startCountDown = React.useCallback(() => {
@@ -451,44 +451,44 @@ const AllMeals: React.FC = () => {
         }
       },
     },
-    {
-      field: "type",
-      headerName: "Meal Timing",
-      width: 140,
-      headerAlign: "center",
-      align: "center",
-      editable: isEditMode || isAddingActivity,
-      type: "singleSelect",
-      valueOptions: mealTypes,
-      renderCell: (params) => {
-        const isEditable =
-          isEditMode || (isAddingActivity && params.row.id === "new-activity");
-        if (isEditable) {
-          return (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: "100%",
-              }}
-            >
-              {params.value || (
-                <span style={{ color: "gray", fontStyle: "italic" }}>
-                  Select type
-                </span>
-              )}
-              <ChevronDown
-                size={16}
-                style={{ marginLeft: "4px", color: "gray" }}
-              />
-            </div>
-          );
-        } else {
-          return params.value || "-";
-        }
-      },
-    },
+    // {
+    //   field: "type",
+    //   headerName: "Meal Timing",
+    //   width: 140,
+    //   headerAlign: "center",
+    //   align: "center",
+    //   editable: isEditMode || isAddingActivity,
+    //   type: "singleSelect",
+    //   valueOptions: mealTypes,
+    //   renderCell: (params) => {
+    //     const isEditable =
+    //       isEditMode || (isAddingActivity && params.row.id === "new-activity");
+    //     if (isEditable) {
+    //       return (
+    //         <div
+    //           style={{
+    //             display: "flex",
+    //             alignItems: "center",
+    //             justifyContent: "center",
+    //             width: "100%",
+    //           }}
+    //         >
+    //           {params.value || (
+    //             <span style={{ color: "gray", fontStyle: "italic" }}>
+    //               Select type
+    //             </span>
+    //           )}
+    //           <ChevronDown
+    //             size={16}
+    //             style={{ marginLeft: "4px", color: "gray" }}
+    //           />
+    //         </div>
+    //       );
+    //     } else {
+    //       return params.value || "-";
+    //     }
+    //   },
+    // },
     {
       field: "vegNonVeg",
       headerName: "Veg/NonVeg",
@@ -559,7 +559,7 @@ const AllMeals: React.FC = () => {
       target2: activity.target2,
       unit2: activity.unit2,
       videoLink: activity.videoLink,
-      type: activity.type,
+      // type: activity.type,
       vegNonVeg: activity.vegNonVeg,
     }));
   }, [filteredActivities, isAddingActivity, newActivityData]);
@@ -581,8 +581,7 @@ const AllMeals: React.FC = () => {
       "Unit",
       "Target2",
       "Unit2",
-      "MealType",
-      "MealCategory",
+      "VegNonVeg",
     ];
     const csvContent = headers.join(",");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -642,8 +641,7 @@ const AllMeals: React.FC = () => {
         "Unit",
         "Target2",
         "Unit2",
-        "MealType",
-        "MealCategory",
+        "VegNonVeg",
       ];
       const [firstRow] = rows;
       const normalizedIncoming = firstRow.map((h) => h.trim());
@@ -668,8 +666,8 @@ const AllMeals: React.FC = () => {
         unit: (r[3] ?? "").trim().toLowerCase(),
         target2: parseFloat(r[4]) || 0,
         unit2: (r[5] ?? "").trim().toLowerCase(),
-        type: (r[6] ?? "").trim().toLowerCase(),
-        vegNonVeg: (r[7] ?? "").trim().toUpperCase(),
+        // type: (r[6] ?? "").trim().toLowerCase(),
+        vegNonVeg: (r[6] ?? "").trim().toUpperCase(),
         category: "nut",
       }));
 
@@ -1182,7 +1180,7 @@ const AllMeals: React.FC = () => {
                   target2: newRow.target2,
                   unit2: newRow.unit2,
                   videoLink: newRow.videoLink,
-                  type: newRow.type,
+                  // type: newRow.type,
                   vegNonVeg: newRow.vegNonVeg,
                 };
                 setNewActivityData(updatedNewActivity);
@@ -1209,9 +1207,9 @@ const AllMeals: React.FC = () => {
                     changes.unit2 = newRow.unit2;
                   if (newRow.videoLink !== originalActivity.videoLink)
                     changes.videoLink = newRow.videoLink;
-                  if (newRow.type !== originalActivity.type)
-                    changes.type = newRow.type;
-                  if (newRow.videoLink !== originalActivity.videoLink)
+                  // if (newRow.type !== originalActivity.type)
+                  //   changes.type = newRow.type;
+                  if (newRow.vegNonVeg !== originalActivity.vegNonVeg)
                     changes.vegNonVeg = newRow.vegNonVeg;
 
                   // Update changedActivities map
@@ -1240,7 +1238,7 @@ const AllMeals: React.FC = () => {
                       target2: newRow.target2,
                       unit2: newRow.unit2,
                       videoLink: newRow.videoLink,
-                      type: newRow.type,
+                      // type: newRow.type,
                       vegNonVeg: newRow.vegNonVeg,
                     };
                     setEditedActivities(updatedEditedActivities);
