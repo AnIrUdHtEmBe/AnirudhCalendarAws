@@ -13,24 +13,24 @@ function Header() {
   const { selectComponent, setSelectComponent } = context;
 
   // Authentication check for enhanced features
-  const checkEnhancedAuth = useMemo(() => {
-    try {
-      const token = sessionStorage.getItem('token');
-      if (!token) return false;
+  // const checkEnhancedAuth = useMemo(() => {
+  //   try {
+  //     const token = sessionStorage.getItem('token');
+  //     if (!token) return false;
       
-      // Handle JWT token
-      let payload;
-      try {
-        payload = JSON.parse(atob(token.split('.')[1]));
-      } catch (e) {
-        return false;
-      }
-      return payload && payload.sub === "USER_MHKN56";
-    } catch (error) {
-      console.error("Enhanced auth check error:", error);
-      return false;
-    }
-  }, []); // Empty dependency array to calculate once on mount
+  //     // Handle JWT token
+  //     let payload;
+  //     try {
+  //       payload = JSON.parse(atob(token.split('.')[1]));
+  //     } catch (e) {
+  //       return false;
+  //     }
+  //     return payload && payload.sub === "USER_MHKN56";
+  //   } catch (error) {
+  //     console.error("Enhanced auth check error:", error);
+  //     return false;
+  //   }
+  // }, []); // Empty dependency array to calculate once on mount
 
   // Map selectComponent values to titles
   const headerTitles = {
@@ -63,7 +63,7 @@ function Header() {
         </button>
         
         {/* Enhanced Session Creator - only show if authenticated */}
-        {checkEnhancedAuth && (
+        {/* {checkEnhancedAuth && (
           <button
             className={`text-xl font-medium ${
               selectComponent === "EnhancedSessionCreator" 
@@ -74,7 +74,7 @@ function Header() {
           >
             Enhanced Session Creator(Only for Naveen)
           </button>
-        )}
+        )} */}
         
         
         <button 

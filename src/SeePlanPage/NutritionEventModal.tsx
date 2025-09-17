@@ -71,8 +71,29 @@ export default function NutrtitionEventModal({
     AddActivityToSession,
   } = useApiCalls();
   const [details, setDetails] = useState({});
+
+const mealTypes = [
+  "breakfast",
+  "brunch", 
+  "lunch",
+  "dinner",
+  "morning snack",
+  "evening snack",
+  "midnight snack",
+  "pre-bed snack",
+  "before workout",
+  "after workout",
+  "post dinner",
+];
+
+const [selectedMealType, setSelectedMealType] = useState("");
+const [originalMealType, setOriginalMealType] = useState("");
+
+
   // console.log(sessionId, "iohhhhhhhioh")
-  const getSessionDetails = async (eventData) => {
+  const getSessionDetails = async (eventData: {
+    extendedProps: { sessionInstanceId: any };
+  }) => {
     try {
       if (!eventData?.extendedProps?.sessionInstanceId) {
         console.error(
@@ -84,20 +105,59 @@ export default function NutrtitionEventModal({
 
       const sessionId = eventData.extendedProps.sessionInstanceId;
       const sessionDetails = await getSessionInstanceById(sessionId);
+
+      // Fetch session template data
+      const sessionTemplate = await getSessionTemplateById(
+        sessionDetails.sessionTemplateId
+      );
+
       const activityDetailsArray = (
         await Promise.all(
-          sessionDetails.activities.map(async (data: any) => {
-            // console.log(data?.status,data)
-            if (data?.status != "REMOVED") {
-              // console.log("omlu i am able to enter",da/ta)
-              const activityDetails = await getActivityById(data.activityId);
-              return {
-                activityInstanceId: data.activityInstanceId,
-                activityDetails,
-              };
+          sessionDetails.activities.map(
+            async (data: {
+              status: string;
+              activityId: string;
+              activityInstanceId: any;
+            }) => {
+              if (data?.status != "REMOVED") {
+                const defaultActivity = await getActivityById(data.activityId);
+
+                if (defaultActivity) {
+                  // Create enhanced activity with prioritized values
+                  const enhancedActivity = {
+                    ...defaultActivity,
+                    description: getPrioritizedFieldValue(
+                      data.activityId,
+                      "description",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
+                    target: getPrioritizedFieldValue(
+                      data.activityId,
+                      "target",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
+                    vegNonVeg: getPrioritizedFieldValue(
+                      data.activityId,
+                      "vegNonVeg",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
+                  };
+
+                  return {
+                    activityInstanceId: data.activityInstanceId,
+                    activityDetails: enhancedActivity,
+                  };
+                }
+              }
+              return null;
             }
-            return null;
-          })
+          )
         )
       ).filter(Boolean);
 
@@ -112,26 +172,33 @@ export default function NutrtitionEventModal({
         }
       }
 
-      // console.log("Session Details:", sessionDetails);
+      console.log("Session Details with prioritized data:", sessionDetails);
       return sessionDetails;
     } catch (error) {
-      // console.error("Error fetching session details:", error);
+      console.error("Error fetching session details:", error);
       return null;
     }
   };
 
-  useEffect(() => {
-    const fetchSessionDetails = async () => {
-      const res = await getSessionDetails(eventData);
-      // console.log(res, "this is res from get")
-      if (res) {
-        setDetails(res);
-      } else {
-        console.error("Failed to fetch meal details");
+useEffect(() => {
+  const fetchSessionDetails = async () => {
+    const res = await getSessionDetails(eventData);
+    // console.log(res, "this is res from get")
+    if (res) {
+      setDetails(res);
+      // Set meal type from session instance
+      if (res.mealType) {
+        setSelectedMealType(res.mealType);
+        setOriginalMealType(res.mealType);
       }
-    };
-    fetchSessionDetails();
-  }, []);
+    } else {
+      console.error("Failed to fetch meal details");
+    }
+  };
+  fetchSessionDetails();
+}, []);
+
+
   useEffect(() => {
     // console.log(details,details.category,"eventdatatttt");
   }, [details]);
@@ -140,92 +207,327 @@ export default function NutrtitionEventModal({
   const [showConfirmAct, setshowConfirmAct] = useState(false);
   const [activityId, setactivityId] = useState("");
   const [removalNote, setRemovalNote] = useState("");
+
   const handleRemove = async (removalNote: string) => {
-    // console.log(details,"8732trg387",details.sessionId,planInstanceId)
-    // const confirmDelete = window.confirm("Are you sure you want to remove this session?");
     if (showConfirm) {
-      // console.log(removalNote)
-      const res = await RemoveSessionInPlanInstance(
-        sessionId,
-        planInstanceId,
-        removalNote
-      );
-      if (res) {
-        setShowConfirm(false);
-        // console.log("session updated")
-        getData();
-        await regenerate();
-        onClose();
-      } else {
-        console.error("meal not updated");
+      try {
+        const res = await RemoveSessionInPlanInstance(
+          sessionId,
+          planInstanceId,
+          removalNote
+        );
+
+        if (res) {
+          // When removing entire session, always set vegNonVeg to VEG
+          const patchResponse = await fetch(
+            `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                vegNonVeg: "VEG",
+              }),
+            }
+          );
+
+          if (!patchResponse.ok) {
+            console.error(
+              "Failed to update session instance vegNonVeg after session removal"
+            );
+          }
+
+          setShowConfirm(false);
+          getData();
+          await regenerate();
+          onClose();
+        } else {
+          console.error("meal not updated");
+        }
+      } catch (error) {
+        console.error("Error in handleRemove:", error);
       }
     } else {
       console.error("Removal cancelled.");
     }
   };
+
+  const getSessionTemplateById = async (sessionTemplateId: any) => {
+    try {
+      const response = await fetch(
+        `https://testforgebackend.forgehub.in/session-templates/${sessionTemplateId}`
+      );
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch session template: ${response.statusText}`
+        );
+      }
+      const sessionTemplate = await response.json();
+      return sessionTemplate;
+    } catch (error) {
+      console.error("Error fetching session template:", error);
+      return null;
+    }
+  };
+
+  const getPrioritizedFieldValue = (
+    activityId: any,
+    fieldName: string,
+    sessionInstanceEdited: any[],
+    sessionTemplateEdited: any[],
+    defaultActivity: { [x: string]: any }
+  ) => {
+    // Priority 1: Check sessionInstance editedActivities
+    const sessionInstanceEdit = sessionInstanceEdited?.find(
+      (edit: { activityId: any }) => edit.activityId === activityId
+    );
+    if (sessionInstanceEdit && sessionInstanceEdit[fieldName] !== undefined) {
+      return sessionInstanceEdit[fieldName];
+    }
+
+    // Priority 2: Check sessionTemplate editedActivities
+    const sessionTemplateEdit = sessionTemplateEdited?.find(
+      (edit: { activityTemplateId: any }) =>
+        edit.activityTemplateId === activityId
+    );
+    if (sessionTemplateEdit && sessionTemplateEdit[fieldName] !== undefined) {
+      return sessionTemplateEdit[fieldName];
+    }
+
+    // Priority 3: Use default activity value
+    return defaultActivity[fieldName];
+  };
+
+  const getActivityVegNonVegWithPriority = async (
+    activityId,
+    sessionInstanceEdited,
+    sessionTemplateEdited
+  ) => {
+    // Get default activity data
+    const defaultActivity = await getActivityById(activityId);
+
+    // Apply hierarchical priority for vegNonVeg
+    return getPrioritizedFieldValue(
+      activityId,
+      "vegNonVeg",
+      sessionInstanceEdited,
+      sessionTemplateEdited,
+      defaultActivity
+    );
+  };
+
+  const calculateVegNonVegFromRemainingActivities = async (
+    sessionDetails,
+    sessionTemplate,
+    excludeActivityInstanceId = null
+  ) => {
+    // Get all remaining activities (excluding the one being removed)
+    const remainingActivities = sessionDetails.activities.filter(
+      (activity) =>
+        activity.status !== "REMOVED" &&
+        (excludeActivityInstanceId
+          ? activity.activityInstanceId !== excludeActivityInstanceId
+          : true)
+    );
+
+    if (remainingActivities.length === 0) {
+      return "VEG"; // Default to VEG when no activities remain
+    }
+
+    // Get vegNonVeg for all remaining activities using hierarchical priority
+    const vegNonVegPromises = remainingActivities.map(async (activity) => {
+      return await getActivityVegNonVegWithPriority(
+        activity.activityId,
+        sessionDetails.editedActivities,
+        sessionTemplate?.editedActivities
+      );
+    });
+
+    const vegNonVegValues = await Promise.all(vegNonVegPromises);
+    const allVegNonVeg = vegNonVegValues.map((v) => v?.toUpperCase() || "VEG");
+
+    // Apply priority: NONVEG > EGG > VEG
+    const priority = { NONVEG: 3, EGG: 2, VEG: 1 };
+    const maxPriority = Math.max(...allVegNonVeg.map((v) => priority[v] || 1));
+    return (
+      Object.keys(priority).find((k) => priority[k] === maxPriority) || "VEG"
+    );
+  };
+
   // this to commit the before pull
   const handleRemoveAct = async (id: string, removalNote: string) => {
     if (showConfirmAct) {
-      const res = await RemoveActivityFromSession(
-        id,
-        sessionId,
-        planInstanceId,
-        removalNote
-      );
-      if (res) {
-        setshowConfirmAct(false);
-        getData();
-        // await regenerate();
-        onClose();
-      } else {
-        console.error("meal not updated");
+      try {
+        const res = await RemoveActivityFromSession(
+          id,
+          sessionId,
+          planInstanceId,
+          removalNote
+        );
+
+        if (res) {
+          // Fetch current session details and calculate new vegNonVeg priority
+          const sessionDetails = await getSessionInstanceById(sessionId);
+          const sessionTemplate = await getSessionTemplateById(
+            sessionDetails.sessionTemplateId
+          );
+
+          // Calculate vegNonVeg from remaining activities (excluding the removed one)
+          const newVegNonVeg = await calculateVegNonVegFromRemainingActivities(
+            sessionDetails,
+            sessionTemplate,
+            id
+          );
+
+          // Update session instance with new vegNonVeg
+          const patchResponse = await fetch(
+            `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+            {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                vegNonVeg: newVegNonVeg,
+              }),
+            }
+          );
+
+          if (!patchResponse.ok) {
+            console.error(
+              "Failed to update session instance vegNonVeg after activity removal"
+            );
+          }
+
+          setshowConfirmAct(false);
+          getData();
+          // await regenerate();
+          onClose();
+        } else {
+          console.error("meal not updated");
+        }
+      } catch (error) {
+        console.error("Error in handleRemoveAct:", error);
       }
     } else {
       console.log("Removal cancelled.");
     }
   };
-const handleActivityAdd = async (e: any) => {
-  e.preventDefault();
-  if (!activityForTable?.activityId) return;
 
-  // Fetch current session details to get existing activities
-  const sessionDetails = await getSessionInstanceById(sessionId);
-  const existingVegNonVeg = Object.values(sessionDetails.activities || {})
-    .filter(activity => activity.status !== "REMOVED")
-    .map(activity => activity.activityDetails?.vegNonVeg?.toUpperCase() || "VEG");
+  const handleActivityAdd = async (e) => {
+    e.preventDefault();
+    if (!activityForTable?.activityId) return;
 
-  // Get new activity's vegNonVeg
-  const newActivity = await getActivityById(activityForTable.activityId);
-  const newVegNonVeg = newActivity?.vegNonVeg?.toUpperCase() || "VEG";
+    try {
+      // Fetch current session details to get existing activities and session template
+      const sessionDetails = await getSessionInstanceById(sessionId);
+      const sessionTemplate = await getSessionTemplateById(
+        sessionDetails.sessionTemplateId
+      );
 
-  // Combine all vegNonVeg values
-  const allVegNonVeg = [...existingVegNonVeg, newVegNonVeg];
+      // Get vegNonVeg values for all existing activities using hierarchical priority
+      const existingVegNonVegPromises = sessionDetails.activities
+        .filter((activity) => activity.status !== "REMOVED")
+        .map(async (activity) => {
+          return await getActivityVegNonVegWithPriority(
+            activity.activityId,
+            sessionDetails.editedActivities,
+            sessionTemplate?.editedActivities
+          );
+        });
 
-  // Priority map: NONVEG > EGG > VEG
-  const priority = { "NONVEG": 3, "EGG": 2, "VEG": 1 };
-  const maxPriority = Math.max(...allVegNonVeg.map(v => priority[v] || 1));
-  const finalVegNonVeg = Object.keys(priority).find(k => priority[k] === maxPriority) || "VEG";
+      const existingVegNonVeg = await Promise.all(existingVegNonVegPromises);
 
-  // Pass finalVegNonVeg in payload
-  const res = await AddActivityToSession(
-    activityForTable?.activityId,
-    sessionId,
-    planInstanceId,
-    "NUTRITION",
-    finalVegNonVeg
-  );
-  if (res) {
-    getData();
-    onClose();
-  } else {
-    console.error("session instance not updated");
+      // Get vegNonVeg for the new activity being added using hierarchical priority
+      const newVegNonVeg = await getActivityVegNonVegWithPriority(
+        activityForTable.activityId,
+        sessionDetails.editedActivities,
+        sessionTemplate?.editedActivities
+      );
+
+      // Combine all vegNonVeg values
+      const allVegNonVeg = [...existingVegNonVeg, newVegNonVeg].map(
+        (v) => v?.toUpperCase() || "VEG"
+      );
+
+      // Apply priority: NONVEG > EGG > VEG
+      const priority = { NONVEG: 3, EGG: 2, VEG: 1 };
+      const maxPriority = Math.max(
+        ...allVegNonVeg.map((v) => priority[v] || 1)
+      );
+      const finalVegNonVeg =
+        Object.keys(priority).find((k) => priority[k] === maxPriority) || "VEG";
+
+      // Call existing AddActivityToSession
+      const res = await AddActivityToSession(
+        activityForTable?.activityId,
+        sessionId,
+        planInstanceId,
+        "NUTRITION",
+        finalVegNonVeg
+      );
+
+      if (res) {
+        // Call new patch API to update session instance vegNonVeg
+        const patchResponse = await fetch(
+          `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              vegNonVeg: finalVegNonVeg,
+            }),
+          }
+        );
+
+        if (!patchResponse.ok) {
+          console.error("Failed to update session instance vegNonVeg");
+        }
+
+        getData();
+        onClose();
+      } else {
+        console.error("session instance not updated");
+      }
+    } catch (error) {
+      console.error("Error in handleActivityAdd:", error);
+    }
+  };
+
+
+  const handleSaveMealType = async () => {
+  try {
+    const response = await fetch(
+      `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type: selectedMealType,
+        }),
+      }
+    );
+
+    if (response.ok) {
+      setOriginalMealType(selectedMealType);
+      console.log("Meal type updated successfully");
+    } else {
+      console.error("Failed to update meal type");
+    }
+  } catch (error) {
+    console.error("Error updating meal type:", error);
   }
 };
 
   return (
     <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50">
       {showConfirm && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Are you sure you want to remove this meal?
@@ -276,7 +578,7 @@ const handleActivityAdd = async (e: any) => {
         </div>
       )}
       {showConfirmAct && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center backdrop-blur bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Are you sure you want to remove this item?
@@ -350,72 +652,96 @@ const handleActivityAdd = async (e: any) => {
                             : eventData.extendedProps.planTitle}
                     </p> */}
           {details?.activityDetails && (
-            <div>
-              <p className="text-xl">
-                <strong>Meals:</strong>
-              </p>
-              <ol className="list-decimal pl-5 text-xl">
-                <ol style={{ listStyleType: "none" }}>
-                  <div className="flex flex-wrap  bg-gray-200 font-semibold border border-gray-300 rounded">
-                    <div className="w-1/5 p-2">Item</div>
-                    <div className="w-1/5 p-2">Description</div>
-                    <div className="w-1/5 p-2">Target</div>
-                    <div className="w-1/5 p-2">vegNonVeg</div>
-                    <div className="w-1/5 p-2">Remove</div>
-                  </div>
-                </ol>
-                {Object.entries(details.activityDetails).map(
-                  ([activityId, activity]) => (
-                    <li key={activityId}>
-                      <div
-                        /*className="activity-each-row-event-modal"*/ className="flex flex-wrap"
-                      >
-                        <div className="w-1/5 p-2">
-                          <strong className="nameCell">{activity.name}</strong>{" "}
-                        </div>
-                        <div className="w-1/5 p-2">{activity.description}</div>
-                        {/* <div className="w-1/5 p-2">{activity.activityInstanceId}</div> */}
-                        <div className="w-1/5 p-2">
-                          {activity?.target}
-                          {activity?.unit == "weight"
-                            ? "Kg"
-                            : activity?.unit == "distance"
-                            ? "Km"
-                            : activity?.unit == "time"
-                            ? "Min"
-                            : activity?.unit == "repetitions"
-                            ? "Reps"
-                            : activity?.unit == "grams"
-                            ? "g"
-                            : activity?.unit == "meter"
-                            ? "m"
-                            : activity?.unit == "litre"
-                            ? "L"
-                            : activity?.unit == "millilitre"
-                            ? "ml"
-                            : activity?.unit == "glasses"
-                            ? "glasses"
-                            : ""}
-                        </div>
-                        <div className="w-1/5 p-2">
-                          {activity?.vegNonVeg || "-"}
-                        </div>
-                        <div className="w-1/5 p-2">
-                          <MinusCircle
-                            className="ml-2 w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition"
-                            onClick={() => {
-                              setactivityId(activityId);
-                              setshowConfirmAct(true);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </li>
-                  )
-                )}
-              </ol>
+  <div>
+    <div className="flex items-center gap-4 mb-4">
+      <p className="text-xl">
+        <strong>Meals:</strong>
+      </p>
+      <div className="flex items-center gap-2">
+        <select
+          value={selectedMealType}
+          onChange={(e) => setSelectedMealType(e.target.value)}
+          className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+        >
+          <option value="">Select Type</option>
+          {mealTypes.map((type) => (
+            <option key={type} value={type}>
+              {type.charAt(0).toUpperCase() + type.slice(1)}
+            </option>
+          ))}
+        </select>
+        {selectedMealType !== originalMealType && (
+          <button
+            onClick={handleSaveMealType}
+            className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+          >
+            Save
+          </button>
+        )}
+      </div>
+    </div>
+    <ol className="list-decimal pl-5 text-xl">
+      <ol style={{ listStyleType: "none" }}>
+        <div className="flex flex-wrap  bg-gray-200 font-semibold border border-gray-300 rounded">
+          <div className="w-1/5 p-2">Item</div>
+          <div className="w-1/5 p-2">Description</div>
+          <div className="w-1/5 p-2">Target</div>
+          <div className="w-1/5 p-2">vegNonVeg</div>
+          <div className="w-1/5 p-2">Remove</div>
+        </div>
+      </ol>
+      {Object.entries(details.activityDetails).map(
+        ([activityId, activity]) => (
+          <li key={activityId}>
+            <div
+              /*className="activity-each-row-event-modal"*/ className="flex flex-wrap"
+            >
+              <div className="w-1/5 p-2">
+                <strong className="nameCell">{activity.name}</strong>{" "}
+              </div>
+              <div className="w-1/5 p-2">{activity.description}</div>
+              {/* <div className="w-1/5 p-2">{activity.activityInstanceId}</div> */}
+              <div className="w-1/5 p-2">
+                {activity?.target}
+                {activity?.unit == "weight"
+                  ? "Kg"
+                  : activity?.unit == "distance"
+                  ? "Km"
+                  : activity?.unit == "time"
+                  ? "Min"
+                  : activity?.unit == "repetitions"
+                  ? "Reps"
+                  : activity?.unit == "grams"
+                  ? "g"
+                  : activity?.unit == "meter"
+                  ? "m"
+                  : activity?.unit == "litre"
+                  ? "L"
+                  : activity?.unit == "millilitre"
+                  ? "ml"
+                  : activity?.unit == "glasses"
+                  ? "glasses"
+                  : ""}
+              </div>
+              <div className="w-1/5 p-2">
+                {activity?.vegNonVeg || "-"}
+              </div>
+              <div className="w-1/5 p-2">
+                <MinusCircle
+                  className="ml-2 w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition"
+                  onClick={() => {
+                    setactivityId(activityId);
+                    setshowConfirmAct(true);
+                  }}
+                />
+              </div>
             </div>
-          )}
+          </li>
+        )
+      )}
+    </ol>
+  </div>
+)}
         </div>
         <div className="mt-4 flex justify-end gap-3">
           <div className="mt-4 flex justify-end">
@@ -450,7 +776,8 @@ const handleActivityAdd = async (e: any) => {
                       getOptionLabel={(option) => option.name || ""}
                       value={
                         activities_api_call.find(
-                          (a) => a.activityId === selectedActivities[index]
+                          (a: { activityId: string }) =>
+                            a.activityId === selectedActivities[index]
                         ) || null
                       }
                       onChange={(_, newValue) => {

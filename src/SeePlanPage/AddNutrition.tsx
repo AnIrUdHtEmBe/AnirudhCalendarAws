@@ -39,15 +39,55 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
   const [dayType, setDayType] = useState("VEG"); // Default to VEG
   const [sessions, setSessions] = useState([]);
   const [isLoadingNutrition, setIsLoadingNutrition] = useState(false);
+  const [selectedMealFilter, setSelectedMealFilter] = useState("VEG");
+  const getVegNonVegColor = (vegNonVeg) => {
+    switch (vegNonVeg) {
+      case "VEG":
+        return {
+          backgroundColor: "#d4edda",
+          color: "#155724",
+          border: "1px solid #c3e6cb",
+        };
+      case "EGG":
+        return {
+          backgroundColor: "#f4e4bc",
+          color: "#8B4513",
+          border: "1px solid #e6d3a3",
+        };
+      case "NONVEG":
+        return {
+          backgroundColor: "#f8d7da",
+          color: "#721c24",
+          border: "1px solid #f1b0b7",
+        };
+      default:
+        return {
+          backgroundColor: "#f8f9fa",
+          color: "#495057",
+          border: "1px solid #dee2e6",
+        };
+    }
+  };
 
-  useEffect(() => {
-    console.log(userId, "Props Data");
-  });
+  const getVegNonVegIcon = (vegNonVeg) => {
+    switch (vegNonVeg) {
+      case "VEG":
+        return "🟢"; // Green circle for veg
+      case "EGG":
+        return "🟤"; // Brown circle for egg
+      case "NONVEG":
+        return "🔴"; // Red circle for non-veg
+      default:
+        return "⚪"; // White circle for unknown
+    }
+  };
 
   useEffect(() => {
     const fetchSessions = async () => {
       try {
         const sessions = await getAllNutrition();
+        console.log("Fetched nutrition sessions:", sessions); // Add this log
+        console.log("Number of sessions:", sessions?.length);
         setSessions(sessions);
       } catch (error) {
         console.error("Error fetching sessions:", error);
@@ -114,14 +154,17 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
         const typeMap = { 0: "VEG", 1: "EGG", 2: "NONVEG" };
         const mealType = typeMap[pref] || "VEG";
         setDayType(mealType);
+        setSelectedMealFilter(mealType);
         console.log(`Set meal type for ${day}:`, mealType);
       } else {
         // If no nutrition KYC data, default to VEG
         setDayType("VEG");
+        setSelectedMealFilter("VEG");
       }
     } else {
       // Reset to default VEG when no date is selected
       setDayType("VEG");
+      setSelectedMealFilter("VEG");
     }
   }, [date, nutritionKYC]);
 
@@ -139,12 +182,21 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
       return;
     }
 
+    // Find the selected session to get its vegNonVeg and type values
+    const selectedSession = sessions.find(
+      (session) => session.sessionId === option
+    );
+    const sessionVegNonVeg = selectedSession?.vegNonVeg || "VEG";
+    const mealType = selectedSession?.type || null;
+
     const sessionData = {
       sessionTemplateId: option,
       userId: userId,
       scheduledDate: parsedDate.toLocaleDateString("en-CA"), // format: yyyy-mm-dd
       planInstanceId: planForAlacarte?.planInstanceId,
       type: "NUTRITION",
+      vegNonVeg: sessionVegNonVeg, // Add the vegNonVeg from selected session
+      mealType: mealType, // Add the type from selected session
     };
 
     console.log("Session Data to be sent:", sessionData);
@@ -165,8 +217,15 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
     setDate(null);
     // Reset to default state
     setDayType("VEG");
+    setSelectedMealFilter("VEG");
     setIsLoadingNutrition(false);
   };
+
+  useEffect(() => {
+    setTimeout(() => {
+      console.log(userId, "Props Data", userDate, planForAlacarte, getData);
+    }, 2000);
+  }, []);
 
   return (
     <div>
@@ -197,18 +256,67 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
               MenuProps={{
                 PaperProps: {
                   style: {
-                    maxHeight: 200, // or whatever you need
+                    maxHeight: 200,
                     overflowY: "auto",
                   },
                 },
               }}
               onChange={(e) => setOption(e.target.value)}
             >
-              {sessions.map((session) => (
-                <MenuItem key={session.sessionId} value={session.sessionId}>
-                  {session.title}
-                </MenuItem>
-              ))}
+              {sessions
+                .filter((session) => session.vegNonVeg === selectedMealFilter)
+                .map((session) => {
+                  const vegNonVegStyle = getVegNonVegColor(session.vegNonVeg);
+                  const vegNonVegIcon = getVegNonVegIcon(session.vegNonVeg);
+
+                  return (
+                    <MenuItem
+                      key={session.sessionId}
+                      value={session.sessionId}
+                      sx={{
+                        ...vegNonVegStyle,
+                        borderRadius: "4px",
+                        margin: "2px",
+                        "&:hover": {
+                          opacity: 0.8,
+                          transform: "scale(0.98)",
+                        },
+                        "&.Mui-selected": {
+                          fontWeight: "bold",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        },
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <span style={{ fontSize: "12px", marginRight: "8px" }}>
+                        {vegNonVegIcon}
+                      </span>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: "medium" }}
+                        >
+                          {session.title}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ opacity: 0.8, fontSize: "0.7rem" }}
+                        >
+                          {session.vegNonVeg} • {session.type}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
             </Select>
           </FormControl>
 
@@ -223,7 +331,7 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
           </LocalizationProvider>
 
           {/* Nutrition KYC Display */}
-          {date && (
+          {
             <Box
               sx={{
                 mb: 2,
@@ -288,6 +396,7 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
                     {["VEG", "EGG", "NONVEG"].map((mealType) => (
                       <Box
                         key={mealType}
+                        onClick={() => setSelectedMealFilter(mealType)}
                         sx={{
                           display: "flex",
                           flexDirection: "column",
@@ -299,8 +408,9 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
                           p: 0.5,
                           borderRadius: 0.5,
                           textAlign: "center",
+                          cursor: "pointer",
                           bgcolor:
-                            dayType === mealType
+                            selectedMealFilter === mealType
                               ? mealType === "VEG"
                                 ? "#d4edda"
                                 : mealType === "EGG"
@@ -308,15 +418,19 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
                                 : "#f8d7da"
                               : "#f8f9fa",
                           border:
-                            dayType === mealType
+                            selectedMealFilter === mealType
                               ? mealType === "VEG"
                                 ? "1.5px solid #28a745"
                                 : mealType === "EGG"
                                 ? "1.5px solid #8B4513"
                                 : "1.5px solid #dc3545"
                               : "1px solid #dee2e6",
-                          opacity: dayType === mealType ? 1 : 0.5,
+                          opacity: selectedMealFilter === mealType ? 1 : 0.5,
                           transition: "all 0.2s ease",
+                          "&:hover": {
+                            opacity: 0.8,
+                            transform: "scale(0.98)",
+                          },
                         }}
                       >
                         <Typography
@@ -384,7 +498,7 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
                 </>
               )}
             </Box>
-          )}
+          }
 
           {/* Confirm Button */}
           <Button

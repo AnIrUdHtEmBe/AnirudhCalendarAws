@@ -198,11 +198,11 @@ const CustomerTable = () => {
       const rmData = await rmResponse.json();
 
       // Add correct type property to each user
-      const adminUsers = adminData.map((user) => ({
+      const adminUsers = adminData.map((user: any) => ({
         ...user,
         userType: "admin", // Correctly label as admin
       }));
-      const rmUsers = rmData.map((user) => ({
+      const rmUsers = rmData.map((user: any) => ({
         ...user,
         userType: "RM", // Correctly label as RM
       }));
@@ -278,7 +278,7 @@ const CustomerTable = () => {
   };
 
   //changed to handle new form data
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: { target: { name: any; value: any; }; }) => {
     const { name, value } = e.target;
 
     setFormData((prevData) => {
@@ -302,7 +302,7 @@ const CustomerTable = () => {
     });
   };
 
-  const handleEditInputChange = (e) => {
+  const handleEditInputChange = (e: { target: { name: any; value: any; }; }) => {
     const { name, value } = e.target;
 
     setEditFormData((prevData) => {
@@ -325,35 +325,34 @@ const CustomerTable = () => {
       return newData;
     });
   };
-  const assignUserToRM = async (rmId: string, userId: string) => {
-    try {
-      const response = await fetch(`${API_BASE_URL2}/human/rm/assignusers`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          rmId: rmId,
-          userIds: [userId],
-        }),
-      });
+  
+const assignUserToRM = async (rmId: string, userId: string, silent = false, suppressError = false) => {
+  try {
+    const res = await fetch(`${API_BASE_URL2}/human/rm/assignusers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rmId, userIds: [userId] }),
+    });
 
-      if (!response.ok) {
-        throw new Error("Failed to assign user to RM");
-      }
+    if (!res.ok) throw new Error("Failed to assign user to RM");
 
+    if (!silent) {
       enqueueSnackbar("Successfully assigned user to RM", {
         variant: "success",
         autoHideDuration: 3000,
       });
-    } catch (error) {
-      console.error("Error assigning user to RM:", error);
+    }
+  } catch (e) {
+    if (!silent && !suppressError) {
       enqueueSnackbar("Failed to assign user to RM", {
         variant: "error",
         autoHideDuration: 3000,
       });
     }
-  };
+  }
+};
+
+  
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Convert numeric fields
@@ -417,46 +416,46 @@ const CustomerTable = () => {
     // Optionally, reset form fields here
   };
 
-  const handleEditFormSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Convert numeric fields
-    const payload = {
-      ...editFormData,
-      age: Number(editFormData.age),
-      height: Number(editFormData.height) || null,
-      weight: Number(editFormData.weight) || null,
-      healthCondition: editFormData.healthCondition || null,
-      nutritionKYC: editFormData.nutritionKYC,
-    };
-
-    console.log("Edit payload:", payload);
-    const res = await patch_customer(editingCustomer.userId, payload);
-    if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
-      await assignUserToRM(editFormData.assignedRM, editingCustomer.userId);
-    }
-    setEditModalOpen(false);
-    setIsEditWeeklySaved(false);
-    setEditingCustomer(null);
-    // Clear the edit form
-    setEditFormData({
-      name: "",
-      dob: "",
-      age: "",
-      gender: "",
-      mobile: "",
-      email: "",
-      password: "",
-      type: "",
-      height: "",
-      weight: "",
-      healthCondition: "",
-      membershipType: "",
-      startDate: "",
-      endDate: "",
-      assignedRM: "",
-      nutritionKYC: defaultWeeklyPlan,
-    });
+const handleEditFormSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  // Convert numeric fields
+  const payload = {
+    ...editFormData,
+    age: Number(editFormData.age),
+    height: Number(editFormData.height) || null,
+    weight: Number(editFormData.weight) || null,
+    healthCondition: editFormData.healthCondition || null,
+    nutritionKYC: editFormData.nutritionKYC,
   };
+
+  console.log("Edit payload:", payload);
+  const res = await patch_customer(editingCustomer.userId, payload);
+  if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
+    await assignUserToRM(editFormData.assignedRM, editingCustomer.userId, false, true); // Pass suppressError as true
+  }
+  setEditModalOpen(false);
+  setIsEditWeeklySaved(false);
+  setEditingCustomer(null);
+  // Clear the edit form
+  setEditFormData({
+    name: "",
+    dob: "",
+    age: "",
+    gender: "",
+    mobile: "",
+    email: "",
+    password: "",
+    type: "",
+    height: "",
+    weight: "",
+    healthCondition: "",
+    membershipType: "",
+    startDate: "",
+    endDate: "",
+    assignedRM: "",
+    nutritionKYC: defaultWeeklyPlan,
+  });
+};
 
   const handleCloseModal = () => {
     setModalOpen(false);
@@ -800,7 +799,7 @@ const CustomerTable = () => {
   ).length;
 
   // enddate calculation
-  const calculateEndDate = (startDate, membershipType) => {
+  const calculateEndDate = (startDate: string | number | Date, membershipType: string) => {
     if (!startDate || !membershipType) return "";
 
     const start = new Date(startDate);
@@ -824,7 +823,7 @@ const CustomerTable = () => {
     return endDate.toISOString().split("T")[0];
   };
 
-  const getWeeklyPlanSummary = (plan) => {
+  const getWeeklyPlanSummary = (plan: { [s: string]: unknown; } | ArrayLike<unknown>) => {
     const dayLabels = {
       MON: "Mon",
       TUE: "Tue",
@@ -1210,7 +1209,7 @@ const CustomerTable = () => {
                   right: 8,
                   top: 8,
                   color: (theme) => theme.palette.grey[500],
-                }}
+                }}  
               >
                 <CloseIcon />
               </IconButton>

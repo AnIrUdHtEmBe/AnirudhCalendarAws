@@ -3881,7 +3881,7 @@ useEffect(() => {
                               className="w-full bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors font-medium text-xs"
                               onClick={() => applyAction("blocked")}
                             >
-                              Block Time Slot
+                              Mark Time Slot Unavailable
                             </button>
                           </>
                         )}

@@ -3,7 +3,7 @@ const legends = [
   { label: "Occupied", color: "bg-green-500" },
   { label: "Available", color: "bg-gray-400" },
   { label: "Selected", color: "bg-blue-500" },
-  { label: "Blocked", color: "bg-red-500" },
+  { label: "Unavailable", color: "bg-red-500" },
 ];
 
 export default function LegendBoxes() {

@@ -50,6 +50,12 @@ function SessionPage() {
   const [planCategory, setPlanCategory] = useState("");
   const [planTheme, setPlanTheme] = useState("");
   const [planGoal, setPlanGoal] = useState("");
+  const [sessionThemes, setSessionThemes] = useState<string[]>([]);
+  const [sessionGoals, setSessionGoals] = useState<string[]>([]);
+  const [selectedTheme, setSelectedTheme] = useState("");
+  const [selectedGoal, setSelectedGoal] = useState("");
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
 
   // *** NEW FILTER STATES ***
   const [planNameFilter, setPlanNameFilter] = useState("");
@@ -126,23 +132,20 @@ function SessionPage() {
         limit: 500,
       };
 
-    const response = await fetch(
-      `${API_BASE_URL}/session-templates/search`,
-      {
+      const response = await fetch(`${API_BASE_URL}/session-templates/search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(body),
-      }
-    );
-    
-    const data = await response.json();
-    setSessions_api_call(data);
-  } catch (error) {
-    console.error("Failed to search sessions:", error);
-  }
-};
+      });
+
+      const data = await response.json();
+      setSessions_api_call(data);
+    } catch (error) {
+      console.error("Failed to search sessions:", error);
+    }
+  };
   // Updated filteredSessions applying *all* filters: your old searchTerm + activeFilter + new filters
   // const filteredSessions = sessions_api_call.filter((plan) => {
   //   const matchesSearchOrActiveFilter =
@@ -217,34 +220,34 @@ function SessionPage() {
     }
   }, [selectedIds, filteredSessions.length]);
 
-const createANewPlan = () => {
-  const planToSubmit: Plan_Api_call = {
-    title: planName,
-    description: "",
-    category: planCategory || "FITNESS",
-    themes: planTheme ? [planTheme] : ["NA"],
-    goals: planGoal ? [planGoal] : ["NA"],
-    sessions: sessions.map((session) => ({
-      sessionId: session.sessionId,
-      scheduledDay: session.scheduledDay,
-    })),
+  const createANewPlan = () => {
+    const planToSubmit: Plan_Api_call = {
+      title: planName,
+      description: "",
+      category: planCategory || "FITNESS",
+      themes: planTheme ? [planTheme] : ["NA"],
+      goals: planGoal ? [planGoal] : ["NA"],
+      sessions: sessions.map((session) => ({
+        sessionId: session.sessionId,
+        scheduledDay: session.scheduledDay,
+      })),
+    };
+    createPlan(planToSubmit);
+    setPlanName("");
+    setSessions([]);
+    setSessionSelected(null);
+    setBlocks(28);
+    setTheme("");
+    setGoal("");
+    setCategoryFilter("");
+    setActiveFilter(null);
+    setPlanNameFilter("");
+    setSearchTerm("");
+    setSelectedIds([]);
+    setPlanCategory("");
+    setPlanTheme("");
+    setPlanGoal("");
   };
-  createPlan(planToSubmit);
-  setPlanName("");
-  setSessions([]);
-  setSessionSelected(null);
-  setBlocks(28);
-  setTheme("");
-  setGoal("");
-  setCategoryFilter("");
-  setActiveFilter(null);
-  setPlanNameFilter("");
-  setSearchTerm("");
-  setSelectedIds([]);
-  setPlanCategory("");
-  setPlanTheme("");
-  setPlanGoal("");
-};
 
   const toggleSelectAll = () => {
     // setSelectedIds(isAllSelected ? [] : filteredSessions.map((p) => p.id));
@@ -261,16 +264,20 @@ const createANewPlan = () => {
     try {
       await patchSession(previewSession.sessionId, {
         title: sessionName == "" ? previewSession.title : sessionName,
-
         description: previewSession.description,
         category: category == "" ? previewSession.category : category,
+        themes: selectedTheme ? [selectedTheme] : previewSession.themes,
+        goals: selectedGoal ? [selectedGoal] : previewSession.goals,
         activityIds: previewSession?.activityIds,
       });
       console.log("Session updated successfully");
+
+      // Close modal and refresh
+      setPreviewModalOpen(false);
+      getSessions();
     } catch (error) {
       console.error("❌ Error updating session:", error);
     }
-    getSessions();
   };
 
   // const toggleSelectOne = (id: string) => {
@@ -327,6 +334,24 @@ const createANewPlan = () => {
     setPreviewSession(session);
     setPreviewModalOpen(true);
     setSelectedSession(session);
+
+    // Prefill session name
+    setSessionName(session.title || "");
+    setCategory(session.category || "");
+
+    // Set themes and goals
+    setSessionThemes(Array.isArray(session.themes) ? session.themes : []);
+    setSessionGoals(Array.isArray(session.goals) ? session.goals : []);
+    setSelectedTheme(
+      Array.isArray(session.themes) && session.themes.length > 0
+        ? session.themes[0]
+        : ""
+    );
+    setSelectedGoal(
+      Array.isArray(session.goals) && session.goals.length > 0
+        ? session.goals[0]
+        : ""
+    );
 
     console.log("Previewing session:", session);
   };
@@ -416,6 +441,35 @@ const createANewPlan = () => {
   };
   return (
     <div className="responses-root">
+      {/* Video Modal */}
+      {videoModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg p-4 relative max-w-4xl max-h-[80vh] overflow-hidden">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-800 bg-white rounded-full p-1 shadow-md z-10"
+              onClick={() => {
+                setVideoModalOpen(false);
+                setVideoUrl("");
+              }}
+            >
+              ✕
+            </button>
+            <div className="w-full h-full">
+              <iframe
+                width="800"
+                height="450"
+                src={videoUrl}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full h-full"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Header />
 
       <div className="main-container  ">
@@ -597,9 +651,15 @@ const createANewPlan = () => {
                     /> */}
                   </th>
 
-                  <th className="session-header">Session Name</th>
-                  <th className="cat-header">Category</th>
-                  <th className="prev-header">Preview</th>
+                  <th className="session-header" style={{ textAlign: "left" }}>
+                    Session Name
+                  </th>
+                  <th className="cat-header" >
+                    Category
+                  </th>
+                  <th className="prev-header" >
+                    Preview
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -625,14 +685,14 @@ const createANewPlan = () => {
                     <td
                       className="plan-title"
                       style={{
-                        marginBottom: "1px"
+                        marginBottom: "1px",
+                        textAlign: "left",
                       }}
-                      
                     >
                       {session.title}
                     </td>
-                    <td>{session.category}</td>
-                    <td className="p-icon">
+                    <td >{session.category}</td>
+                    <td className="p-icon" style={{ textAlign: "left" }}>
                       <button onClick={() => handlePreviewClick(session)}>
                         <EyeIcon />
                       </button>
@@ -647,7 +707,7 @@ const createANewPlan = () => {
         {/* Right Panel: Plan Details & Calendar */}
         <div className="right-panel">
           <div className="plan-details">
-                        <div className=" right-panel-headerr">
+            <div className=" right-panel-headerr">
               <div className="plan-name-input flex gap-4 items-end">
                 <input
                   type="text"
@@ -748,7 +808,7 @@ const createANewPlan = () => {
 
       {previewModalOpen && previewSession && (
         <div
-          className=" fixed inset-0 z-50 flex items-center justify-center bg-black/60 bg-opacity-50"
+          className=" fixed inset-0 z-50 flex items-center justify-center bg-opacity-50"
           onClick={() => setPreviewModalOpen(false)}
         >
           <div className="bg-transparent p-5 relative">
@@ -759,20 +819,70 @@ const createANewPlan = () => {
               ✕
             </button>
             <div
-              className="bg-white rounded-2xl shadow-2xl p-6 relative w-[800px] h-[600px] overflow-y-auto"
+              className="bg-white rounded-2xl shadow-2xl p-6 relative w-[1200px] max-w-[95vw] h-[700px] max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Form Inputs */}
-              <div className="flex gap-4 mb-6 justify-between">
-                <div className="flex gap-6 ">
+              {/* Form Inputs */}
+              {/* Form Inputs */}
+              <div className="flex flex-col gap-4 mb-6">
+                <div className="flex gap-4 justify-between items-start">
                   <input
                     type="text"
                     value={sessionName}
                     onChange={(e) => setSessionName(e.target.value)}
-                    className="w-full border-b border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 min-w-0 border-b border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Session name"
                   />
-                  <FormControl fullWidth>
+                  <button
+                    onClick={handleSaveSesion}
+                    className="save-changes-button whitespace-nowrap"
+                  >
+                    Save changes
+                  </button>
+                </div>
+
+                {/* Theme, Goal, and Category dropdowns */}
+                <div className="flex gap-4">
+                  <FormControl sx={{ minWidth: 200 }}>
+                    <InputLabel id="theme-label">Theme</InputLabel>
+                    <Select
+                      labelId="theme-label"
+                      value={selectedTheme}
+                      label="Theme"
+                      onChange={(e) => setSelectedTheme(e.target.value)}
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {literals.themes.map((theme, i) => (
+                        <MenuItem key={i} value={theme}>
+                          {theme}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControl sx={{ minWidth: 200 }}>
+                    <InputLabel id="goal-label">Goal</InputLabel>
+                    <Select
+                      labelId="goal-label"
+                      value={selectedGoal}
+                      label="Goal"
+                      onChange={(e) => setSelectedGoal(e.target.value)}
+                    >
+                      <MenuItem value="">
+                        <em>None</em>
+                      </MenuItem>
+                      {literals.goals.map((goal, i) => (
+                        <MenuItem key={i} value={goal}>
+                          {goal}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <FormControl sx={{ minWidth: 200 }}>
                     <InputLabel id="category-label">Category</InputLabel>
                     <Select
                       labelId="category-label"
@@ -788,110 +898,151 @@ const createANewPlan = () => {
                     </Select>
                   </FormControl>
                 </div>
-                <button
-                  onClick={handleSaveSesion}
-                  className="save-changes-button"
-                >
-                  Save changes
-                </button>
               </div>
 
               {/* Activity Table */}
-              <div className="overflow-x-auto">
-                <table className="table-auto w-full border border-gray-200 rounded-md text-sm">
-                  <thead className="bg-gray-100">
-                    <tr>
-                      <th className="px-4 py-2 text-center">Sl No</th>
-                      <th className="px-4 py-2 text-center">Activity</th>
-                      <th className="px-4 py-2 text-center">Description</th>
-                      <th className="px-4 py-2 text-center">Time/Reps</th>
-                      <th className="px-4 py-2 text-center"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {previewSession.activities.map(
-                      (activity: Activity_Api_call, idx: number) => (
-                        <tr key={idx} className="border-t border-gray-200">
-                          <td className="px-4 py-2 text-center">{idx + 1}</td>
-                          <td className="px-4 py-2 text-center">
-                            <FormControl fullWidth size="small">
-                              <InputLabel
-                                sx={{ width: "200px", display: "inline-block" }}
-                                id={`activity-select-label-${idx}`}
-                              >
-                                Activity
-                              </InputLabel>
-                              <Select
-                                labelId={`activity-select-label-${idx}`}
-                                id={`activity-select-${idx}`}
-                                value={activity.activityId || ""}
-                                label="Activity"
-                                onChange={(e: SelectChangeEvent) => {
-                                  setActivityInThePreviewSession(e, idx);
-                                }}
-                              >
-                                {activities_api_call.map(
-                                  (item: Activity_Api_call, index) => (
-                                    <MenuItem
-                                      key={index}
-                                      value={item.activityId}
-                                    >
-                                      {item.name}
-                                    </MenuItem>
-                                  )
-                                )}
-                              </Select>
-                            </FormControl>
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            {activity.description}
-                          </td>
-                          <td className="px-4 py-2 text-center">
-                            {activity.reps}
-                          </td>
-                          <td className="px-4 py-7 border-b border-b-gray-200 text-center">
-                            <button
-                              onClick={() => {
-                                // setPreviewSession((prev: any) => {
-                                //   const updatedActivities =
-                                //     prev.activities.filter(
-                                //       (_: any, i: number) => i !== idx
-                                //     );
-                                //   return {
-                                //     ...prev,
-                                //     activities: updatedActivities,
-                                //   };
-                                // });
-                                setPreviewSession((prev: any) => {
-                                  const updatedActivities =
-                                    prev.activities.filter(
-                                      (_: any, i: number) => i !== idx
-                                    );
+              {/* Activity Table */}
+              {/* Activity Table */}
+              <div className="overflow-hidden">
+                <div className="min-w-full">
+                  <div className="bg-gray-100 grid grid-cols-10 gap-2 p-2 text-sm font-medium">
+                    <div className="text-center">Sl No</div>
+                    <div className="text-center col-span-2">Activity</div>
+                    <div className="text-center">Description</div>
+                    <div className="text-center">Target 1</div>
+                    <div className="text-center">Unit</div>
+                    <div className="text-center">Target 2</div>
+                    <div className="text-center">Unit 2</div>
+                    <div className="text-center">Video</div>
+                    <div className="text-center">Remove</div>
+                  </div>
 
-                                  const updatedActivityIds =
-                                    prev.activityIds.filter(
-                                      (_: any, i: number) => i !== idx
-                                    );
-
-                                  return {
-                                    ...prev,
-                                    activities: updatedActivities,
-                                    activityIds: updatedActivityIds,
-                                  };
-                                });
+                  {previewSession.activities.map(
+                    (activity: Activity_Api_call, idx: number) => (
+                      <div
+                        key={idx}
+                        className="grid grid-cols-10 gap-2 p-2 border-t border-gray-200 text-sm items-center"
+                      >
+                        <div className="text-center">{idx + 1}</div>
+                        <div className="col-span-2">
+                          <FormControl fullWidth size="small">
+                            <InputLabel id={`activity-select-label-${idx}`}>
+                              Activity
+                            </InputLabel>
+                            <Select
+                              labelId={`activity-select-label-${idx}`}
+                              id={`activity-select-${idx}`}
+                              value={activity.activityId || ""}
+                              label="Activity"
+                              onChange={(e: SelectChangeEvent) => {
+                                setActivityInThePreviewSession(e, idx);
                               }}
                             >
-                              <LucideCircleMinus
-                                className="text-red-400 hover:text-red-600"
-                                size={24}
-                              />
+                              {activities_api_call.map(
+                                (item: Activity_Api_call, index) => (
+                                  <MenuItem key={index} value={item.activityId}>
+                                    {item.name}
+                                  </MenuItem>
+                                )
+                              )}
+                            </Select>
+                          </FormControl>
+                        </div>
+                        <div className="text-center text-xs overflow-hidden">
+                          <div
+                            className="truncate"
+                            title={activity.description || "-"}
+                          >
+                            {activity.description || "-"}
+                          </div>
+                        </div>
+                        <div className="text-center">
+                          {activity.target || "-"}
+                        </div>
+                        <div className="text-center text-xs">
+                          {activity.unit || "-"}
+                        </div>
+                        <div className="text-center">
+                          {activity.target2 || "-"}
+                        </div>
+                        <div className="text-center text-xs">
+                          {activity.unit2 || "-"}
+                        </div>
+                        <div className="text-center">
+                          {activity.videoLink ? (
+                            <button
+                              onClick={() => {
+                                // Convert YouTube URL to embed format if needed
+                                let embedUrl = activity.videoLink;
+                                if (
+                                  activity.videoLink.includes(
+                                    "youtube.com/watch?v="
+                                  )
+                                ) {
+                                  const videoId = activity.videoLink
+                                    .split("v=")[1]
+                                    .split("&")[0];
+                                  embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                                } else if (
+                                  activity.videoLink.includes("youtu.be/")
+                                ) {
+                                  const videoId = activity.videoLink
+                                    .split("youtu.be/")[1]
+                                    .split("?")[0];
+                                  embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                                } else if (
+                                  activity.videoLink.includes(
+                                    "youtube.com/shorts/"
+                                  )
+                                ) {
+                                  const videoId = activity.videoLink
+                                    .split("shorts/")[1]
+                                    .split("?")[0];
+                                  embedUrl = `https://www.youtube.com/embed/${videoId}`;
+                                }
+                                setVideoUrl(embedUrl);
+                                setVideoModalOpen(true);
+                              }}
+                              className="text-blue-600 hover:text-blue-800 underline text-xs"
+                            >
+                              Play
                             </button>
-                          </td>
-                        </tr>
-                      )
-                    )}
-                  </tbody>
-                </table>
+                          ) : (
+                            <span className="text-gray-400">-</span>
+                          )}
+                        </div>
+                        <div className="text-center">
+                          <button
+                            onClick={() => {
+                              setPreviewSession((prev: any) => {
+                                const updatedActivities =
+                                  prev.activities.filter(
+                                    (_: any, i: number) => i !== idx
+                                  );
+
+                                const updatedActivityIds =
+                                  prev.activityIds.filter(
+                                    (_: any, i: number) => i !== idx
+                                  );
+
+                                return {
+                                  ...prev,
+                                  activities: updatedActivities,
+                                  activityIds: updatedActivityIds,
+                                };
+                              });
+                            }}
+                          >
+                            <LucideCircleMinus
+                              className="text-red-400 hover:text-red-600"
+                              size={20}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  )}
+                </div>
               </div>
 
               {/* Footer */}

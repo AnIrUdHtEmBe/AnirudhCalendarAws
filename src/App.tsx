@@ -133,9 +133,7 @@ function App() {
                   <AllSessionsPage />
                 ) : selectComponent === "AllActivities" ? (
                   <AllActivities />
-                ) : selectComponent === "EnhancedSessionCreator" ? (
-                  <EnhancedActivityTable />
-                ) : selectComponent === "BulkAddTable" ? (
+                ) :  selectComponent === "BulkAddTable" ? (
                   <BulkAddTable />
                 ) : (
                   <SessionsPage />
@@ -317,3 +315,9 @@ function App() {
 }
 
 export default App;
+
+
+///
+///selectComponent === "EnhancedSessionCreator" ? (
+//                  <EnhancedActivityTable />
+//                ) :

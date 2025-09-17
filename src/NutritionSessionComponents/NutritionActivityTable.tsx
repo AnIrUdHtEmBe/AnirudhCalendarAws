@@ -43,19 +43,19 @@ function NutritionActivityTable() {
   const [goal, setGoal] = useState("");
 
   const [mealType, setMealType] = useState("");
-const mealTypes = [
-  "breakfast",
-  "brunch",
-  "lunch",
-  "dinner",
-  "morning snack",
-  "evening snack",
-  "midnight snack",
-  "pre-bed snack",
-  "before workout",
-  "after workout",
-  "post dinner",
-];
+  const mealTypes = [
+    "breakfast",
+    "brunch",
+    "lunch",
+    "dinner",
+    "morning snack",
+    "evening snack",
+    "midnight snack",
+    "pre-bed snack",
+    "before workout",
+    "after workout",
+    "post dinner",
+  ];
 
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
@@ -156,7 +156,7 @@ const mealTypes = [
       themes: theme ? [theme] : [],
       goals: goal ? [goal] : [],
       vegNonVeg: sessionVegNonVeg,
-      type: mealType
+      type: mealType,
     };
     if (editedActivities.length > 0) {
       sessionToBeCreated.editedActivities = editedActivities.map(
@@ -515,32 +515,32 @@ const mealTypes = [
           </div>
 
           <div className="flex flex-col w-full lg:w-auto min-w-0">
-  <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-    <InputLabel id="meal-type-select-label" shrink={true}>
-      Type
-    </InputLabel>
-    <Select
-      labelId="meal-type-select-label"
-      value={mealType}
-      onChange={(e) => setMealType(e.target.value)}
-      displayEmpty
-      renderValue={(selected) => {
-        if (!selected) {
-          return <span></span>;
-        }
-        return selected;
-      }}
-      sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
-    >
-      <MenuItem value="">None</MenuItem>
-      {mealTypes.map((type, i) => (
-        <MenuItem key={i} value={type}>
-          {type}
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-</div>
+            <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
+              <InputLabel id="meal-type-select-label" shrink={true}>
+                Type
+              </InputLabel>
+              <Select
+                labelId="meal-type-select-label"
+                value={mealType}
+                onChange={(e) => setMealType(e.target.value)}
+                displayEmpty
+                renderValue={(selected) => {
+                  if (!selected) {
+                    return <span></span>;
+                  }
+                  return selected;
+                }}
+                sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
+              >
+                <MenuItem value="">None</MenuItem>
+                {mealTypes.map((type, i) => (
+                  <MenuItem key={i} value={type}>
+                    {type}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
         </div>
 
         {/* Right Buttons */}
@@ -642,29 +642,29 @@ const mealTypes = [
           <table className="w-full table-auto border-collapse">
             <thead className="sticky top-0 bg-white z-10">
               <tr className="text-left text-gray-700 text-sm md:text-base">
-  {[
-    "Sl No.",
-    "Item",
-    "Description",
-    "Target 1",
-    "Unit 1",
-    "Target 2",
-    "Unit 2",
-    "VegNonVeg",
-    "",
-  ].map((item, index) => (
-    <th
-      key={index}
-      className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
-      style={{
-        minWidth:
-          index === 1 ? "280px" : index === 2 ? "200px" : "auto",
-      }}
-    >
-      {item}
-    </th>
-  ))}
-</tr>
+                {[
+                  "Sl No.",
+                  "Item",
+                  "Description",
+                  "Target 1",
+                  "Unit 1",
+                  "Target 2",
+                  "Unit 2",
+                  "VegNonVeg",
+                  "",
+                ].map((item, index) => (
+                  <th
+                    key={index}
+                    className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
+                    style={{
+                      minWidth:
+                        index === 1 ? "280px" : index === 2 ? "200px" : "auto",
+                    }}
+                  >
+                    {item}
+                  </th>
+                ))}
+              </tr>
             </thead>
             <tbody>
               {emptyArr.map((activity, index) => (
@@ -918,31 +918,31 @@ const mealTypes = [
                     )}
                   </td>
 
-<td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-  {!isEditMode ? (
-    activity.vegNonVeg || "VEG"
-  ) : (
-    <Autocomplete
-      options={["VEG", "NONVEG", "EGG"]}
-      getOptionLabel={(option) => option || ""}
-      value={activity.vegNonVeg || "VEG"}
-      onChange={(_, newValue) => {
-        const updated = [...emptyArr];
-        updated[index].vegNonVeg = newValue || "VEG";
-        setEmptyArr(updated);
-      }}
-      renderInput={(params) => (
-        <TextField
-          {...params}
-          label="Veg/NonVeg"
-          variant="outlined"
-          size="small"
-          sx={{ width: 120 }}
-        />
-      )}
-    />
-  )}
-</td>
+                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
+                    {!isEditMode ? (
+                      activity.vegNonVeg || "VEG"
+                    ) : (
+                      <Autocomplete
+                        options={["VEG", "NONVEG", "EGG"]}
+                        getOptionLabel={(option) => option || ""}
+                        value={activity.vegNonVeg || "VEG"}
+                        onChange={(_, newValue) => {
+                          const updated = [...emptyArr];
+                          updated[index].vegNonVeg = newValue || "VEG";
+                          setEmptyArr(updated);
+                        }}
+                        renderInput={(params) => (
+                          <TextField
+                            {...params}
+                            label="Veg/NonVeg"
+                            variant="outlined"
+                            size="small"
+                            sx={{ width: 120 }}
+                          />
+                        )}
+                      />
+                    )}
+                  </td>
 
                   {/* {(selectedActivities[index] || activity.activityId) && (
                     <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
@@ -983,14 +983,14 @@ const mealTypes = [
               ))}
               <tr className="border-b border-b-gray-300">
                 <td className="p-3" colSpan={9}>
-  <button
-    className="flex items-center space-x-2 px-4 py-2 add-row"
-    onClick={addNewRow}
-  >
-    <Plus />
-    <span>Add Row</span>
-  </button>
-</td>
+                  <button
+                    className="flex items-center space-x-2 px-4 py-2 add-row"
+                    onClick={addNewRow}
+                  >
+                    <Plus />
+                    <span>Add Row</span>
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -1034,7 +1034,7 @@ const mealTypes = [
                       <th className="px-4 py-2 text-center">Unit 1</th>
                       <th className="px-4 py-2 text-center">Target 2</th>
                       <th className="px-4 py-2 text-center">Unit 2</th>
-                      
+
                       <th className="px-4 py-2 text-center">VegNonVeg</th>
                       <th className="px-4 py-2 text-center"></th>
                     </tr>
