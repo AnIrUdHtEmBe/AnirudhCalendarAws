@@ -4,7 +4,7 @@ import {
   DataContext,
   Session_Api_call,
 } from "../store/DataContext";
-import { useApiCalls } from "../store/axios";
+import { API_BASE_URL, useApiCalls } from "../store/axios";
 import { Autocomplete, TextField } from "@mui/material";
 import { Dumbbell, MinusCircle, Plus } from "lucide-react";
 
@@ -220,7 +220,7 @@ useEffect(() => {
         if (res) {
           // When removing entire session, always set vegNonVeg to VEG
           const patchResponse = await fetch(
-            `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+            `${API_BASE_URL}/session-instances/${sessionId}`,
             {
               method: "PATCH",
               headers: {
@@ -256,7 +256,7 @@ useEffect(() => {
   const getSessionTemplateById = async (sessionTemplateId: any) => {
     try {
       const response = await fetch(
-        `https://testforgebackend.forgehub.in/session-templates/${sessionTemplateId}`
+        `${API_BASE_URL}/session-templates/${sessionTemplateId}`
       );
       if (!response.ok) {
         throw new Error(
@@ -382,7 +382,7 @@ useEffect(() => {
 
           // Update session instance with new vegNonVeg
           const patchResponse = await fetch(
-            `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+            `${API_BASE_URL}/session-instances/${sessionId}`,
             {
               method: "PATCH",
               headers: {
@@ -471,7 +471,7 @@ useEffect(() => {
       if (res) {
         // Call new patch API to update session instance vegNonVeg
         const patchResponse = await fetch(
-          `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+          `${API_BASE_URL}/session-instances/${sessionId}`,
           {
             method: "PATCH",
             headers: {
@@ -501,7 +501,7 @@ useEffect(() => {
   const handleSaveMealType = async () => {
   try {
     const response = await fetch(
-      `https://testforgebackend.forgehub.in/session-instances/${sessionId}`,
+      `${API_BASE_URL}/session-instances/${sessionId}`,
       {
         method: "PATCH",
         headers: {
