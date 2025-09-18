@@ -4,6 +4,7 @@ import {
   DataContext,
   Session_Api_call,
 } from "../store/DataContext";
+import { enqueueSnackbar } from "notistack";
 import { API_BASE_URL, useApiCalls } from "../store/axios";
 import { MinusCircle, Plus } from "lucide-react";
 import {
@@ -62,6 +63,12 @@ function AllNutrition() {
   const [allThemes, setAllThemes] = useState<string[]>([]);
   const [allGoals, setAllGoals] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
+  const [vegNonVegStatus, setVegNonVegStatus] = useState<string>("VEG");
+  const [nameFilter, setNameFilter] = useState(""); // For name-based search
+  const [vegFilter, setVegFilter] = useState("All"); // For veg/non-veg filter
+  // Add these state variables after your existing ones
+  const [themesFilter, setThemesFilter] = useState<string[]>([]);
+  const [goalsFilter, setGoalsFilter] = useState<string[]>([]);
   const fetchLiterals = async () => {
     try {
       const response = await fetch(
@@ -94,11 +101,29 @@ function AllNutrition() {
   }, [selecteddPlan]);
 
   // ✅ RESTORED your original filter logic
-  const filteredPlans = nutrition_api_call.filter(
-    (plan) =>
-      plan.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPlans = nutrition_api_call.filter((plan) => {
+    // Name-based search filter
+    const matchesName =
+      plan.title.toLowerCase().includes(nameFilter.toLowerCase()) ||
+      plan.category?.toLowerCase().includes(nameFilter.toLowerCase());
+
+    // Veg/Non-veg filter
+    const planVegStatus = plan.vegNonVeg || "VEG";
+    const matchesVegFilter = vegFilter === "All" || planVegStatus === vegFilter;
+
+    // New theme filter
+    const matchesThemes =
+      themesFilter.length === 0 ||
+      (plan.themes &&
+        plan.themes.some((theme) => themesFilter.includes(theme)));
+
+    // New goals filter
+    const matchesGoals =
+      goalsFilter.length === 0 ||
+      (plan.goals && plan.goals.some((goal) => goalsFilter.includes(goal)));
+
+    return matchesName && matchesVegFilter && matchesThemes && matchesGoals;
+  });
 
   /** Shared unit formatting */
   const formatUnit = (unit: string) => {
@@ -119,6 +144,8 @@ function AllNutrition() {
         return "L";
       case "millilitre":
         return "ml";
+      case "glasses":
+        return "glasses";
       default:
         return "";
     }
@@ -133,52 +160,79 @@ function AllNutrition() {
     const value = event.target.value;
     setGoals(typeof value === "string" ? value.split(",") : value);
   };
-
-  const handleSave = async () => {
-  try {
-    // Calculate session-level vegNonVeg based on activities
-    const hasNonVeg = selecteddPlan?.activities?.some(
-      (activity) => {
+  useEffect(() => {
+    if (selecteddPlan?.activities) {
+      // Use your existing calculation logic
+      const hasNonVeg = selecteddPlan?.activities?.some((activity) => {
         const edited = selecteddPlan.editedActivities?.find(
           (e) => (e.activityId ?? e.activityTemplateId) === activity.activityId
         );
         const mergedActivity = mergeEditedActivity(activity, edited);
         return (mergedActivity.vegNonVeg || "VEG") === "NONVEG";
-      }
-    );
-    
-    const hasEgg = selecteddPlan?.activities?.some(
-      (activity) => {
+      });
+
+      const hasEgg = selecteddPlan?.activities?.some((activity) => {
         const edited = selecteddPlan.editedActivities?.find(
           (e) => (e.activityId ?? e.activityTemplateId) === activity.activityId
         );
         const mergedActivity = mergeEditedActivity(activity, edited);
         return (mergedActivity.vegNonVeg || "VEG") === "EGG";
+      });
+
+      let status = "VEG";
+      if (hasNonVeg) {
+        status = "NONVEG";
+      } else if (hasEgg) {
+        status = "EGG";
       }
-    );
-
-    let sessionVegNonVeg = "VEG";
-    if (hasNonVeg) {
-      sessionVegNonVeg = "NONVEG";
-    } else if (hasEgg) {
-      sessionVegNonVeg = "EGG";
+      setVegNonVegStatus(status);
     }
+  }, [selecteddPlan?.activities, selecteddPlan?.editedActivities]);
+  const handleSave = async () => {
+    try {
+      // Validation
+      const missingFields = [];
 
-    await patchSession(selecteddPlan?.sessionId, {
-      title: planName,
-      category: "NUTRITION",
-      activityIds: selecteddPlan?.activityIds,
-      themes: themes,
-      goals: goals,
-      type: mealType,
-      vegNonVeg: sessionVegNonVeg, 
-    });
-    console.log("Session updated successfully");
-  } catch (error) {
-    console.error("❌ Error updating session:", error);
-  }
-  getNutrition();
-};
+      if (!planName?.trim()) missingFields.push("Nutrition name");
+      if (!category?.trim()) missingFields.push("Category");
+      if (!mealType?.trim()) missingFields.push("Meal Type");
+      if (!themes || themes.length === 0) missingFields.push("Themes");
+      if (!goals || goals.length === 0) missingFields.push("Goals");
+
+      if (missingFields.length > 0) {
+        console.error(
+          `❌ Please fill in the following required fields: ${missingFields.join(
+            ", "
+          )}`
+        );
+        enqueueSnackbar(
+          `Please fill in the following required fields:\n${missingFields.join(
+            "\n"
+          )}`,
+          {
+            variant: "warning",
+            autoHideDuration: 3000,
+          }
+        );
+        return;
+      }
+
+      await patchSession(selecteddPlan?.sessionId, {
+        title: planName,
+        category: "NUTRITION",
+        activityIds: selecteddPlan?.activityIds,
+        themes: themes,
+        goals: goals,
+        type: mealType,
+        vegNonVeg: vegNonVegStatus,
+        editedActivities: selecteddPlan?.editedActivities || [], // Add this line
+      });
+      console.log("Session updated successfully");
+    } catch (error) {
+      console.error("❌ Error updating session:", error);
+    }
+    getNutrition();
+  };
 
   // ✅ Added missing fields here
   const emptyActivity: Activity_Api_call = {
@@ -252,14 +306,44 @@ function AllNutrition() {
       setMealType(selecteddPlan.type || "");
     }
   }, [selecteddPlan]);
+  const updateEditedActivity = (
+    activityId: string,
+    field: string,
+    value: any
+  ) => {
+    if (!selecteddPlan) return;
+
+    const updatedEditedActivities = [...(selecteddPlan.editedActivities || [])];
+    const existingIndex = updatedEditedActivities.findIndex(
+      (edited) => edited.activityId === activityId
+    );
+
+    if (existingIndex >= 0) {
+      // Update existing edited activity
+      updatedEditedActivities[existingIndex] = {
+        ...updatedEditedActivities[existingIndex],
+        [field]: value,
+      };
+    } else {
+      // Create new edited activity entry
+      const newEditedActivity = {
+        activityId: activityId,
+        [field]: value,
+      };
+      updatedEditedActivities.push(newEditedActivity);
+    }
+
+    setSelectedPlan({
+      ...selecteddPlan,
+      editedActivities: updatedEditedActivities,
+    });
+  };
   return (
     <div className="all-session-container">
       {/* Left Panel */}
       <div className="left-p">
         <div className="panel-header">
-          <div className="header-tit">
-            Nutrition <span className="badge">All</span>
-          </div>
+          <div className="header-tit">Meals</div>
           <button
             onClick={() => setSelectComponent("/nutrition_sessions")}
             className="new-button"
@@ -268,13 +352,104 @@ function AllNutrition() {
             <span className="new-button-text">New</span>
           </button>
         </div>
+        {/* Search and Veg/NonVeg Row */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            paddingTop: "0.5rem",
+            marginBottom: "0.5rem",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "200px", minWidth: "200px" }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search by name"
+              variant="outlined"
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              placeholder="Enter meal name..."
+            />
+          </div>
+          <div style={{ width: "180px", minWidth: "180px" }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="veg-filter-label">Veg-NonVeg</InputLabel>
+              <Select
+                labelId="veg-filter-label"
+                value={vegFilter}
+                onChange={(e) => setVegFilter(e.target.value)}
+                label="Filter by Type"
+              >
+                <MenuItem value="All">All Types</MenuItem>
+                <MenuItem value="VEG">Veg</MenuItem>
+                <MenuItem value="EGG">Egg</MenuItem>
+                <MenuItem value="NONVEG">Non-Veg</MenuItem>
+              </Select>
+            </FormControl>
+          </div>
+        </div>
 
+        {/* Themes and Goals Row */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            paddingTop: "0.5rem",
+            marginBottom: "0.5rem",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "200px", minWidth: "200px" }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="themes-filter-label">Themes</InputLabel>
+              <Select
+                labelId="themes-filter-label"
+                multiple
+                value={themesFilter}
+                onChange={(e) => setThemesFilter(e.target.value as string[])}
+                input={<OutlinedInput label="Themes" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
+              >
+                {allThemes.map((theme) => (
+                  <MenuItem key={theme} value={theme}>
+                    <Checkbox checked={themesFilter.indexOf(theme) > -1} />
+                    <ListItemText primary={theme} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+
+          <div style={{ width: "180px", minWidth: "180px" }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="goals-filter-label">Goals</InputLabel>
+              <Select
+                labelId="goals-filter-label"
+                multiple
+                value={goalsFilter}
+                onChange={(e) => setGoalsFilter(e.target.value as string[])}
+                input={<OutlinedInput label="Goals" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
+              >
+                {allGoals.map((goal) => (
+                  <MenuItem key={goal} value={goal}>
+                    <Checkbox checked={goalsFilter.indexOf(goal) > -1} />
+                    <ListItemText primary={goal} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+        </div>
         <div className="Alstable-container">
           <table className="Alstable">
             <thead className="Alstable-header">
               <tr className="header-table-row">
                 <th className="thone">Sl.No</th>
-                <th className="thtwo">Nutrition Name</th>
+                <th className="thtwo">Meal Name</th>
+                <th className="thone">VegNonVeg</th>
               </tr>
             </thead>
             <tbody>
@@ -290,6 +465,9 @@ function AllNutrition() {
                 >
                   <td className="table-cell-one">{index + 1}</td>
                   <td className="table-cell-two">{session.title}</td>
+                  <td className="table-cell-three">
+                    {session.vegNonVeg || "VEG"}
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -320,7 +498,7 @@ function AllNutrition() {
               />
             </FormControl>
             <FormControl fullWidth sx={{ width: "200px" }}>
-              <InputLabel id="meal-type-label">Meal Type</InputLabel>
+              <InputLabel id="meal-type-label">Meal Timing</InputLabel>
               <Select
                 labelId="meal-type-label"
                 id="meal-type-select"
@@ -375,6 +553,15 @@ function AllNutrition() {
                 ))}
               </Select>
             </FormControl>
+            <FormControl fullWidth sx={{ width: "200px" }}>
+              <TextField
+                fullWidth
+                label="Veg/NonVeg Status"
+                variant="outlined"
+                value={vegNonVegStatus}
+                InputProps={{ readOnly: true }}
+              />
+            </FormControl>
           </div>
           <button onClick={handleSave} className="save-button">
             Save Changes
@@ -428,7 +615,7 @@ function AllNutrition() {
                               {slNo++}
                             </td>
                             <td className="activity-cell" id="acttwo">
-                              <FormControl fullWidth>
+                              <FormControl fullWidth size="small">
                                 <Select
                                   labelId={`activity-select-label-${index}`}
                                   value={mergedActivity.activityId}
@@ -490,22 +677,110 @@ function AllNutrition() {
                               </FormControl>
                             </td>
                             <td className="activity-cell" id="acttwo">
-                              {mergedActivity.description}
+                              <TextField
+                                fullWidth
+                                size="small"
+                                multiline
+                                maxRows={2}
+                                value={mergedActivity.description || ""}
+                                onChange={(e) =>
+                                  updateEditedActivity(
+                                    mergedActivity.activityId,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
+                                variant="outlined"
+                              />
                             </td>
                             <td className="activity-cell">
-                              {mergedActivity.target}
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                value={mergedActivity.target || ""}
+                                onChange={(e) =>
+                                  updateEditedActivity(
+                                    mergedActivity.activityId,
+                                    "target",
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                variant="outlined"
+                              />
                             </td>
                             <td className="activity-cell">
-                              {formatUnit(mergedActivity.unit)}
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={mergedActivity.unit || ""}
+                                  onChange={(e) =>
+                                    updateEditedActivity(
+                                      mergedActivity.activityId,
+                                      "unit",
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  <MenuItem value="grams">g</MenuItem>
+                                  <MenuItem value="meter">glasses</MenuItem>
+                                  <MenuItem value="litre">L</MenuItem>
+                                  <MenuItem value="millilitre">ml</MenuItem>
+                                </Select>
+                              </FormControl>
                             </td>
                             <td className="activity-cell">
-                              {mergedActivity.target2}
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                value={mergedActivity.target2 || ""}
+                                onChange={(e) =>
+                                  updateEditedActivity(
+                                    mergedActivity.activityId,
+                                    "target2",
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                variant="outlined"
+                              />
                             </td>
                             <td className="activity-cell">
-                              {formatUnit(mergedActivity.unit2)}
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={mergedActivity.unit2 || ""}
+                                  onChange={(e) =>
+                                    updateEditedActivity(
+                                      mergedActivity.activityId,
+                                      "unit2",
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  <MenuItem value="">None</MenuItem>
+                                  <MenuItem value="grams">g</MenuItem>
+                                  <MenuItem value="meter">glasses</MenuItem>
+                                  <MenuItem value="litre">L</MenuItem>
+                                  <MenuItem value="millilitre">ml</MenuItem>
+                                </Select>
+                              </FormControl>
                             </td>
                             <td className="activity-cell">
-                              {mergedActivity.vegNonVeg}
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={mergedActivity.vegNonVeg || "VEG"}
+                                  onChange={(e) =>
+                                    updateEditedActivity(
+                                      mergedActivity.activityId,
+                                      "vegNonVeg",
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  <MenuItem value="VEG">VEG</MenuItem>
+                                  <MenuItem value="EGG">EGG</MenuItem>
+                                  <MenuItem value="NONVEG">NONVEG</MenuItem>
+                                </Select>
+                              </FormControl>
                             </td>
                             <td>
                               <MinusCircle

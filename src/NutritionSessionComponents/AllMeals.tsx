@@ -327,7 +327,7 @@ const AllMeals: React.FC = () => {
         ) {
           return (
             <span style={{ color: "gray", fontStyle: "italic" }}>
-              Add New Activity Here
+              Add New Food Here
             </span>
           );
         }

@@ -1,4 +1,5 @@
 import { useContext, useEffect, useState } from "react";
+import { enqueueSnackbar } from "notistack";
 import {
   Activity_Api_call,
   DataContext,
@@ -34,8 +35,10 @@ function AllSession() {
   }
   const { activities_api_call, sessions_api_call, setSelectComponent } =
     context;
-  const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [nameFilter, setNameFilter] = useState(""); // For name-based search
+  const [categoryFilter, setCategoryFilter] = useState("All"); // For category filter
+  const [themesFilter, setThemesFilter] = useState<string[]>([]);
+  const [goalsFilter, setGoalsFilter] = useState<string[]>([]);
   const [selecteddPlan, setSelectedPlan] = useState<Session_Api_call | null>(
     null
   );
@@ -88,20 +91,65 @@ function AllSession() {
     }
   }, [selecteddPlan]);
 
-  const filteredPlans = sessions_api_call.filter(
-    (plan) =>
-      plan.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      plan.category?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredPlans = sessions_api_call.filter((plan) => {
+    // Existing filters
+    const matchesName =
+      plan.title.toLowerCase().includes(nameFilter.toLowerCase()) ||
+      plan.category?.toLowerCase().includes(nameFilter.toLowerCase());
+
+    const matchesCategory =
+      categoryFilter === "All" || plan.category === categoryFilter;
+
+    // New theme filter
+    const matchesThemes =
+      themesFilter.length === 0 ||
+      (plan.themes &&
+        plan.themes.some((theme) => themesFilter.includes(theme)));
+
+    // New goals filter
+    const matchesGoals =
+      goalsFilter.length === 0 ||
+      (plan.goals && plan.goals.some((goal) => goalsFilter.includes(goal)));
+
+    return matchesName && matchesCategory && matchesThemes && matchesGoals;
+  });
 
   const handleSave = async () => {
+    console.log("calleddddddddddddddddddddd");
+
     try {
+      // Validation
+      const missingFields = [];
+
+      if (!planName?.trim()) missingFields.push("Session name");
+      if (!category?.trim()) missingFields.push("Category");
+      if (!themes || themes.length === 0) missingFields.push("Themes");
+      if (!goals || goals.length === 0) missingFields.push("Goals");
+      if (missingFields.length > 0) {
+        console.error(
+          `❌ Please fill in the following required fields: ${missingFields.join(
+            ", "
+          )}`
+        );
+        enqueueSnackbar(
+          `Please fill in the following required fields:\n${missingFields.join(
+            "\n"
+          )}`,
+          {
+            variant: "warning",
+            autoHideDuration: 3000,
+          }
+        );
+        return;
+      }
+
       await patchSession(selecteddPlan?.sessionId, {
         title: planName,
         category: category,
         activityIds: selecteddPlan?.activityIds,
         themes: themes,
         goals: goals,
+        editedActivities: selecteddPlan?.editedActivities || [], // Add this line
       });
       console.log("Session updated successfully");
     } catch (error) {
@@ -136,16 +184,6 @@ function AllSession() {
   };
 
   console.log("Selected Plan:", selecteddPlan);
-
-  const filterPlansAccordingTo = (category: string) => {
-    if (activeFilter === category) {
-      setActiveFilter(null); // Remove filter if clicked again
-      setSearchTerm(""); // Show all
-    } else {
-      setActiveFilter(category);
-      setSearchTerm(category);
-    }
-  };
 
   const handleDelete = async (index: number) => {
     console.log("Deleting activity at index:", index);
@@ -205,6 +243,7 @@ function AllSession() {
       unit2?: string;
       description?: string;
       name?: string;
+      videoLink?: string;
     }
   ): Activity_Api_call => {
     if (!editedActivity) return activity;
@@ -217,6 +256,7 @@ function AllSession() {
       unit2: editedActivity.unit2 ?? activity.unit2,
       description: editedActivity.description ?? activity.description,
       name: editedActivity.name ?? activity.name,
+      videoLink: editedActivity.videoLink ?? activity.videoLink,
     };
   };
   useEffect(() => {
@@ -227,51 +267,147 @@ function AllSession() {
       setGoals(selecteddPlan.goals || []);
     }
   }, [selecteddPlan]);
+  const updateEditedActivity = (
+    activityId: string,
+    field: string,
+    value: any
+  ) => {
+    if (!selecteddPlan) return;
+
+    const updatedEditedActivities = [...(selecteddPlan.editedActivities || [])];
+    const existingIndex = updatedEditedActivities.findIndex(
+      (edited) => edited.activityId === activityId
+    );
+
+    if (existingIndex >= 0) {
+      // Update existing edited activity
+      updatedEditedActivities[existingIndex] = {
+        ...updatedEditedActivities[existingIndex],
+        [field]: value,
+      };
+    } else {
+      // Create new edited activity entry
+      const newEditedActivity = {
+        activityId: activityId,
+        [field]: value,
+      };
+      updatedEditedActivities.push(newEditedActivity);
+    }
+
+    setSelectedPlan({
+      ...selecteddPlan,
+      editedActivities: updatedEditedActivities,
+    });
+  };
 
   return (
     <div className="all-session-container">
       {/* Left Panel */}
       <div className="left-p">
         <div className="panel-header">
-          <div className="header-tit">
-            Sessions <span className="badge">All</span>
-          </div>
-          <div className="flex justify-between items-center gap-5">
-            <button
-              className={`filter-btn ${
-                activeFilter === "Fitness" ? "filter-btn-active" : ""
-              }`}
-              onClick={() => filterPlansAccordingTo("Fitness")}
-            >
-              <Dumbbell size={20} />
-            </button>
-            <button
-              className={`filter-btn ${
-                activeFilter === "Wellness" ? "filter-btn-active" : ""
-              }`}
-              onClick={() => filterPlansAccordingTo("Wellness")}
-            >
-              <Mediation style={{ fontSize: "20px" }} />
-            </button>
-            <button
-              className={`filter-btn ${
-                activeFilter === "Sports" ? "filter-btn-active" : ""
-              }`}
-              onClick={() => filterPlansAccordingTo("Sports")}
-            >
-              <NordicWalking style={{ fontSize: "20px" }} />
-            </button>
-          </div>
-
+          <div className="header-tit">Sessions</div>
           <button
             onClick={() => setSelectComponent("/sessions")}
             className="new-button"
           >
-            <Plus size={20} className="new-button-icon" />
+            <Plus size={15} className="new-button-icon" />
             <span className="new-button-text">New</span>
           </button>
         </div>
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            paddingTop: "0.5rem",
+            marginBottom: "0.5rem",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "200px", minWidth: "200px" }}>
+            <TextField
+              fullWidth
+              size="small"
+              label="Search by name"
+              variant="outlined"
+              value={nameFilter}
+              onChange={(e) => setNameFilter(e.target.value)}
+              placeholder="Enter session name..."
+            />
+          </div>
+          <div style={{ width: "180px", minWidth: "180px" }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="category-filter-label">Category</InputLabel>
+              <Select
+                labelId="category-filter-label"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+                label="Filter by Category"
+              >
+                <MenuItem value="All">All Categories</MenuItem>
+                {allCategories
+                  .filter((cat) => cat.toUpperCase() !== "NUTRITION")
+                  .map((cat) => (
+                    <MenuItem key={cat} value={cat}>
+                      {cat}
+                    </MenuItem>
+                  ))}
+              </Select>
+            </FormControl>
+          </div>
+        </div>
 
+        {/* Themes and Goals Row */}
+        <div
+          style={{
+            display: "flex",
+            gap: "1rem",
+            paddingTop: "0.5rem",
+            marginBottom: "0.5rem",
+            justifyContent: "center",
+          }}
+        >
+          <div style={{ width: "200px", minWidth: "200px" }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="themes-filter-label">Themes</InputLabel>
+              <Select
+                labelId="themes-filter-label"
+                multiple
+                value={themesFilter}
+                onChange={(e) => setThemesFilter(e.target.value as string[])}
+                input={<OutlinedInput label="Themes" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
+              >
+                {allThemes.map((theme) => (
+                  <MenuItem key={theme} value={theme}>
+                    <Checkbox checked={themesFilter.indexOf(theme) > -1} />
+                    <ListItemText primary={theme} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+
+          <div style={{ width: "180px", minWidth: "180px" }}>
+            <FormControl fullWidth size="small">
+              <InputLabel id="goals-filter-label">Goals</InputLabel>
+              <Select
+                labelId="goals-filter-label"
+                multiple
+                value={goalsFilter}
+                onChange={(e) => setGoalsFilter(e.target.value as string[])}
+                input={<OutlinedInput label="Goals" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
+              >
+                {allGoals.map((goal) => (
+                  <MenuItem key={goal} value={goal}>
+                    <Checkbox checked={goalsFilter.indexOf(goal) > -1} />
+                    <ListItemText primary={goal} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </div>
+        </div>
         <div className="Alstable-container">
           <table className="Alstable">
             <thead className="Alstable-header">
@@ -392,17 +528,29 @@ function AllSession() {
             <table className="activities-table">
               <thead className="activities-table-header">
                 <tr>
-                  <th className="actone">Sl.No</th>
-                  <th id="acttwo">Activity</th>
-                  <th className="actthree" id="acttwo">
+                  <th className="actone" style={{ width: "60px" }}>
+                    Sl.No
+                  </th>
+                  <th id="acttwo" style={{ width: "200px" }}>
+                    Activity
+                  </th>
+                  <th
+                    className="actthree"
+                    id="acttwo"
+                    style={{ width: "250px" }}
+                  >
                     Description
                   </th>
-                  <th className="actfour">Target 1</th>
-                  <th>Unit 1</th>
-                  <th className="actfour">Target 2</th>
-                  <th>Unit 2</th>
-                  <th>Video</th>
-                  <th></th>
+                  <th className="actfour" style={{ width: "120px" }}>
+                    Target 1
+                  </th>
+                  <th style={{ width: "60px" }}>Unit 1</th>
+                  <th className="actfour" style={{ width: "120px" }}>
+                    Target 2
+                  </th>
+                  <th style={{ width: "60px" }}>Unit 2</th>
+                  <th style={{ width: "150px" }}>Video Link</th>
+                  <th style={{ width: "50px" }}></th>
                 </tr>
               </thead>
               <tbody className="activities-table-header">
@@ -429,11 +577,18 @@ function AllSession() {
                           </td>
                         ) : (
                           <>
-                            <td className="activity-cell font-bold">
+                            <td
+                              className="activity-cell font-bold"
+                              style={{ width: "60px" }}
+                            >
                               {slNo++}
                             </td>
-                            <td className="activity-cell" id="acttwo">
-                              <FormControl fullWidth>
+                            <td
+                              className="activity-cell"
+                              id="acttwo"
+                              style={{ width: "200px" }}
+                            >
+                              <FormControl fullWidth size="small">
                                 <Select
                                   labelId={`activity-select-label-${index}`}
                                   value={mergedActivity.activityId}
@@ -501,51 +656,166 @@ function AllSession() {
                                 </Select>
                               </FormControl>
                             </td>
-                            <td className="activity-cell" id="acttwo">
-                              {mergedActivity.description}
+                            <td
+                              className="activity-cell"
+                              id="acttwo"
+                              style={{ width: "250px" }}
+                            >
+                              <TextField
+                                fullWidth
+                                size="small"
+                                multiline
+                                maxRows={2}
+                                value={mergedActivity.description || ""}
+                                onChange={(e) =>
+                                  updateEditedActivity(
+                                    mergedActivity.activityId,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
+                                variant="outlined"
+                              />
                             </td>
-                            <td className="activity-cell">
-                              {mergedActivity.target}
+                            <td
+                              className="activity-cell"
+                              style={{ width: "100px" }}
+                            >
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                value={mergedActivity.target || ""}
+                                onChange={(e) =>
+                                  updateEditedActivity(
+                                    mergedActivity.activityId,
+                                    "target",
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                variant="outlined"
+                              />
                             </td>
-                            <td className="activity-cell">
-                              {formatUnit(mergedActivity.unit)}
-                            </td>
-                            <td className="activity-cell">
-                              {mergedActivity.target2}
-                            </td>
-                            <td className="activity-cell">
-                              {formatUnit(mergedActivity.unit2)}
-                            </td>
-                            <td className="activity-cell">
-                              {mergedActivity.videoLink && (
-                                <button
-                                  onClick={() =>
-                                    handleVideoLinkClick(
-                                      mergedActivity.videoLink,
-                                      mergedActivity.name
+                            <td
+                              className="activity-cell"
+                              style={{ width: "80px" }}
+                            >
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={mergedActivity.unit || ""}
+                                  onChange={(e) =>
+                                    updateEditedActivity(
+                                      mergedActivity.activityId,
+                                      "unit",
+                                      e.target.value
                                     )
                                   }
-                                  className="video-link-button"
-                                  title="Watch Video"
-                                  style={{
-                                    background: "none",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    padding: "4px",
-                                    borderRadius: "4px",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
                                 >
-                                  <Eye
-                                    size={16}
-                                    className="text-blue-500 hover:text-blue-700"
-                                  />
-                                </button>
-                              )}
+                                  <MenuItem value="weight">Kg</MenuItem>
+                                  <MenuItem value="time">Min</MenuItem>
+                                  <MenuItem value="distance">Km</MenuItem>
+                                  <MenuItem value="repetitions">Reps</MenuItem>
+                                </Select>
+                              </FormControl>
                             </td>
-                            <td>
+                            <td
+                              className="activity-cell"
+                              style={{ width: "100px" }}
+                            >
+                              <TextField
+                                fullWidth
+                                size="small"
+                                type="number"
+                                value={mergedActivity.target2 || ""}
+                                onChange={(e) =>
+                                  updateEditedActivity(
+                                    mergedActivity.activityId,
+                                    "target2",
+                                    parseFloat(e.target.value) || 0
+                                  )
+                                }
+                                variant="outlined"
+                              />
+                            </td>
+                            <td
+                              className="activity-cell"
+                              style={{ width: "80px" }}
+                            >
+                              <FormControl fullWidth size="small">
+                                <Select
+                                  value={mergedActivity.unit2 || ""}
+                                  onChange={(e) =>
+                                    updateEditedActivity(
+                                      mergedActivity.activityId,
+                                      "unit2",
+                                      e.target.value
+                                    )
+                                  }
+                                >
+                                  <MenuItem value="">None</MenuItem>
+                                  <MenuItem value="weight">Kg</MenuItem>
+                                  <MenuItem value="time">Min</MenuItem>
+                                  <MenuItem value="distance">Km</MenuItem>
+                                  <MenuItem value="repetitions">Reps</MenuItem>
+                                </Select>
+                              </FormControl>
+                            </td>
+                            <td
+                              className="activity-cell"
+                              style={{ width: "150px" }}
+                            >
+                              <div
+                                style={{
+                                  display: "flex",
+                                  gap: "8px",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <TextField
+                                  fullWidth
+                                  size="small"
+                                  placeholder="YouTube URL"
+                                  value={mergedActivity.videoLink || ""}
+                                  onChange={(e) =>
+                                    updateEditedActivity(
+                                      mergedActivity.activityId,
+                                      "videoLink",
+                                      e.target.value
+                                    )
+                                  }
+                                  variant="outlined"
+                                />
+                                {mergedActivity.videoLink && (
+                                  <button
+                                    onClick={() =>
+                                      handleVideoLinkClick(
+                                        mergedActivity.videoLink,
+                                        mergedActivity.name
+                                      )
+                                    }
+                                    className="video-link-button"
+                                    title="Watch Video"
+                                    style={{
+                                      background: "none",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      padding: "4px",
+                                      borderRadius: "4px",
+                                      display: "flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      minWidth: "24px",
+                                    }}
+                                  >
+                                    <Eye
+                                      size={16}
+                                      className="text-blue-500 hover:text-blue-700"
+                                    />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td style={{ width: "50px" }}>
                               <MinusCircle
                                 className="text-red-500 cursor-pointer hover:text-red-700"
                                 onClick={() => handleDelete(index)}
