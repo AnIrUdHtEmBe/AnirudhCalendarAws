@@ -157,7 +157,7 @@ function ActivityTable() {
     }
     console.log(sessionToBeCreated);
     await createSession(sessionToBeCreated);
-    
+
     // Clear all form data after successful save
     setPlanName("");
     setCategory("Fitness");
@@ -180,7 +180,7 @@ function ActivityTable() {
     setEditedActivities([]);
     setIsEditMode(false);
     setOriginalEmptyArr([]);
-    setResetKey(prev => prev + 1);
+    setResetKey((prev) => prev + 1);
   };
 
   const handleAddNewRow = () => {
@@ -445,9 +445,9 @@ function ActivityTable() {
   return (
     <div className="w-full h-screen flex flex-col">
       <Header />
-      <div className="activity-table-container bg-white w-full flex flex-1 rounded-2xl shadow-lg overflow-hidden gap-3 p-3">
+      <div className="activity-table-container bg-white w-full flex flex-col md:flex-row flex-1 rounded-2xl shadow-lg overflow-hidden gap-3 p-3">
         {/* Left Panel - Activities List */}
-        <div className="w-1/2 border-r border-gray-300 flex flex-col">
+        <div className="w-full md:w-1.5/3 border-b md:border-r md:border-b-0 border-gray-300 flex flex-col">
           {/* Left Panel Header */}
           <div className="p-3 border-b border-gray-200">
             <div className="flex justify-between items-center mb-3">
@@ -467,7 +467,7 @@ function ActivityTable() {
                   }}
                   filterOptions={(options, { inputValue }) => {
                     if (!inputValue || inputValue.length < 2) {
-                      return options
+                      return options;
                     }
 
                     const lowerInput = inputValue.toLowerCase();
@@ -655,7 +655,7 @@ function ActivityTable() {
         </div>
 
         {/* Right Panel - Session Creator */}
-        <div className="w-1/2 flex flex-col">
+        <div className="w-full md:w-5/3 flex flex-col">
           {/* Right Panel Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-3 gap-3 mb-3">
             <div className="flex flex-col lg:flex-row w-full gap-2 lg:gap-3">
@@ -766,22 +766,33 @@ function ActivityTable() {
                 </FormControl>
               </div>
 
-              <div className="flex items-center gap-2 mt-2 lg:mt-0">
+              <div className="flex items-center mt-2 lg:mt-0">
                 {!isEditMode ? (
-                  <button
-                    className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
-                    onClick={() => {
-                      setOriginalEmptyArr(JSON.parse(JSON.stringify(emptyArr)));
-                      setIsEditMode(true);
-                    }}
-                  >
-                    <Edit size={16} />
-                    <span>Edit Mode</span>
-                  </button>
+                  <>
+                    <button
+                      className="flex items-center justify-center p-2 text-xs plus-new-actvity whitespace-nowrap"
+                      onClick={() => {
+                        setOriginalEmptyArr(
+                          JSON.parse(JSON.stringify(emptyArr))
+                        );
+                        setIsEditMode(true);
+                      }}
+                    >
+                      <Edit size={16} />
+                      <span>Edit Mode</span>
+                    </button>
+                    <button
+                      className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-sm btn2 whitespace-nowrap"
+                      onClick={handleSessionCreation}
+                    >
+                      <Save size={16} />
+                      <span>Save</span>
+                    </button>
+                  </>
                 ) : (
                   <>
                     <button
-                      className="flex items-center justify-center space-x-1 text-white px-2 py-1 rounded-xl text-xs btn2 whitespace-nowrap"
+                      className="flex items-center justify-center space-x-1 text-white p-3 rounded-xl text-xs btn2 whitespace-nowrap"
                       onClick={() => {
                         const changes = [];
                         emptyArr.forEach((activity, index) => {
@@ -820,7 +831,9 @@ function ActivityTable() {
                     <button
                       className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
                       onClick={() => {
-                        setEmptyArr(JSON.parse(JSON.stringify(originalEmptyArr)));
+                        setEmptyArr(
+                          JSON.parse(JSON.stringify(originalEmptyArr))
+                        );
                         setIsEditMode(false);
                         setEditedActivities([]);
                       }}
@@ -833,47 +846,41 @@ function ActivityTable() {
             </div>
 
             {/* Save Button */}
-            <div className="flex gap-2 w-full lg:w-auto justify-end flex-shrink-0">
-              <button
-                className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-sm btn2 whitespace-nowrap"
-                onClick={handleSessionCreation}
-              >
-                <Save size={16} />
-                <span>Save</span>
-              </button>
-            </div>
+            {!isEditMode && (
+              <div className="flex gap-2 w-full lg:w-auto justify-end flex-shrink-0 right-4"></div>
+            )}
           </div>
 
           {/* Right Panel Table */}
           <div className="flex-1 w-full overflow-y-auto">
-            <table className="w-full table-fixed border-collapse">
+            <table className="w-full table-auto border-collapse">
               <thead className="sticky top-0 bg-white z-10">
                 <tr className="text-left text-gray-700 text-xs">
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[8%] text-center">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center">
                     Sl No.
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[18%] text-left">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left">
                     Activity
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[22%] text-left">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left">
                     Description
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[10%] text-center">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center">
                     Target 1
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[10%] text-center">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center">
                     Unit 1
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[10%] text-center">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center">
                     Target 2
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[10%] text-center">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center">
                     Unit 2
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[7%] text-center">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center">
                     Video
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[5%] text-center"></th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center"></th>
                 </tr>
               </thead>
               <tbody>
@@ -887,9 +894,7 @@ function ActivityTable() {
                     </td>
 
                     {/* Activity Name/Select - Conditional for edit mode */}
-                    <td
-                      className="w-[18%] px-1 py-2 border-b border-gray-200 align-middle"
-                    >
+                    <td className="w-[18%] px-1 py-2 border-b border-gray-200 align-middle">
                       <div className="flex justify-center">
                         {!isEditMode ? (
                           /* Your original Autocomplete code here - paste it unchanged */
@@ -933,7 +938,7 @@ function ActivityTable() {
                             }}
                             filterOptions={(options, { inputValue }) => {
                               if (!inputValue || inputValue.length < 2) {
-                                return options
+                                return options;
                               }
 
                               const lowerInput = inputValue.toLowerCase();
@@ -977,13 +982,10 @@ function ActivityTable() {
                                 label="Select Activity"
                                 variant="outlined"
                                 size="small"
-                                sx={{ width: 150 }}
+                                sx={{ width: "100%" }}
                               />
                             )}
-                            sx={{ width: 150, backgroundColor: "white" }}
-                            isOptionEqualToValue={(option, value) =>
-                              option.activityId === value.activityId
-                            }
+                            sx={{ width: "100%", backgroundColor: "white" }}
                             freeSolo
                             noOptionsText="Type 2+ characters to search..."
                             disablePortal
@@ -1006,16 +1008,14 @@ function ActivityTable() {
                                 return newPrev;
                               });
                             }}
-                            sx={{ width: 150 }}
+                            sx={{ width: "100%" }}
                           />
                         )}
                       </div>
                     </td>
 
                     {/* Description - Conditional */}
-                    <td
-                      className="w-[22%] px-1 py-2 border-b border-gray-200 text-center align-middle"
-                    >
+                    <td className="w-[22%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         <div className="break-words overflow-hidden text-left">
                           {activity.description}
@@ -1031,13 +1031,13 @@ function ActivityTable() {
                             updated[index].description = e.target.value;
                             setEmptyArr(updated);
                           }}
-                          sx={{ width: 120 }}
+                          sx={{ width: "100%" }}
                         />
                       )}
                     </td>
 
                     {/* Target 1 - Conditional */}
-                    <td className="w-[10%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[15%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         activity.target
                       ) : (
@@ -1054,13 +1054,13 @@ function ActivityTable() {
                               : null;
                             setEmptyArr(updated);
                           }}
-                          sx={{ width: 80 }}
+                          sx={{ width: "100%" }}
                         />
                       )}
                     </td>
 
                     {/* Unit 1 - Conditional */}
-                    <td className="w-[10%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[7%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         formatUnit(activity.unit)
                       ) : (
@@ -1081,13 +1081,13 @@ function ActivityTable() {
                               size="small"
                             />
                           )}
-                          sx={{ minWidth: 80 }}
+                          sx={{ width: "100%" }}
                         />
                       )}
                     </td>
 
                     {/* Target 2 - Conditional */}
-                    <td className="w-[10%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[15%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         activity.target2
                       ) : (
@@ -1104,13 +1104,13 @@ function ActivityTable() {
                               : null;
                             setEmptyArr(updated);
                           }}
-                          sx={{ width: 80 }}
+                          sx={{ width: "100%" }}
                         />
                       )}
                     </td>
 
                     {/* Unit 2 - Conditional */}
-                    <td className="w-[10%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[7%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         formatUnit(activity.unit2)
                       ) : (
@@ -1131,13 +1131,13 @@ function ActivityTable() {
                               size="small"
                             />
                           )}
-                          sx={{ minWidth: 80 }}
+                          sx={{ width: "100%" }}
                         />
                       )}
                     </td>
 
                     {/* Video - Conditional */}
-                    <td className="w-[7%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[15%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       <div className="flex justify-center items-center">
                         {!isEditMode ? (
                           <>
@@ -1183,7 +1183,7 @@ function ActivityTable() {
                                 updated[index].videoLink = e.target.value;
                                 setEmptyArr(updated);
                               }}
-                              sx={{ width: 100 }}
+                              sx={{ width: "100%" }}
                             />
                             {activity.videoLink && (
                               <button
@@ -1511,5 +1511,3 @@ function ActivityTable() {
 }
 
 export default ActivityTable;
-
-

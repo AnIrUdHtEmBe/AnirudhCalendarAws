@@ -1,6 +1,5 @@
-import { LucideCircleMinus, Plus, Save, X } from "lucide-react";
+import { LucideCircleMinus, Plus, Save, X, Eye, Edit } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Edit } from "lucide-react";
 import {
   Activity_Api_call,
   DataContext,
@@ -15,6 +14,7 @@ import {
   MenuItem,
   Select,
   TextField,
+  Checkbox,
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
 import { NutritionUnits, NutritionUtils } from "../Utils/NutritionUtils";
@@ -64,6 +64,13 @@ function NutritionActivityTable() {
     themes: [],
     goals: [],
   });
+
+  // New states for enhanced functionality
+  const [selectedFilter, setSelectedFilter] = useState<string>("");
+  const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(
+    new Set()
+  );
+
   useEffect(() => {}, []);
   useEffect(() => {
     const fetchLiterals = async () => {
@@ -189,6 +196,7 @@ function NutritionActivityTable() {
       },
     ]);
     setSelectedActivities({});
+    setSelectedActivityIds(new Set());
     setEditedActivities([]);
     setResetKey((prev) => prev + 1);
   };
@@ -229,6 +237,58 @@ function NutritionActivityTable() {
         vegNonVeg: "VEG",
       },
     ]);
+  };
+
+  // Handle activity selection from left panel
+  const handleActivitySelect = (activity: Activity_Api_call) => {
+    if (selectedActivityIds.has(activity.activityId!)) {
+      return; // Already selected, do nothing
+    }
+
+    // Find first empty row
+    const emptyIndex = emptyArr.findIndex(
+      (item) => !item.activityId || item.name === ""
+    );
+
+    if (emptyIndex !== -1) {
+      // Update the empty row with selected activity
+      const updatedArr = [...emptyArr];
+      updatedArr[emptyIndex] = {
+        ...activity,
+        vegNonVeg: activity.vegNonVeg || "VEG", // Default to VEG if undefined
+      };
+      setEmptyArr(updatedArr);
+
+      // Mark activity as selected
+      setSelectedActivityIds(
+        (prev) => new Set([...prev, activity.activityId!])
+      );
+
+      // Set selectedActivities
+      setSelectedActivities((prev) => ({
+        ...prev,
+        [emptyIndex]: activity.activityId!,
+      }));
+    } else {
+      // No empty row found, add new row
+      const newIndex = emptyArr.length;
+      setEmptyArr((prev) => [
+        ...prev,
+        {
+          ...activity,
+          vegNonVeg: activity.vegNonVeg || "VEG", // Default to VEG if undefined
+        },
+      ]);
+      setSelectedActivityIds(
+        (prev) => new Set([...prev, activity.activityId!])
+      );
+
+      // Set selectedActivities
+      setSelectedActivities((prev) => ({
+        ...prev,
+        [newIndex]: activity.activityId!,
+      }));
+    }
   };
 
   const handleModalSave = async () => {
@@ -325,9 +385,35 @@ function NutritionActivityTable() {
     });
   }, [activities_api_call]);
 
+  // Filter activities based on selected filter
+  const filteredActivities = useMemo(() => {
+    const unique = activities_api_call.filter(
+      (activity, index, self) =>
+        activity.name &&
+        self.findIndex((a) => a.name === activity.name) === index
+    );
+
+    if (!selectedFilter) return unique;
+    return unique.filter(
+      (activity) =>
+        activity.category?.toUpperCase() === selectedFilter.toUpperCase()
+    );
+  }, [activities_api_call, selectedFilter]);
+
   const handleDelete = (index: number) => {
+    const deletedActivity = emptyArr[index];
     const updatedPlan = emptyArr.filter((_, i) => i !== index);
     setEmptyArr(updatedPlan);
+
+    // Remove from selected activities
+    if (deletedActivity.activityId) {
+      setSelectedActivityIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(deletedActivity.activityId!);
+        return newSet;
+      });
+    }
+
     setSelectedActivities((prev) => {
       const newSelectedActivities = { ...prev };
       delete newSelectedActivities[index];
@@ -424,862 +510,1035 @@ function NutritionActivityTable() {
   }, [emptyArr]);
 
   return (
-    <div className="activity-table-container bg-white w-full flex flex-col px-4 md:px-8">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-4 gap-4">
-        <div className="flex flex-col lg:flex-row w-full lg:w-auto gap-4 lg:gap-8">
-          <div className="flex flex-col w-full lg:w-auto min-w-0">
-            <FormControl fullWidth variant="standard" sx={{ minWidth: 170 }}>
-              <TextField
-                label="Nutrition Name"
-                variant="standard"
-                value={planName}
-                onChange={(e) => setPlanName(e.target.value)}
-                InputProps={{
-                  sx: { fontSize: "1.25rem", fontFamily: "Roboto" },
-                }}
-              />
-            </FormControl>
-          </div>
-
-          <div className="flex flex-col w-full lg:w-auto min-w-0">
-            <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <TextField
-                label="Category"
-                variant="standard"
-                value={category}
-                InputProps={{
-                  sx: { fontSize: "1.25rem", fontFamily: "Roboto" },
-                }}
-              />
-            </FormControl>
-          </div>
-
-          <div className="flex flex-col w-full lg:w-auto min-w-0">
-            <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <InputLabel id="demo-select-label" shrink={true}>
-                Theme
-              </InputLabel>
-              <Select
-                labelId="demo-select-label"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-                displayEmpty
-                renderValue={(selected) => {
-                  if (!selected) {
-                    return <span></span>;
-                  }
-                  return selected;
-                }}
-                sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {literals.themes.map((theme, i) => (
-                  <MenuItem key={i} value={theme}>
-                    {theme}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </div>
-
-          <div className="flex flex-col w-full lg:w-auto min-w-0">
-            <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <InputLabel id="demo-select-label" shrink={true}>
-                {" "}
-                Goal
-              </InputLabel>
-              <Select
-                labelId="demo-select-label"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-                displayEmpty
-                sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
-                renderValue={(selected) => {
-                  if (!selected) {
-                    return <span></span>;
-                  }
-                  return selected;
-                }}
-              >
-                <MenuItem value="">None</MenuItem>
-                {literals.goals.map((goal, i) => (
-                  <MenuItem key={i} value={goal}>
-                    {goal}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </div>
-
-          <div className="flex flex-col w-full lg:w-auto min-w-0">
-            <FormControl fullWidth variant="standard" sx={{ minWidth: 120 }}>
-              <InputLabel id="meal-type-select-label" shrink={true}>
-                Type
-              </InputLabel>
-              <Select
-                labelId="meal-type-select-label"
-                value={mealType}
-                onChange={(e) => setMealType(e.target.value)}
-                displayEmpty
-                renderValue={(selected) => {
-                  if (!selected) {
-                    return <span></span>;
-                  }
-                  return selected;
-                }}
-                sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
-              >
-                <MenuItem value="">None</MenuItem>
-                {mealTypes.map((type, i) => (
-                  <MenuItem key={i} value={type}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </div>
-        </div>
-
-        {/* Right Buttons */}
-        <div className="flex flex-wrap gap-3 w-full lg:w-auto justify-end">
-          <div className="flex items-center gap-3">
-            {!isEditMode ? (
-              <button
-                className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
-                onClick={() => {
-                  setOriginalEmptyArr(JSON.parse(JSON.stringify(emptyArr)));
-                  setIsEditMode(true);
-                }}
-              >
-                <Edit size={20} />
-                <span>Edit Mode</span>
-              </button>
-            ) : (
-              <>
-                <button
-                  className="flex items-center justify-center space-x-2 text-white px-4 py-3 rounded-xl text-sm md:text-base btn2 whitespace-nowrap"
-                  onClick={() => {
-                    const changes = [];
-                    emptyArr.forEach((activity, index) => {
-                      const original = originalEmptyArr[index];
-                      if (original) {
-                        const changedFields = {};
-                        if (activity.name !== original.name) {
-                          changedFields.name = activity.name;
-                          setSelectedActivities((prev) => ({
-                            ...prev,
-                            [index]:
-                              activity.activityId ||
-                              prev[index] ||
-                              Date.now().toString(),
-                          }));
-                        }
-                        if (activity.description !== original.description)
-                          changedFields.description = activity.description;
-                        if (activity.target !== original.target)
-                          changedFields.target = activity.target;
-                        if (activity.unit !== original.unit)
-                          changedFields.unit = activity.unit;
-                        if (activity.target2 !== original.target2)
-                          changedFields.target2 = activity.target2;
-                        if (activity.unit2 !== original.unit2)
-                          changedFields.unit2 = activity.unit2;
-                        // if (activity.type !== original.type)
-                        //   changedFields.type = activity.type;
-                        if (activity.vegNonVeg !== original.vegNonVeg)
-                          changedFields.vegNonVeg = activity.vegNonVeg || "VEG";
-                        if (Object.keys(changedFields).length > 0) {
-                          changes.push({
-                            activityTemplateId: activity.activityId,
-                            ...changedFields,
-                          });
-                        }
-                      }
-                    });
-                    setEditedActivities(changes);
-                    setIsEditMode(false);
+    <div className="w-full h-screen flex flex-col">
+      <div className="activity-table-container bg-white w-full flex flex-1 rounded-2xl shadow-lg overflow-hidden gap-3 p-3">
+        {/* Left Panel - Activities List */}
+        <div className="w-full md:w-2/3 border-b md:border-r md:border-b-0 border-gray-300 flex flex-col">
+          {/* Left Panel Header */}
+          <div className="p-2 border-b border-gray-200">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-lg font-medium">Activities</h2>
+              <div className="flex flex-col gap-2">
+                {/* Select Activity Autocomplete */}
+                <Autocomplete
+                  key={`left-nutrition-${resetKey}`}
+                  options={uniqueActivities}
+                  getOptionLabel={(option) => option.name || ""}
+                  value={null}
+                  onChange={(_, newValue) => {
+                    if (newValue) {
+                      handleActivitySelect(newValue);
+                      setActivityForTable(undefined);
+                    }
                   }}
-                >
-                  <Save size={20} />
-                  <span>Save</span>
-                </button>
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Select Item"
+                      variant="outlined"
+                      size="small"
+                      fullWidth
+                      value=""
+                    />
+                  )}
+                  sx={{ width: "100%", backgroundColor: "white" }}
+                  isOptionEqualToValue={(option, value) =>
+                    option.activityId === value.activityId
+                  }
+                  freeSolo
+                  noOptionsText="Type 2+ characters to search..."
+                  disablePortal
+                  blurOnSelect
+                  clearOnBlur
+                />
+
+                {/* Create New Activity Button */}
                 <button
-                  className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
-                  onClick={() => {
-                    setEmptyArr(JSON.parse(JSON.stringify(originalEmptyArr)));
-                    setIsEditMode(false);
-                    setEditedActivities([]);
-                  }}
+                  className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity w-full rounded border border-blue-500 hover:bg-blue-50"
+                  onClick={() => setShowModal(true)}
                 >
-                  <span>Cancel</span>
-                </button>
-              </>
-            )}
-          </div>
-          <button
-            className="flex items-center justify-center space-x-2 p-2 text-sm md:text-base plus-new-actvity whitespace-nowrap"
-            onClick={() => setShowModal(true)}
-          >
-            <Plus />
-            <span>Create New Item</span>
-          </button>
-          <button
-            className="flex items-center justify-center space-x-2 text-white px-4 py-2 rounded-xl text-sm md:text-base btn2 whitespace-nowrap"
-            onClick={handleSessionCreation}
-          >
-            <Save size={20} />
-            <span>Save</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Scrollable Table Container */}
-      <div className="overflow-auto flex-1 w-full">
-        <div className="min-w-[1200px]">
-          <table className="w-full table-auto border-collapse">
-            <thead className="sticky top-0 bg-white z-10">
-              <tr className="text-left text-gray-700 text-sm md:text-base">
-                {[
-                  "Sl No.",
-                  "Item",
-                  "Description",
-                  "Target 1",
-                  "Unit 1",
-                  "Target 2",
-                  "Unit 2",
-                  "VegNonVeg",
-                  "",
-                ].map((item, index) => (
-                  <th
-                    key={index}
-                    className="font-roberto px-4 py-2 md:py-6 border-b border-b-gray-300 text-center"
-                    style={{
-                      minWidth:
-                        index === 1 ? "280px" : index === 2 ? "200px" : "auto",
-                    }}
-                  >
-                    {item}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {emptyArr.map((activity, index) => (
-                <tr
-                  key={index}
-                  className="text-sm text-gray-800 hover:bg-gray-50"
-                >
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {index + 1}
-                  </td>
-
-                  <td
-                    className="px-4 py-7 border-b border-b-gray-200 align-middle"
-                    style={{ minWidth: "280px" }}
-                  >
-                    <div className="flex justify-center">
-                      {!isEditMode ? (
-                        <Autocomplete
-                          key={`nutrition-${index}-${resetKey}`}
-                          options={uniqueActivities}
-                          getOptionLabel={(option) => option.name || ""}
-                          value={
-                            uniqueActivities.find(
-                              (a) => a.activityId === selectedActivities[index]
-                            ) ||
-                            (activity.name
-                              ? {
-                                  name: activity.name,
-                                  activityId: activity.activityId,
-                                }
-                              : null)
-                          }
-                          onChange={(_, newValue) => {
-                            if (newValue && typeof newValue === "string") {
-                              const updated = [...emptyArr];
-                              updated[index].name = newValue;
-                              const newId = Date.now().toString();
-                              updated[index].activityId = newId;
-                              setEmptyArr(updated);
-                              setSelectedActivities((prev) => ({
-                                ...prev,
-                                [index]: newId,
-                              }));
-                              setActivityForTable({
-                                name: newValue,
-                                activityId: newId,
-                              });
-                            } else {
-                              handleActivitySelectChange(
-                                index,
-                                newValue ? newValue.activityId : ""
-                              );
-                              setActivityForTable(newValue);
-                            }
-                          }}
-                          filterOptions={(options, { inputValue }) => {
-                            if (!inputValue || inputValue.length < 2) {
-                              return options.slice(0, 15);
-                            }
-
-                            const lowerInput = inputValue.toLowerCase();
-                            const exactMatches: any[] = [];
-                            const startsMatches: any[] = [];
-                            const containsMatches: any[] = [];
-
-                            for (const option of options) {
-                              const nameLower = option.name.toLowerCase();
-
-                              if (nameLower === lowerInput) {
-                                exactMatches.push(option);
-                              } else if (nameLower.startsWith(lowerInput)) {
-                                startsMatches.push(option);
-                              } else if (nameLower.includes(lowerInput)) {
-                                containsMatches.push(option);
-                              }
-
-                              if (
-                                exactMatches.length +
-                                  startsMatches.length +
-                                  containsMatches.length >=
-                                20
-                              )
-                                break;
-                            }
-
-                            return [
-                              ...exactMatches,
-                              ...startsMatches.sort((a, b) =>
-                                a.name.localeCompare(b.name)
-                              ),
-                              ...containsMatches.sort((a, b) =>
-                                a.name.localeCompare(b.name)
-                              ),
-                            ].slice(0, 20);
-                          }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Select Item"
-                              variant="outlined"
-                              size="small"
-                              sx={{ width: 250 }}
-                            />
-                          )}
-                          sx={{ width: 250, backgroundColor: "white" }}
-                          isOptionEqualToValue={(option, value) =>
-                            option.activityId === value.activityId
-                          }
-                          freeSolo
-                          noOptionsText="Type 2+ characters to search..."
-                          disablePortal
-                          blurOnSelect
-                        />
-                      ) : (
-                        <TextField
-                          label="Item Name"
-                          variant="outlined"
-                          size="small"
-                          value={activity.name || ""}
-                          onChange={(e) => {
-                            const updated = [...emptyArr];
-                            updated[index].name = e.target.value;
-                            if (!updated[index].activityId) {
-                              updated[index].activityId = Date.now().toString();
-                            }
-                            setEmptyArr(updated);
-                            setSelectedActivities((prev) => ({
-                              ...prev,
-                              [index]: updated[index].activityId,
-                            }));
-                          }}
-                          sx={{ width: 250 }}
-                        />
-                      )}
-                    </div>
-                  </td>
-
-                  <td
-                    className="px-4 py-7 border-b border-b-gray-200 text-center align-middle"
-                    style={{ minWidth: "200px" }}
-                  >
-                    {!isEditMode ? (
-                      <div className="break-words">{activity.description}</div>
-                    ) : (
-                      <TextField
-                        label="Description"
-                        variant="outlined"
-                        size="small"
-                        value={activity.description || ""}
-                        onChange={(e) => {
-                          const updated = [...emptyArr];
-                          updated[index].description = e.target.value;
-                          setEmptyArr(updated);
-                        }}
-                        fullWidth
-                      />
-                    )}
-                  </td>
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {!isEditMode ? (
-                      activity.target
-                    ) : (
-                      <TextField
-                        type="number"
-                        label="Target 1"
-                        variant="outlined"
-                        size="small"
-                        value={activity.target ?? ""}
-                        onChange={(e) => {
-                          const updated = [...emptyArr];
-                          updated[index].target = e.target.value
-                            ? Number(e.target.value)
-                            : null;
-                          setEmptyArr(updated);
-                        }}
-                      />
-                    )}
-                  </td>
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {!isEditMode ? (
-                      formatUnit(activity.unit)
-                    ) : (
-                      <Autocomplete
-                        options={NutritionUnits}
-                        getOptionLabel={(option) => formatUnit(option) || ""}
-                        value={activity.unit || ""}
-                        onChange={(_, newValue) => {
-                          const updated = [...emptyArr];
-                          updated[index].unit = newValue || "";
-                          setEmptyArr(updated);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Unit 1"
-                            variant="outlined"
-                            size="small"
-                            sx={{ width: 120 }}
-                          />
-                        )}
-                      />
-                    )}
-                  </td>
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {!isEditMode ? (
-                      activity.target2
-                    ) : (
-                      <TextField
-                        type="number"
-                        label="Target 2"
-                        variant="outlined"
-                        size="small"
-                        value={activity.target2 ?? ""}
-                        onChange={(e) => {
-                          const updated = [...emptyArr];
-                          updated[index].target2 = e.target.value
-                            ? Number(e.target.value)
-                            : null;
-                          setEmptyArr(updated);
-                        }}
-                      />
-                    )}
-                  </td>
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {!isEditMode ? (
-                      formatUnit(activity.unit2)
-                    ) : (
-                      <Autocomplete
-                        options={NutritionUnits}
-                        getOptionLabel={(option) => formatUnit(option) || ""}
-                        value={activity.unit2 || ""}
-                        onChange={(_, newValue) => {
-                          const updated = [...emptyArr];
-                          updated[index].unit2 = newValue || "";
-                          setEmptyArr(updated);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Unit 2"
-                            variant="outlined"
-                            size="small"
-                            sx={{ width: 120 }}
-                          />
-                        )}
-                      />
-                    )}
-                  </td>
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    {!isEditMode ? (
-                      activity.vegNonVeg || "VEG"
-                    ) : (
-                      <Autocomplete
-                        options={["VEG", "NONVEG", "EGG"]}
-                        getOptionLabel={(option) => option || ""}
-                        value={activity.vegNonVeg || "VEG"}
-                        onChange={(_, newValue) => {
-                          const updated = [...emptyArr];
-                          updated[index].vegNonVeg = newValue || "VEG";
-                          setEmptyArr(updated);
-                        }}
-                        renderInput={(params) => (
-                          <TextField
-                            {...params}
-                            label="Veg/NonVeg"
-                            variant="outlined"
-                            size="small"
-                            sx={{ width: 120 }}
-                          />
-                        )}
-                      />
-                    )}
-                  </td>
-
-                  {/* {(selectedActivities[index] || activity.activityId) && (
-                    <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                      {!isEditMode ? (
-                        activity.vegNonVeg || ""
-                      ) : (
-                        <Autocomplete
-                          options={["Veg", "NonVeg", "Egg"]}
-                          getOptionLabel={(option) => option || ""}
-                          value={activity.vegNonVeg || ""}
-                          onChange={(_, newValue) => {
-                            const updated = [...emptyArr];
-                            updated[index].vegNonVeg = newValue || "";
-                            setEmptyArr(updated);
-                          }}
-                          renderInput={(params) => (
-                            <TextField
-                              {...params}
-                              label="Veg/NonVeg"
-                              variant="outlined"
-                              size="small"
-                              sx={{ width: 120 }}
-                            />
-                          )}
-                        />
-                      )}
-                    </td>
-                  )} */}
-
-                  <td className="px-4 py-7 border-b border-b-gray-200 text-center align-middle">
-                    <div className="flex justify-center items-center">
-                      <button onClick={() => handleDelete(index)}>
-                        <LucideCircleMinus className="text-red-400" size={24} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-b border-b-gray-300">
-                <td className="p-3" colSpan={9}>
-                  <button
-                    className="flex items-center space-x-2 px-4 py-2 add-row"
-                    onClick={addNewRow}
-                  >
-                    <Plus />
-                    <span>Add Row</span>
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4 py-8">
-          <div className="relative bg-transparent p-5">
-            <button
-              onClick={() => setShowModal(false)}
-              className="absolute top-2 right-2 z-10 rounded-full bg-white p-1 text-gray-500 hover:text-black shadow-md"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto relative p-6">
-              {/* Close Button */}
-
-              <div className="flex justify-between items-center border-gray-200 border-b pb-2 mb-4">
-                <h2 className="text-xl font-[500]">Create New Meal</h2>
-                <button
-                  onClick={handleModalSave}
-                  className="activity-save-button mx-6 m flex items-center space-x-2 bg-[#0070FF] text-white px-4 py-2 rounded-xl"
-                >
-                  <Save size={20} />
-                  <span>Save</span>
-                </button>
-              </div>
-
-              {/* Modal Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-200">
-                      <th className="px-4 py-2 text-center">Sl.No</th>
-                      <th className="px-4 py-2 text-center">Item Name</th>
-                      <th className="px-4 py-2 text-center">Description</th>
-                      <th className="px-4 py-2 text-center">Target 1</th>
-                      <th className="px-4 py-2 text-center">Unit 1</th>
-                      <th className="px-4 py-2 text-center">Target 2</th>
-                      <th className="px-4 py-2 text-center">Unit 2</th>
-
-                      <th className="px-4 py-2 text-center">VegNonVeg</th>
-                      <th className="px-4 py-2 text-center"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {newActivities.map((activity, index) => (
-                      <tr key={index}>
-                        <td className="px-4 py-2 text-center border-b-2 border-gray-200 align-middle">
-                          {index + 1}
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <Autocomplete
-                              options={uniqueActivities}
-                              getOptionLabel={(option) => option.name || ""}
-                              value={
-                                uniqueActivities.find(
-                                  (a) => a.name === activity.name
-                                ) || null
-                              }
-                              onInputChange={(_, newInputValue) => {
-                                const updated = [...newActivities];
-                                updated[index].name = newInputValue;
-                                setNewActivities(updated);
-                              }}
-                              filterOptions={(options, { inputValue }) => {
-                                if (!inputValue || inputValue.length < 2) {
-                                  return options.slice(0, 10);
-                                }
-
-                                const lowerInput = inputValue.toLowerCase();
-                                const results: any[] = [];
-
-                                for (const option of options) {
-                                  const nameLower = option.name.toLowerCase();
-                                  if (nameLower.includes(lowerInput)) {
-                                    results.push({
-                                      ...option,
-                                      _priority: nameLower.startsWith(
-                                        lowerInput
-                                      )
-                                        ? 0
-                                        : 1,
-                                    });
-                                    if (results.length >= 15) break;
-                                  }
-                                }
-
-                                return results
-                                  .sort((a, b) => {
-                                    if (a._priority !== b._priority)
-                                      return a._priority - b._priority;
-                                    return a.name.localeCompare(b.name);
-                                  })
-                                  .slice(0, 10);
-                              }}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Select Item"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ width: 180 }}
-                                />
-                              )}
-                              freeSolo
-                              noOptionsText="Type to search..."
-                              disablePortal
-                              blurOnSelect
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <input
-                              type="text"
-                              value={activity.description}
-                              onChange={(e) => {
-                                const updated = [...newActivities];
-                                updated[index].description = e.target.value;
-                                setNewActivities(updated);
-                              }}
-                              className="w-full rounded p-2 border border-gray-400 text-center"
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <input
-                              type="number"
-                              value={activity.target}
-                              onChange={(e) => {
-                                const updated = [...newActivities];
-                                updated[index].target = e.target.value;
-                                setNewActivities(updated);
-                              }}
-                              className="w-full border border-gray-400 rounded p-2 text-center"
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <Autocomplete
-                              options={NutritionUnits}
-                              getOptionLabel={(option) =>
-                                formatUnit(option) || ""
-                              }
-                              value={activity.unit || ""}
-                              onChange={(_, newValue) => {
-                                const updated = [...newActivities];
-                                updated[index].unit = newValue || "";
-                                setNewActivities(updated);
-                              }}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Select Unit"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ width: 120 }}
-                                />
-                              )}
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <input
-                              type="number"
-                              value={activity.target2 || ""}
-                              onChange={(e) => {
-                                const updated = [...newActivities];
-                                updated[index].target2 = e.target.value;
-                                setNewActivities(updated);
-                              }}
-                              className="w-full border border-gray-400 rounded p-2 text-center"
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <Autocomplete
-                              options={NutritionUnits}
-                              getOptionLabel={(option) =>
-                                formatUnit(option) || ""
-                              }
-                              value={activity.unit2 || ""}
-                              onChange={(_, newValue) => {
-                                const updated = [...newActivities];
-                                updated[index].unit2 = newValue || "";
-                                setNewActivities(updated);
-                              }}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Select Unit"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ width: 120 }}
-                                />
-                              )}
-                            />
-                          </div>
-                        </td>
-                        {/* <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <Autocomplete
-                              options={NutritionUtils}
-                              getOptionLabel={(option) => option || ""}
-                              value={activity.type || ""}
-                              onChange={(_, newValue) => {
-                                const updated = [...newActivities];
-                                updated[index].type = newValue || "";
-                                setNewActivities(updated);
-                              }}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Select Type"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ width: 120 }}
-                                />
-                              )}
-                            />
-                          </div>
-                        </td> */}
-                        <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
-                          <div className="flex justify-center">
-                            <Autocomplete
-                              options={["VEG", "NONVEG", "EGG"]}
-                              getOptionLabel={(option) => option || ""}
-                              value={activity.vegNonVeg || ""}
-                              onChange={(_, newValue) => {
-                                const updated = [...newActivities];
-                                updated[index].vegNonVeg = newValue || "";
-                                setNewActivities(updated);
-                              }}
-                              renderInput={(params) => (
-                                <TextField
-                                  {...params}
-                                  label="Veg/NonVeg"
-                                  variant="outlined"
-                                  size="small"
-                                  sx={{ width: 120 }}
-                                />
-                              )}
-                            />
-                          </div>
-                        </td>
-                        <td className="px-4 py-2 border-b-2 border-gray-200 text-center align-middle">
-                          <div className="flex justify-center items-center">
-                            <button
-                              onClick={() => {
-                                const updated = [...newActivities];
-                                updated.splice(index, 1);
-                                setNewActivities(updated);
-                              }}
-                            >
-                              <LucideCircleMinus
-                                className="text-red-500"
-                                size={20}
-                              />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mt-4 flex justify-start">
-                <button
-                  onClick={handleAddNewRow}
-                  className="flex items-center space-x-2 border bg-white text-[#0070FF] px-4 py-2 heya"
-                >
-                  <Plus />
-                  <span>Create another item</span>
+                  <Plus size={16} />
+                  <span>Create New</span>
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Left Panel Table */}
+          <div className="flex-1 overflow-auto">
+            <table className="w-full table-auto border-collapse text-xs">
+              <thead className="sticky top-0 bg-white z-10">
+                <tr className="text-left text-gray-700">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-6"></th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-8">
+                    Sl
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left">
+                    Item
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left">
+                    Description
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
+                    T1
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-10">
+                    U1
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
+                    T2
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-10">
+                    U2
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
+                    Type
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredActivities.map((activity, index) => (
+                  <tr
+                    key={activity.activityId || index}
+                    className={`text-gray-800 hover:bg-gray-50 cursor-pointer ${
+                      selectedActivityIds.has(activity.activityId!)
+                        ? "bg-blue-50 border-l-4 border-blue-500"
+                        : ""
+                    }`}
+                    onClick={() => handleActivitySelect(activity)}
+                  >
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      <Checkbox
+                        checked={selectedActivityIds.has(activity.activityId!)}
+                        size="small"
+                        color="primary"
+                      />
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      {index + 1}
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200">
+                      <div className="break-words font-medium text-left">
+                        {activity.name}
+                      </div>
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200">
+                      <div className="break-words text-left">
+                        {activity.description}
+                      </div>
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      {activity.target}
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      {formatUnit(activity.unit)}
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      {activity.target2}
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      {formatUnit(activity.unit2)}
+                    </td>
+                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                      {activity.vegNonVeg || "VEG"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      )}
+
+        {/* Right Panel - Session Creator */}
+        <div className="w-full md:w-6/3 flex flex-col">
+          {/* Right Panel Header */}
+
+          <div className="flex flex-col gap-3 py-3 mb-3 border-b border-gray-200">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+              <div className="min-w-0">
+                <FormControl fullWidth variant="standard">
+                  <TextField
+                    label="Nutrition Name"
+                    variant="standard"
+                    value={planName}
+                    onChange={(e) => setPlanName(e.target.value)}
+                    InputProps={{
+                      sx: { fontSize: "0.9rem", fontFamily: "Roboto" },
+                    }}
+                    size="small"
+                  />
+                </FormControl>
+              </div>
+
+              <div className="min-w-0">
+                <FormControl fullWidth variant="standard">
+                  <TextField
+                    label="Category"
+                    variant="standard"
+                    value={category}
+                    InputProps={{
+                      sx: { fontSize: "0.9rem", fontFamily: "Roboto" },
+                      readOnly: true,
+                    }}
+                    size="small"
+                  />
+                </FormControl>
+              </div>
+
+              <div className="min-w-0">
+                <FormControl fullWidth variant="standard">
+                  <InputLabel id="theme-select-label" shrink={true}>
+                    Theme
+                  </InputLabel>
+                  <Select
+                    labelId="theme-select-label"
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value)}
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <span></span>;
+                      }
+                      return selected;
+                    }}
+                    sx={{ fontSize: "0.9rem", fontFamily: "Roboto" }}
+                    size="small"
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {literals.themes.map((theme, i) => (
+                      <MenuItem key={i} value={theme}>
+                        {theme}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </div>
+
+              <div className="min-w-0">
+                <FormControl fullWidth variant="standard">
+                  <InputLabel id="goal-select-label" shrink={true}>
+                    Goal
+                  </InputLabel>
+                  <Select
+                    labelId="goal-select-label"
+                    value={goal}
+                    onChange={(e) => setGoal(e.target.value)}
+                    displayEmpty
+                    sx={{ fontSize: "0.9rem", fontFamily: "Roboto" }}
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <span></span>;
+                      }
+                      return selected;
+                    }}
+                    size="small"
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {literals.goals.map((goal, i) => (
+                      <MenuItem key={i} value={goal}>
+                        {goal}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </div>
+
+              <div className="min-w-0">
+                <FormControl fullWidth variant="standard">
+                  <InputLabel id="meal-type-select-label" shrink={true}>
+                    Type
+                  </InputLabel>
+                  <Select
+                    labelId="meal-type-select-label"
+                    value={mealType}
+                    onChange={(e) => setMealType(e.target.value)}
+                    displayEmpty
+                    renderValue={(selected) => {
+                      if (!selected) {
+                        return <span></span>;
+                      }
+                      return selected;
+                    }}
+                    sx={{ fontSize: "0.9rem", fontFamily: "Roboto" }}
+                    size="small"
+                  >
+                    <MenuItem value="">None</MenuItem>
+                    {mealTypes.map((type, i) => (
+                      <MenuItem key={i} value={type}>
+                        {type}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </div>
+            </div>
+
+            {/* Action Buttons Row */}
+            <div className="flex justify-end gap-2">
+              {!isEditMode ? (
+                <>
+                  <button
+                    className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
+                    onClick={() => {
+                      setOriginalEmptyArr(JSON.parse(JSON.stringify(emptyArr)));
+                      setIsEditMode(true);
+                    }}
+                  >
+                    <Edit size={14} />
+                    <span>Edit</span>
+                  </button>
+                  <button
+                    className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-xs btn2 whitespace-nowrap"
+                    onClick={handleSessionCreation}
+                  >
+                    <Save size={14} />
+                    <span>Save</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-xs btn2 whitespace-nowrap"
+                    onClick={() => {
+                      const changes = [];
+                      emptyArr.forEach((activity, index) => {
+                        const original = originalEmptyArr[index];
+                        if (original) {
+                          const changedFields = {};
+                          if (activity.name !== original.name) {
+                            changedFields.name = activity.name;
+                            setSelectedActivities((prev) => ({
+                              ...prev,
+                              [index]:
+                                activity.activityId ||
+                                prev[index] ||
+                                Date.now().toString(),
+                            }));
+                          }
+                          if (activity.description !== original.description)
+                            changedFields.description = activity.description;
+                          if (activity.target !== original.target)
+                            changedFields.target = activity.target;
+                          if (activity.unit !== original.unit)
+                            changedFields.unit = activity.unit;
+                          if (activity.target2 !== original.target2)
+                            changedFields.target2 = activity.target2;
+                          if (activity.unit2 !== original.unit2)
+                            changedFields.unit2 = activity.unit2;
+                          if (activity.vegNonVeg !== original.vegNonVeg)
+                            changedFields.vegNonVeg =
+                              activity.vegNonVeg || "VEG";
+                          if (Object.keys(changedFields).length > 0) {
+                            changes.push({
+                              activityId: activity.activityId,
+                              ...changedFields,
+                            });
+                          }
+                        }
+                      });
+                      setEditedActivities(changes);
+                      setIsEditMode(false);
+                    }}
+                  >
+                    <Save size={14} />
+                    <span>Save</span>
+                  </button>
+                  <button
+                    className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
+                    onClick={() => {
+                      setEmptyArr(JSON.parse(JSON.stringify(originalEmptyArr)));
+                      setIsEditMode(false);
+                      setEditedActivities([]);
+                    }}
+                  >
+                    <span>Cancel</span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right Panel Table */}
+          <div className="flex-1 w-full overflow-auto">
+            {/* Right Panel Table - Replace the existing table in your right panel */}
+            <div className="flex-1 w-full overflow-auto">
+              <table className="w-full table-auto border-collapse">
+                <thead className="sticky top-0 bg-white z-10">
+                  <tr className="text-left text-gray-700 text-xs">
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-4 text-center">
+                      Sl
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[270px] text-left">
+                      Item
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[180px] text-left">
+                      Description
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-28 text-center">
+                      Target 1
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[50px] text-center">
+                      Unit 1
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-28 text-center">
+                      Target 2
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[50px] text-center">
+                      Unit 2
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-[60px] text-center">
+                      Type
+                    </th>
+                    <th className="font-roberto px-1 py-2 border-b border-gray-300 w-4 text-center"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emptyArr.map((activity, index) => (
+                    <tr
+                      key={index}
+                      className="text-xs text-gray-800 hover:bg-gray-50"
+                    >
+                      <td className="border-b border-gray-200 text-center">
+                        {index + 1}
+                      </td>
+
+                      {/* Item Name/Select - COMPACT */}
+                      <td className="border-b border-gray-200">
+                        {!isEditMode ? (
+                          <Autocomplete
+                            key={`nutrition-${index}-${resetKey}`}
+                            options={uniqueActivities}
+                            getOptionLabel={(option) => option.name || ""}
+                            value={
+                              uniqueActivities.find(
+                                (a) =>
+                                  a.activityId === selectedActivities[index]
+                              ) ||
+                              (activity.name
+                                ? {
+                                    name: activity.name,
+                                    activityId: activity.activityId,
+                                  }
+                                : null)
+                            }
+                            onChange={(_, newValue) => {
+                              if (newValue && typeof newValue === "string") {
+                                const updated = [...emptyArr];
+                                updated[index].name = newValue;
+                                const newId = Date.now().toString();
+                                updated[index].activityId = newId;
+                                setEmptyArr(updated);
+                                setSelectedActivities((prev) => ({
+                                  ...prev,
+                                  [index]: newId,
+                                }));
+                                setActivityForTable({
+                                  name: newValue,
+                                  activityId: newId,
+                                });
+                              } else {
+                                handleActivitySelectChange(
+                                  index,
+                                  newValue ? newValue.activityId : ""
+                                );
+                                setActivityForTable(newValue);
+                              }
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                variant="outlined"
+                                size="small"
+                                fullWidth
+                                InputProps={{
+                                  ...params.InputProps,
+                                  style: { fontSize: "11px" },
+                                }}
+                                InputLabelProps={{
+                                  ...params.InputLabelProps,
+                                  style: { fontSize: "10px" },
+                                }}
+                              />
+                            )}
+                            sx={{
+                              width: "100%",
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "28px",
+                                "& fieldset": {
+                                  borderColor: "#e0e0e0",
+                                },
+                              },
+                            }}
+                            isOptionEqualToValue={(option, value) =>
+                              option.activityId === value.activityId
+                            }
+                            freeSolo
+                            noOptionsText="Type 2+ characters..."
+                            disablePortal
+                            blurOnSelect
+                          />
+                        ) : (
+                          <TextField
+                            variant="outlined"
+                            size="small"
+                            value={activity.name || ""}
+                            onChange={(e) => {
+                              const updated = [...emptyArr];
+                              updated[index].name = e.target.value;
+                              if (!updated[index].activityId) {
+                                updated[index].activityId =
+                                  Date.now().toString();
+                              }
+                              setEmptyArr(updated);
+                              setSelectedActivities((prev) => ({
+                                ...prev,
+                                [index]: updated[index].activityId,
+                              }));
+                            }}
+                            fullWidth
+                            InputProps={{
+                              style: { fontSize: "11px" },
+                            }}
+                            InputLabelProps={{
+                              style: { fontSize: "10px" },
+                            }}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "28px",
+                              },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* Description - COMPACT */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        {!isEditMode ? (
+                          <div className="break-words overflow-hidden text-left text-xs p-1">
+                            {activity.description}
+                          </div>
+                        ) : (
+                          <TextField
+                            variant="outlined"
+                            size="small"
+                            value={activity.description || ""}
+                            onChange={(e) => {
+                              const updated = [...emptyArr];
+                              updated[index].description = e.target.value;
+                              setEmptyArr(updated);
+                            }}
+                            fullWidth
+                            multiline
+                            maxRows={2}
+                            InputProps={{
+                              style: { fontSize: "11px" },
+                            }}
+                            InputLabelProps={{
+                              style: { fontSize: "10px" },
+                            }}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "28px",
+                              },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* Target 1 - COMPACT */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        {!isEditMode ? (
+                          <div className="text-xs">{activity.target}</div>
+                        ) : (
+                          <TextField
+                            type="number"
+                            variant="outlined"
+                            size="small"
+                            value={activity.target ?? ""}
+                            onChange={(e) => {
+                              const updated = [...emptyArr];
+                              updated[index].target = e.target.value
+                                ? Number(e.target.value)
+                                : null;
+                              setEmptyArr(updated);
+                            }}
+                            fullWidth
+                            InputProps={{
+                              style: { fontSize: "11px" },
+                            }}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "28px",
+                              },
+                              "& input[type=number]": {
+                                "-moz-appearance": "textfield",
+                              },
+                              "& input[type=number]::-webkit-outer-spin-button":
+                                {
+                                  "-webkit-appearance": "none",
+                                  margin: 0,
+                                },
+                              "& input[type=number]::-webkit-inner-spin-button":
+                                {
+                                  "-webkit-appearance": "none",
+                                  margin: 0,
+                                },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* Unit 1 - COMPACT */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        {!isEditMode ? (
+                          <div className="text-xs">
+                            {formatUnit(activity.unit)}
+                          </div>
+                        ) : (
+                          <Autocomplete
+                            options={NutritionUnits}
+                            getOptionLabel={(option) =>
+                              formatUnit(option) || ""
+                            }
+                            value={activity.unit || ""}
+                            onChange={(_, newValue) => {
+                              const updated = [...emptyArr];
+                              updated[index].unit = newValue || "";
+                              setEmptyArr(updated);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                variant="outlined"
+                                size="small"
+                                InputProps={{
+                                  ...params.InputProps,
+                                  style: { fontSize: "10px" },
+                                }}
+                              />
+                            )}
+                            sx={{
+                              width: "100%",
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "24px",
+                              },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* Target 2 - COMPACT */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        {!isEditMode ? (
+                          <div className="text-xs">{activity.target2}</div>
+                        ) : (
+                          <TextField
+                            type="number"
+                            variant="outlined"
+                            size="small"
+                            value={activity.target2 ?? ""}
+                            onChange={(e) => {
+                              const updated = [...emptyArr];
+                              updated[index].target2 = e.target.value
+                                ? Number(e.target.value)
+                                : null;
+                              setEmptyArr(updated);
+                            }}
+                            fullWidth
+                            InputProps={{
+                              style: { fontSize: "11px" },
+                            }}
+                            sx={{
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "28px",
+                              },
+                              "& input[type=number]": {
+                                "-moz-appearance": "textfield",
+                              },
+                              "& input[type=number]::-webkit-outer-spin-button":
+                                {
+                                  "-webkit-appearance": "none",
+                                  margin: 0,
+                                },
+                              "& input[type=number]::-webkit-inner-spin-button":
+                                {
+                                  "-webkit-appearance": "none",
+                                  margin: 0,
+                                },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* Unit 2 - COMPACT */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        {!isEditMode ? (
+                          <div className="text-xs">
+                            {formatUnit(activity.unit2)}
+                          </div>
+                        ) : (
+                          <Autocomplete
+                            options={NutritionUnits}
+                            getOptionLabel={(option) =>
+                              formatUnit(option) || ""
+                            }
+                            value={activity.unit2 || ""}
+                            onChange={(_, newValue) => {
+                              const updated = [...emptyArr];
+                              updated[index].unit2 = newValue || "";
+                              setEmptyArr(updated);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                variant="outlined"
+                                size="small"
+                                InputProps={{
+                                  ...params.InputProps,
+                                  style: { fontSize: "10px" },
+                                }}
+                              />
+                            )}
+                            sx={{
+                              width: "100%",
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "24px",
+                              },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* VegNonVeg Type - COMPACT */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        {!isEditMode ? (
+                          <div className="text-xs">
+                            {activity.vegNonVeg || "VEG"}
+                          </div>
+                        ) : (
+                          <Autocomplete
+                            options={["VEG", "NONVEG", "EGG"]}
+                            getOptionLabel={(option) => option || ""}
+                            value={activity.vegNonVeg || "VEG"}
+                            onChange={(_, newValue) => {
+                              const updated = [...emptyArr];
+                              updated[index].vegNonVeg = newValue || "VEG";
+                              setEmptyArr(updated);
+                            }}
+                            renderInput={(params) => (
+                              <TextField
+                                {...params}
+                                variant="outlined"
+                                size="small"
+                                InputProps={{
+                                  ...params.InputProps,
+                                  style: { fontSize: "10px" },
+                                }}
+                              />
+                            )}
+                            sx={{
+                              width: "100%",
+                              "& .MuiOutlinedInput-root": {
+                                minHeight: "24px",
+                              },
+                            }}
+                          />
+                        )}
+                      </td>
+
+                      {/* Delete Button */}
+                      <td className="px-1 py-1 border-b border-gray-200">
+                        <button
+                          onClick={() => handleDelete(index)}
+                          className="flex items-center justify-center w-full hover:bg-red-50 rounded p-1"
+                        >
+                          <LucideCircleMinus
+                            className="text-red-400"
+                            size={14}
+                          />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="border-b border-b-gray-300">
+                    <td className="p-2" colSpan={9}>
+                      <button
+                        className="flex items-center space-x-1 px-3 py-1 add-row text-xs hover:bg-blue-50 rounded border border-blue-200"
+                        onClick={addNewRow}
+                      >
+                        <Plus size={10} />
+                        <span>Add Row</span>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center px-4 py-8">
+            <div className="relative bg-transparent p-5">
+              <button
+                onClick={() => setShowModal(false)}
+                className="absolute top-2 right-2 z-10 rounded-full bg-white p-1 text-gray-500 hover:text-black shadow-md"
+              >
+                <X size={20} />
+              </button>
+
+              <div className="bg-white rounded-xl shadow-xl w-full max-w-7xl max-h-[90vh] overflow-y-auto relative p-6">
+                {/* Close Button */}
+
+                <div className="flex justify-between items-center border-gray-200 border-b pb-2 mb-4">
+                  <h2 className="text-xl font-[500]">Create New Meal</h2>
+                  <button
+                    onClick={handleModalSave}
+                    className="activity-save-button mx-6 m flex items-center space-x-2 bg-[#0070FF] text-white px-4 py-2 rounded-xl"
+                  >
+                    <Save size={20} />
+                    <span>Save</span>
+                  </button>
+                </div>
+
+                {/* Modal Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="px-4 py-2 text-center">Sl.No</th>
+                        <th className="px-4 py-2 text-center">Item Name</th>
+                        <th className="px-4 py-2 text-center">Description</th>
+                        <th className="px-4 py-2 text-center">Target 1</th>
+                        <th className="px-4 py-2 text-center">Unit 1</th>
+                        <th className="px-4 py-2 text-center">Target 2</th>
+                        <th className="px-4 py-2 text-center">Unit 2</th>
+                        <th className="px-4 py-2 text-center">VegNonVeg</th>
+                        <th className="px-4 py-2 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {newActivities.map((activity, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-2 text-center border-b-2 border-gray-200 align-middle">
+                            {index + 1}
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <Autocomplete
+                                options={uniqueActivities}
+                                getOptionLabel={(option) => option.name || ""}
+                                value={
+                                  uniqueActivities.find(
+                                    (a) => a.name === activity.name
+                                  ) || null
+                                }
+                                onInputChange={(_, newInputValue) => {
+                                  const updated = [...newActivities];
+                                  updated[index].name = newInputValue;
+                                  setNewActivities(updated);
+                                }}
+                                filterOptions={(options, { inputValue }) => {
+                                  if (!inputValue || inputValue.length < 2) {
+                                    return options.slice(0, 10);
+                                  }
+
+                                  const lowerInput = inputValue.toLowerCase();
+                                  const results: any[] = [];
+
+                                  for (const option of options) {
+                                    const nameLower = option.name.toLowerCase();
+                                    if (nameLower.includes(lowerInput)) {
+                                      results.push({
+                                        ...option,
+                                        _priority: nameLower.startsWith(
+                                          lowerInput
+                                        )
+                                          ? 0
+                                          : 1,
+                                      });
+                                      if (results.length >= 15) break;
+                                    }
+                                  }
+
+                                  return results
+                                    .sort((a, b) => {
+                                      if (a._priority !== b._priority)
+                                        return a._priority - b._priority;
+                                      return a.name.localeCompare(b.name);
+                                    })
+                                    .slice(0, 10);
+                                }}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Select Item"
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{ width: 180 }}
+                                  />
+                                )}
+                                freeSolo
+                                noOptionsText="Type to search..."
+                                disablePortal
+                                blurOnSelect
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <input
+                                type="text"
+                                value={activity.description}
+                                onChange={(e) => {
+                                  const updated = [...newActivities];
+                                  updated[index].description = e.target.value;
+                                  setNewActivities(updated);
+                                }}
+                                className="w-full rounded p-2 border border-gray-400 text-center"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <input
+                                type="number"
+                                value={activity.target}
+                                onChange={(e) => {
+                                  const updated = [...newActivities];
+                                  updated[index].target = e.target.value;
+                                  setNewActivities(updated);
+                                }}
+                                className="w-full border border-gray-400 rounded p-2 text-center"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <Autocomplete
+                                options={NutritionUnits}
+                                getOptionLabel={(option) =>
+                                  formatUnit(option) || ""
+                                }
+                                value={activity.unit || ""}
+                                onChange={(_, newValue) => {
+                                  const updated = [...newActivities];
+                                  updated[index].unit = newValue || "";
+                                  setNewActivities(updated);
+                                }}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Select Unit"
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{ width: 120 }}
+                                  />
+                                )}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <input
+                                type="number"
+                                value={activity.target2 || ""}
+                                onChange={(e) => {
+                                  const updated = [...newActivities];
+                                  updated[index].target2 = e.target.value;
+                                  setNewActivities(updated);
+                                }}
+                                className="w-full border border-gray-400 rounded p-2 text-center"
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <Autocomplete
+                                options={NutritionUnits}
+                                getOptionLabel={(option) =>
+                                  formatUnit(option) || ""
+                                }
+                                value={activity.unit2 || ""}
+                                onChange={(_, newValue) => {
+                                  const updated = [...newActivities];
+                                  updated[index].unit2 = newValue || "";
+                                  setNewActivities(updated);
+                                }}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Select Unit"
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{ width: 120 }}
+                                  />
+                                )}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 align-middle">
+                            <div className="flex justify-center">
+                              <Autocomplete
+                                options={["VEG", "NONVEG", "EGG"]}
+                                getOptionLabel={(option) => option || ""}
+                                value={activity.vegNonVeg || ""}
+                                onChange={(_, newValue) => {
+                                  const updated = [...newActivities];
+                                  updated[index].vegNonVeg = newValue || "";
+                                  setNewActivities(updated);
+                                }}
+                                renderInput={(params) => (
+                                  <TextField
+                                    {...params}
+                                    label="Veg/NonVeg"
+                                    variant="outlined"
+                                    size="small"
+                                    sx={{ width: 120 }}
+                                  />
+                                )}
+                              />
+                            </div>
+                          </td>
+                          <td className="px-4 py-2 border-b-2 border-gray-200 text-center align-middle">
+                            <div className="flex justify-center items-center">
+                              <button
+                                onClick={() => {
+                                  const updated = [...newActivities];
+                                  updated.splice(index, 1);
+                                  setNewActivities(updated);
+                                }}
+                              >
+                                <LucideCircleMinus
+                                  className="text-red-500"
+                                  size={20}
+                                />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-4 flex justify-start">
+                  <button
+                    onClick={handleAddNewRow}
+                    className="flex items-center space-x-2 border bg-white text-[#0070FF] px-4 py-2 heya"
+                  >
+                    <Plus />
+                    <span>Create another item</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

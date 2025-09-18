@@ -656,7 +656,7 @@ useEffect(() => {
   <div>
     <div className="flex items-center gap-4 mb-4">
       <p className="text-xl">
-        <strong>Meals:</strong>
+        <strong>Meal Timing:</strong>
       </p>
       <div className="flex items-center gap-2">
         <select
@@ -664,7 +664,7 @@ useEffect(() => {
           onChange={(e) => setSelectedMealType(e.target.value)}
           className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
         >
-          <option value="">Select Type</option>
+          <option value="">Select Timing</option>
           {mealTypes.map((type) => (
             <option key={type} value={type}>
               {type.charAt(0).toUpperCase() + type.slice(1)}
