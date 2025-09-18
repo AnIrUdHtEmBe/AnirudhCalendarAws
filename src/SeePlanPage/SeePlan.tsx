@@ -240,7 +240,7 @@ function SeePlan() {
     const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
     if (!nutritionKYC) {
-      return <span className="text-gray-500">NIL</span>;
+      return <span className="text-gray-500">Not Available</span>;
     }
 
     return (

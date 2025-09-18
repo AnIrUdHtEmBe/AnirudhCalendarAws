@@ -16,8 +16,8 @@ function NutrtionHeader() {
   const headerTitles = {
     "/nutrition_sessions": "Daily Nutrition Plan Creation",
     dashboard: "Daily Nutrition Plan Creation",
-    All_nutrition_Sessions: "Existing Nutrition Plans",
-    AllMeals: "All Meals",
+    All_nutrition_Sessions: "Existing Meal Plans",
+    AllMeals: "Individual Food Items",
     BulkAddMeals: "Excel Sheet Meals Data",
   };
 
@@ -49,7 +49,7 @@ function NutrtionHeader() {
           }`}
           onClick={() => setSelectComponent("All_nutrition_Sessions")}
         >
-          Existing Nutrition Plans
+          Existing Meal Plans
         </button>
 
         <button
@@ -62,11 +62,11 @@ function NutrtionHeader() {
         >
           {selectComponent === "BulkAddMeals" ? (
             <>
-              All Meals <span style={{ margin: "0 8px" }}>→</span> Excel Sheet
+              Individual Food Items <span style={{ margin: "0 8px" }}>→</span> Excel Sheet
               Data
             </>
           ) : (
-            "All Meals"
+            "Individual Food Items"
           )}
         </button>
       </div>
