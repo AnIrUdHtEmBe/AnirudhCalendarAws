@@ -517,7 +517,7 @@ function NutritionActivityTable() {
           {/* Left Panel Header */}
           <div className="p-2 border-b border-gray-200">
             <div className="flex flex-col gap-2">
-              <h2 className="text-lg font-medium">Activities</h2>
+              <h2 className="text-lg font-medium">List of Food Items</h2>
               <div className="flex flex-col gap-2">
                 {/* Select Activity Autocomplete */}
                 <Autocomplete
@@ -534,7 +534,7 @@ function NutritionActivityTable() {
                   renderInput={(params) => (
                     <TextField
                       {...params}
-                      label="Select Item"
+                      label="Select Food Items"
                       variant="outlined"
                       size="small"
                       fullWidth
@@ -558,7 +558,7 @@ function NutritionActivityTable() {
                   onClick={() => setShowModal(true)}
                 >
                   <Plus size={16} />
-                  <span>Create New</span>
+                  <span>Create New Food Items</span>
                 </button>
               </div>
             </div>
@@ -658,7 +658,7 @@ function NutritionActivityTable() {
               <div className="min-w-0">
                 <FormControl fullWidth variant="standard">
                   <TextField
-                    label="Nutrition Name"
+                    label="Meal Name"
                     variant="standard"
                     value={planName}
                     onChange={(e) => setPlanName(e.target.value)}
@@ -1375,7 +1375,7 @@ function NutritionActivityTable() {
                                 renderInput={(params) => (
                                   <TextField
                                     {...params}
-                                    label="Select Item"
+                                    label="Select Food Items"
                                     variant="outlined"
                                     size="small"
                                     sx={{ width: 180 }}

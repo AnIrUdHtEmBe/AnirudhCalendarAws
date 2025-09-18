@@ -482,7 +482,7 @@ function AllNutrition() {
             <div className="input-group">
               <TextField
                 fullWidth
-                label="Nutrition name"
+                label="Meal Name"
                 variant="outlined"
                 value={planName}
                 onChange={(e) => setPlanName(e.target.value)}

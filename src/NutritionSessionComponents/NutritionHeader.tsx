@@ -14,8 +14,8 @@ function NutrtionHeader() {
 
   // Map selectComponent values to titles
   const headerTitles = {
-    "/nutrition_sessions": "Daily Nutrition Plan Creation",
-    dashboard: "Daily Nutrition Plan Creation",
+    "/nutrition_sessions": "Meal Creation",
+    dashboard: "Meal Creation",
     All_nutrition_Sessions: "Existing Meal Plans",
     AllMeals: "Individual Food Items",
     BulkAddMeals: "Excel Sheet Meals Data",
@@ -40,7 +40,7 @@ function NutrtionHeader() {
           }`}
           onClick={() => setSelectComponent("/nutrition_sessions")}
         >
-          Daily Nutrition Plan Creation
+          Meal Creation
         </button>
 
         <button
