@@ -40,7 +40,11 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
   const [sessions, setSessions] = useState([]);
   const [isLoadingNutrition, setIsLoadingNutrition] = useState(false);
   const [selectedMealFilter, setSelectedMealFilter] = useState("VEG");
-  const getVegNonVegColor = (vegNonVeg) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  // assuming initial empty
+  const [selectOpen, setSelectOpen] = useState(false);
+
+  const getVegNonVegColor = (vegNonVeg: any) => {
     switch (vegNonVeg) {
       case "VEG":
         return {
@@ -69,7 +73,7 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
     }
   };
 
-  const getVegNonVegIcon = (vegNonVeg) => {
+  const getVegNonVegIcon = (vegNonVeg: any) => {
     switch (vegNonVeg) {
       case "VEG":
         return "🟢"; // Green circle for veg
@@ -215,10 +219,49 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
     setOpen(false);
     setOption("");
     setDate(null);
+    setSearchTerm("");
     // Reset to default state
     setDayType("VEG");
     setSelectedMealFilter("VEG");
     setIsLoadingNutrition(false);
+  };
+
+  const getFilteredAndSortedSessions = () => {
+    let filtered = sessions.filter(
+      (session) => session.vegNonVeg === selectedMealFilter
+    );
+
+    if (searchTerm.trim()) {
+      const search = searchTerm.toLowerCase();
+
+      // Split into exact matches and partial matches
+      const exactMatches = filtered.filter((session) =>
+        session.title.toLowerCase().includes(search)
+      );
+
+      const partialMatches = filtered.filter(
+        (session) =>
+          session.title.toLowerCase().includes(search) === false &&
+          session.title
+            .toLowerCase()
+            .split(" ")
+            .some((word: string) => word.startsWith(search))
+      );
+
+      // Sort exact matches by relevance (starts with search term first)
+      const sortedExactMatches = exactMatches.sort((a, b) => {
+        const aStartsWith = a.title.toLowerCase().startsWith(search);
+        const bStartsWith = b.title.toLowerCase().startsWith(search);
+
+        if (aStartsWith && !bStartsWith) return -1;
+        if (!aStartsWith && bStartsWith) return 1;
+        return a.title.localeCompare(b.title);
+      });
+
+      return [...sortedExactMatches, ...partialMatches];
+    }
+
+    return filtered;
   };
 
   useEffect(() => {
@@ -246,8 +289,6 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
           <Typography variant="h6" mb={2}>
             Nutriton Templates
           </Typography>
-
-          
 
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
@@ -434,19 +475,68 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
               labelId="plan-select-label"
               value={option}
               label="Select Plan"
+              open={selectOpen}
+              onOpen={() => {
+                setSelectOpen(true);
+                setSearchTerm("");
+              }}
+              onClose={() => setSelectOpen(false)}
               MenuProps={{
                 PaperProps: {
                   style: {
-                    maxHeight: 200,
+                    maxHeight: 300,
                     overflowY: "auto",
                   },
                 },
+                MenuListProps: {
+                  component: "div",
+                  style: { padding: 0 },
+                },
               }}
-              onChange={(e) => setOption(e.target.value)}
+              onChange={(e) => {
+                setOption(e.target.value);
+                setSelectOpen(false);
+              }}
             >
-              {sessions
-                .filter((session) => session.vegNonVeg === selectedMealFilter)
-                .map((session) => {
+              {/* Search Input with auto-focus */}
+              <Box
+                sx={{
+                  position: "sticky",
+                  top: 0,
+                  zIndex: 1,
+                  bgcolor: "white",
+                  p: 1,
+                  borderBottom: "1px solid #e0e0e0",
+                }}
+              >
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Search meals... (start typing)"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    border: "1px solid #ccc",
+                    borderRadius: "4px",
+                    fontSize: "14px",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </Box>
+
+              {/* Menu Items */}
+              {getFilteredAndSortedSessions().length === 0 ? (
+                <MenuItem
+                  disabled
+                  sx={{ justifyContent: "center", color: "text.secondary" }}
+                >
+                  No meals found
+                </MenuItem>
+              ) : (
+                getFilteredAndSortedSessions().map((session) => {
                   const vegNonVegStyle = getVegNonVegColor(session.vegNonVeg);
                   const vegNonVegIcon = getVegNonVegIcon(session.vegNonVeg);
 
@@ -497,7 +587,8 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
                       </Box>
                     </MenuItem>
                   );
-                })}
+                })
+              )}
             </Select>
           </FormControl>
           {/* Confirm Button */}
