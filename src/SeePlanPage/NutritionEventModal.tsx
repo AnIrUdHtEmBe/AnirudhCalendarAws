@@ -5,9 +5,8 @@ import {
   Session_Api_call,
 } from "../store/DataContext";
 import { API_BASE_URL, useApiCalls } from "../store/axios";
-import { Autocomplete, TextField } from "@mui/material";
+import { Autocomplete, TextField, Button } from "@mui/material";
 import { Dumbbell, MinusCircle, Plus } from "lucide-react";
-
 import "./styles/EventModal.css";
 
 export default function NutrtitionEventModal({
@@ -72,23 +71,22 @@ export default function NutrtitionEventModal({
   } = useApiCalls();
   const [details, setDetails] = useState({});
 
-const mealTypes = [
-  "breakfast",
-  "brunch", 
-  "lunch",
-  "dinner",
-  "morning snack",
-  "evening snack",
-  "midnight snack",
-  "pre-bed snack",
-  "before workout",
-  "after workout",
-  "post dinner",
-];
+  const mealTypes = [
+    "breakfast",
+    "brunch",
+    "lunch",
+    "dinner",
+    "morning snack",
+    "evening snack",
+    "midnight snack",
+    "pre-bed snack",
+    "before workout",
+    "after workout",
+    "post dinner",
+  ];
 
-const [selectedMealType, setSelectedMealType] = useState("");
-const [originalMealType, setOriginalMealType] = useState("");
-
+  const [selectedMealType, setSelectedMealType] = useState("");
+  const [originalMealType, setOriginalMealType] = useState("");
 
   // console.log(sessionId, "iohhhhhhhioh")
   const getSessionDetails = async (eventData: {
@@ -126,6 +124,13 @@ const [originalMealType, setOriginalMealType] = useState("");
                   // Create enhanced activity with prioritized values
                   const enhancedActivity = {
                     ...defaultActivity,
+                    name: getPrioritizedFieldValue(
+                      data.activityId,
+                      "name",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
                     description: getPrioritizedFieldValue(
                       data.activityId,
                       "description",
@@ -136,6 +141,27 @@ const [originalMealType, setOriginalMealType] = useState("");
                     target: getPrioritizedFieldValue(
                       data.activityId,
                       "target",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
+                    unit: getPrioritizedFieldValue(
+                      data.activityId,
+                      "unit",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
+                    target2: getPrioritizedFieldValue(
+                      data.activityId,
+                      "target2",
+                      sessionDetails.editedActivities,
+                      sessionTemplate?.editedActivities,
+                      defaultActivity
+                    ),
+                    unit2: getPrioritizedFieldValue(
+                      data.activityId,
+                      "unit2",
                       sessionDetails.editedActivities,
                       sessionTemplate?.editedActivities,
                       defaultActivity
@@ -180,25 +206,24 @@ const [originalMealType, setOriginalMealType] = useState("");
     }
   };
 
-useEffect(() => {
-  const fetchSessionDetails = async () => {
-    const res = await getSessionDetails(eventData);
-    // console.log(res, "this is res from get")
-    if (res) {
-      setDetails(res);
-      // Set meal type from session details - check both type and mealType fields
-      const mealTypeValue = res.type || res.mealType || "";
-      if (mealTypeValue) {
-        setSelectedMealType(mealTypeValue);
-        setOriginalMealType(mealTypeValue);
+  useEffect(() => {
+    const fetchSessionDetails = async () => {
+      const res = await getSessionDetails(eventData);
+      // console.log(res, "this is res from get")
+      if (res) {
+        setDetails(res);
+        // Set meal type from session details - check both type and mealType fields
+        const mealTypeValue = res.type || res.mealType || "";
+        if (mealTypeValue) {
+          setSelectedMealType(mealTypeValue);
+          setOriginalMealType(mealTypeValue);
+        }
+      } else {
+        console.error("Failed to fetch meal details");
       }
-    } else {
-      console.error("Failed to fetch meal details");
-    }
-  };
-  fetchSessionDetails();
-}, []);
-
+    };
+    fetchSessionDetails();
+  }, []);
 
   useEffect(() => {
     // console.log(details,details.category,"eventdatatttt");
@@ -265,6 +290,8 @@ useEffect(() => {
         );
       }
       const sessionTemplate = await response.json();
+      console.log("temaplte data :", sessionTemplate);
+
       return sessionTemplate;
     } catch (error) {
       console.error("Error fetching session template:", error);
@@ -287,10 +314,9 @@ useEffect(() => {
       return sessionInstanceEdit[fieldName];
     }
 
-    // Priority 2: Check sessionTemplate editedActivities
+    // Priority 2: Check sessionTemplate editedActivities - FIXED
     const sessionTemplateEdit = sessionTemplateEdited?.find(
-      (edit: { activityTemplateId: any }) =>
-        edit.activityTemplateId === activityId
+      (edit: { activityId: any }) => edit.activityId === activityId // ✅ FIXED
     );
     if (sessionTemplateEdit && sessionTemplateEdit[fieldName] !== undefined) {
       return sessionTemplateEdit[fieldName];
@@ -299,7 +325,6 @@ useEffect(() => {
     // Priority 3: Use default activity value
     return defaultActivity[fieldName];
   };
-
   const getActivityVegNonVegWithPriority = async (
     activityId,
     sessionInstanceEdited,
@@ -498,33 +523,177 @@ useEffect(() => {
     }
   };
 
-
   const handleSaveMealType = async () => {
-  try {
-    const response = await fetch(
-      `${API_BASE_URL}/session-instances/${sessionId}`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: selectedMealType,
-        }),
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/session-instances/${sessionId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            type: selectedMealType,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setOriginalMealType(selectedMealType);
+        console.log("Meal type updated successfully");
+      } else {
+        console.error("Failed to update meal type");
+      }
+    } catch (error) {
+      console.error("Error updating meal type:", error);
+    }
+  };
+  //new edit fucntionality code
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState<Record<string, any>>({});
+  /* ----------  enter/exit edit ---------- */
+  const enterEdit = () => {
+    const clone: Record<string, any> = {};
+    Object.entries(details.activityDetails || {}).forEach(
+      ([actInstId, act]: any) => {
+        clone[actInstId] = {
+          activityId: act.activityId,
+          name: act.name,
+          description: act.description,
+          vegNonVeg: act.vegNonVeg,
+          target: act.target,
+          unit: act.unit,
+          target2: act.target2,
+          unit2: act.unit2,
+        };
       }
     );
+    setDraft(clone);
+    setEditMode(true);
+  };
 
-    if (response.ok) {
-      setOriginalMealType(selectedMealType);
-      console.log("Meal type updated successfully");
-    } else {
-      console.error("Failed to update meal type");
+  const cancelEdit = () => {
+    setDraft({});
+    setEditMode(false);
+  };
+  const updateDraft = (
+    actInstId: string,
+    field:
+      | "name"
+      | "description"
+      | "vegNonVeg"
+      | "target"
+      | "unit"
+      | "target2"
+      | "unit2",
+    value: any
+  ) => {
+    setDraft((prev) => ({
+      ...prev,
+      [actInstId]: { ...prev[actInstId], [field]: value },
+    }));
+  };
+  const saveEdit = async () => {
+    /* 1. Build a delta object per activityId */
+    const deltaMap = new Map<string, any>();
+
+    Object.entries(draft).forEach(([activityInstanceId, d]) => {
+      const original = details.activityDetails[activityInstanceId];
+      if (!original) return;
+
+      const changes: any = { activityId: d.activityId };
+      if (d.name !== original.name) changes.name = d.name;
+      if (d.description !== original.description)
+        changes.description = d.description;
+      if (d.vegNonVeg !== original.vegNonVeg) changes.vegNonVeg = d.vegNonVeg;
+      if (d.target !== original.target) changes.target = d.target;
+      if (d.unit !== original.unit) changes.unit = d.unit;
+      if (d.target2 !== original.target2) changes.target2 = d.target2;
+      if (d.unit2 !== original.unit2) changes.unit2 = d.unit2;
+
+      if (Object.keys(changes).length > 1) {
+        deltaMap.set(d.activityId, changes);
+      }
+    });
+
+    /* 2. Merge deltas into existing server editedActivities */
+    const serverMap = new Map(
+      (details.editedActivities || []).map((item) => [
+        item.activityId,
+        { ...item },
+      ])
+    );
+
+    deltaMap.forEach((delta, activityId) => {
+      const existing = serverMap.get(activityId) || { activityId };
+      serverMap.set(activityId, { ...existing, ...delta });
+    });
+
+    const editedActivities = Array.from(serverMap.values());
+
+    /* 3. Nothing to do? */
+    if (!editedActivities.length) {
+      setEditMode(false);
+      return;
     }
-  } catch (error) {
-    console.error("Error updating meal type:", error);
-  }
-};
 
+    try {
+      // ADD THIS: Calculate new vegNonVeg status before patching
+      const sessionTemplate = await getSessionTemplateById(
+        details.sessionTemplateId
+      );
+
+      // Get all non-removed activities' vegNonVeg values using hierarchical priority
+      const activeActivities =
+        details.activities?.filter(
+          (activity) => activity.status !== "REMOVED"
+        ) || [];
+
+      const vegNonVegPromises = activeActivities.map(async (activity) => {
+        return await getActivityVegNonVegWithPriority(
+          activity.activityId,
+          editedActivities, // Use the new editedActivities we're about to save
+          sessionTemplate?.editedActivities
+        );
+      });
+
+      const vegNonVegValues = await Promise.all(vegNonVegPromises);
+      const allVegNonVeg = vegNonVegValues.map(
+        (v) => v?.toUpperCase() || "VEG"
+      );
+
+      // Apply priority: NONVEG > EGG > VEG
+      const priority = { NONVEG: 3, EGG: 2, VEG: 1 };
+      const maxPriority = Math.max(
+        ...allVegNonVeg.map((v) => priority[v] || 1)
+      );
+      const finalVegNonVeg =
+        Object.keys(priority).find((k) => priority[k] === maxPriority) || "VEG";
+
+      /* 4. Patch with both editedActivities and calculated vegNonVeg */
+      await fetch(
+        `${API_BASE_URL}/session-instances/${details.sessionInstanceId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            editedActivities,
+            vegNonVeg: finalVegNonVeg, // ADD THIS LINE
+          }),
+        }
+      );
+
+      // Refresh the session details
+      const res = await getSessionDetails(eventData);
+      if (res) setDetails(res);
+      setEditMode(false);
+    } catch (e: any) {
+      console.error(e);
+      alert("Could not save changes");
+    }
+  };
   return (
     <div className="fixed inset-0  bg-opacity-50 flex items-center justify-center z-50">
       {showConfirm && (
@@ -630,7 +799,7 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-2xl p-6 relative">
+      <div className="bg-white rounded-2xl shadow-lg w-full max-w-4xl p-6 relative">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl"
@@ -653,96 +822,334 @@ useEffect(() => {
                             : eventData.extendedProps.planTitle}
                     </p> */}
           {details?.activityDetails && (
-  <div>
-    <div className="flex items-center gap-4 mb-4">
-      <p className="text-xl">
-        <strong>Meal Timing:</strong>
-      </p>
-      <div className="flex items-center gap-2">
-        <select
-          value={selectedMealType}
-          onChange={(e) => setSelectedMealType(e.target.value)}
-          className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        >
-          <option value="">Select Timing</option>
-          {mealTypes.map((type) => (
-            <option key={type} value={type}>
-              {type.charAt(0).toUpperCase() + type.slice(1)}
-            </option>
-          ))}
-        </select>
-        {selectedMealType !== originalMealType && (
-          <button
-            onClick={handleSaveMealType}
-            className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-          >
-            Save
-          </button>
-        )}
-      </div>
-    </div>
-    <ol className="list-decimal pl-5 text-xl">
-      <ol style={{ listStyleType: "none" }}>
-        <div className="flex flex-wrap  bg-gray-200 font-semibold border border-gray-300 rounded">
-          <div className="w-1/5 p-2">Item</div>
-          <div className="w-1/5 p-2">Description</div>
-          <div className="w-1/5 p-2">Target</div>
-          <div className="w-1/5 p-2">vegNonVeg</div>
-          <div className="w-1/5 p-2">Remove</div>
-        </div>
-      </ol>
-      {Object.entries(details.activityDetails).map(
-        ([activityId, activity]) => (
-          <li key={activityId}>
-            <div
-              /*className="activity-each-row-event-modal"*/ className="flex flex-wrap"
-            >
-              <div className="w-1/5 p-2">
-                <strong className="nameCell">{activity.name}</strong>{" "}
+            <div className="mt-4 flex-grow overflow-hidden">
+              {/* Meal timing section */}
+              <div className="flex items-center gap-4 mb-4">
+                <p className="text-xl">
+                  <strong>Meal Timing:</strong>
+                </p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={selectedMealType}
+                    onChange={(e) => setSelectedMealType(e.target.value)}
+                    className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  >
+                    <option value="">Select Timing</option>
+                    {mealTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedMealType !== originalMealType && (
+                    <button
+                      onClick={handleSaveMealType}
+                      className="px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
+                    >
+                      Save
+                    </button>
+                  )}
+                </div>
               </div>
-              <div className="w-1/5 p-2">{activity.description}</div>
-              {/* <div className="w-1/5 p-2">{activity.activityInstanceId}</div> */}
-              <div className="w-1/5 p-2">
-                {activity?.target}
-                {activity?.unit == "weight"
-                  ? "Kg"
-                  : activity?.unit == "distance"
-                  ? "Km"
-                  : activity?.unit == "time"
-                  ? "Min"
-                  : activity?.unit == "repetitions"
-                  ? "Reps"
-                  : activity?.unit == "grams"
-                  ? "g"
-                  : activity?.unit == "meter"
-                  ? "m"
-                  : activity?.unit == "litre"
-                  ? "L"
-                  : activity?.unit == "millilitre"
-                  ? "ml"
-                  : activity?.unit == "glasses"
-                  ? "glasses"
-                  : ""}
+
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-lg font-semibold">Food Items</span>
+                {!editMode ? (
+                  <Button size="small" variant="outlined" onClick={enterEdit}>
+                    Edit
+                  </Button>
+                ) : (
+                  <div className="space-x-2">
+                    <Button size="small" onClick={cancelEdit}>
+                      Cancel
+                    </Button>
+                    <Button size="small" variant="contained" onClick={saveEdit}>
+                      Save
+                    </Button>
+                  </div>
+                )}
               </div>
-              <div className="w-1/5 p-2">
-                {activity?.vegNonVeg || "-"}
-              </div>
-              <div className="w-1/5 p-2">
-                <MinusCircle
-                  className="ml-2 w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition"
-                  onClick={() => {
-                    setactivityId(activityId);
-                    setshowConfirmAct(true);
-                  }}
-                />
+
+              <div className="border border-gray-200 rounded-lg overflow-auto">
+                <table className="min-w-[720px] w-full text-sm">
+                  <thead className="bg-gray-100 text-gray-700 font-semibold">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Name</th>
+                      <th className="px-3 py-2 text-left">Description</th>
+                      <th className="px-3 py-2 text-center">Target</th>
+                      <th className="px-3 py-2 text-center">Unit</th>
+                      <th className="px-3 py-2 text-center">Target2</th>
+                      <th className="px-3 py-2 text-center">Unit2</th>
+                      <th className="px-3 py-2 text-center">Veg/Non-Veg</th>
+                      <th className="px-3 py-2 text-center">Remove</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-100">
+                    {Object.entries(details.activityDetails).map(
+                      ([activityInstanceId, act]) => (
+                        <tr
+                          key={activityInstanceId}
+                          className="hover:bg-gray-50"
+                        >
+                          {/* name */}
+                          <td className="px-3 py-2 break-words font-medium">
+                            {editMode ? (
+                              <input
+                                type="text"
+                                className="w-full border rounded px-1"
+                                value={
+                                  draft[activityInstanceId]?.name ?? act.name
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "name",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            ) : (
+                              act.name
+                            )}
+                          </td>
+
+                          {/* description */}
+                          <td className="px-3 py-2 break-words text-gray-600">
+                            {editMode ? (
+                              <textarea
+                                className="border rounded px-1"
+                                rows={2}
+                                value={
+                                  draft[activityInstanceId]?.description ??
+                                  act.description
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "description",
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            ) : (
+                              act.description
+                            )}
+                          </td>
+
+                          {/* target */}
+                          <td className="px-3 py-2 text-center">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                className="w-full border rounded px-1"
+                                value={
+                                  draft[activityInstanceId]?.target ??
+                                  act.target ??
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "target",
+                                    e.target.value
+                                      ? Number(e.target.value)
+                                      : null
+                                  )
+                                }
+                              />
+                            ) : (
+                              act.target ?? "-"
+                            )}
+                          </td>
+
+                          {/* unit */}
+                          <td className="px-3 py-2 text-center">
+                            {editMode ? (
+                              <select
+                                className="w-full border rounded px-1"
+                                value={
+                                  draft[activityInstanceId]?.unit ??
+                                  act.unit ??
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "unit",
+                                    e.target.value || null
+                                  )
+                                }
+                              >
+                                <option value="">-</option>
+                                <option value="weight">Kg</option>
+                                <option value="distance">Km</option>
+                                <option value="time">Min</option>
+                                <option value="repetitions">Reps</option>
+                                <option value="grams">g</option>
+                                <option value="meter">m</option>
+                                <option value="litre">L</option>
+                                <option value="millilitre">ml</option>
+                                <option value="glasses">glasses</option>
+                              </select>
+                            ) : act.unit === "weight" ? (
+                              "Kg"
+                            ) : act.unit === "distance" ? (
+                              "Km"
+                            ) : act.unit === "time" ? (
+                              "Min"
+                            ) : act.unit === "repetitions" ? (
+                              "Reps"
+                            ) : act.unit === "grams" ? (
+                              "g"
+                            ) : act.unit === "meter" ? (
+                              "m"
+                            ) : act.unit === "litre" ? (
+                              "L"
+                            ) : act.unit === "millilitre" ? (
+                              "ml"
+                            ) : act.unit === "glasses" ? (
+                              "glasses"
+                            ) : (
+                              act.unit || "-"
+                            )}
+                          </td>
+
+                          {/* target2 */}
+                          <td className="px-3 py-2 text-center">
+                            {editMode ? (
+                              <input
+                                type="number"
+                                className="w-full border rounded px-1"
+                                value={
+                                  draft[activityInstanceId]?.target2 ??
+                                  act.target2 ??
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "target2",
+                                    e.target.value
+                                      ? Number(e.target.value)
+                                      : null
+                                  )
+                                }
+                              />
+                            ) : (
+                              act.target2 ?? "-"
+                            )}
+                          </td>
+
+                          {/* unit2 */}
+                          <td className="px-3 py-2 text-center">
+                            {editMode ? (
+                              <select
+                                className="w-full border rounded px-1"
+                                value={
+                                  draft[activityInstanceId]?.unit2 ??
+                                  act.unit2 ??
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "unit2",
+                                    e.target.value || null
+                                  )
+                                }
+                              >
+                                <option value="">-</option>
+                                <option value="weight">Kg</option>
+                                <option value="distance">Km</option>
+                                <option value="time">Min</option>
+                                <option value="repetitions">Reps</option>
+                                <option value="grams">g</option>
+                                <option value="meter">m</option>
+                                <option value="litre">L</option>
+                                <option value="millilitre">ml</option>
+                                <option value="glasses">glasses</option>
+                              </select>
+                            ) : act.unit2 === "weight" ? (
+                              "Kg"
+                            ) : act.unit2 === "distance" ? (
+                              "Km"
+                            ) : act.unit2 === "time" ? (
+                              "Min"
+                            ) : act.unit2 === "repetitions" ? (
+                              "Reps"
+                            ) : act.unit2 === "grams" ? (
+                              "g"
+                            ) : act.unit2 === "meter" ? (
+                              "m"
+                            ) : act.unit2 === "litre" ? (
+                              "L"
+                            ) : act.unit2 === "millilitre" ? (
+                              "ml"
+                            ) : act.unit2 === "glasses" ? (
+                              "glasses"
+                            ) : (
+                              act.unit2 || "-"
+                            )}
+                          </td>
+
+                          {/* vegNonVeg */}
+                          <td className="px-3 py-2 text-center">
+                            {editMode ? (
+                              <select
+                                className="w-full border rounded px-1"
+                                value={
+                                  draft[activityInstanceId]?.vegNonVeg ??
+                                  act.vegNonVeg ??
+                                  ""
+                                }
+                                onChange={(e) =>
+                                  updateDraft(
+                                    activityInstanceId,
+                                    "vegNonVeg",
+                                    e.target.value
+                                  )
+                                }
+                              >
+                                <option value="VEG">VEG</option>
+                                <option value="EGG">EGG</option>
+                                <option value="NONVEG">NONVEG</option>
+                              </select>
+                            ) : (
+                              <span
+                                className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                  act.vegNonVeg === "VEG"
+                                    ? "bg-green-100 text-green-800"
+                                    : act.vegNonVeg === "EGG"
+                                    ? "bg-yellow-100 text-yellow-800"
+                                    : act.vegNonVeg === "NONVEG"
+                                    ? "bg-red-100 text-red-800"
+                                    : "bg-green-100 text-green-800"
+                                }`}
+                              >
+                                {act.vegNonVeg || "VEG"}
+                              </span>
+                            )}
+                          </td>
+
+                          {/* remove */}
+                          <td className="px-3 py-2 text-center">
+                            <MinusCircle
+                              className="w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer mx-auto"
+                              onClick={() => {
+                                setactivityId(activityInstanceId);
+                                setshowConfirmAct(true);
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      )
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
-          </li>
-        )
-      )}
-    </ol>
-  </div>
-)}
+          )}
         </div>
         <div className="mt-4 flex justify-end gap-3">
           <div className="mt-4 flex justify-end">

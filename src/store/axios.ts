@@ -23,7 +23,7 @@ import { enqueueSnackbar } from "notistack";
 // export const API_BASE_URL2 = "https://testplaybackend.forgehub.in";
 
 
-const mode = "development";  // or "development", or other
+const mode = "production";  // or "development", or other
 let API_BASE_URL: string;
 let API_BASE_URL2: string;
 
@@ -31,7 +31,7 @@ if (mode === "production") {
   API_BASE_URL = "https://forge-play-backend.forgehub.in";
   API_BASE_URL2 = "https://play-os-backend.forgehub.in";
 } else if (mode === "development") {
-  API_BASE_URL = "https://testforgebackend.forgehub.in";
+  API_BASE_URL = "https://testforgebackend.forgehub.in";  
   API_BASE_URL2 = "https://testplaybackend.forgehub.in";
 } else {
   API_BASE_URL = "http://127.0.0.1:8001";   
@@ -730,6 +730,20 @@ const AddActivityToSession = async (
     }
   }
 
+const allocate_Nutrtion_Session = async (data: any) => {
+  try {
+    const res = await axios.post(
+      `${API_BASE_URL}/allocateNutritionIn_AlcarteSession/${data.activityId}/${data.sessionTemplateId}/${data.sessionInstanceId}/${data.planInstanceId}`,
+      data // body only
+    );
+    console.log("✅ Nutrition session allocated:", res);
+    return res;
+  } catch (err) {
+    console.error("❌ Error allocating nutrition session:", err);
+    throw err; // important to propagate error
+  }
+};
+
   const addSessionFromCalendar = async (session) => {
     try {
       console.log(session,"this is session comgin in addsession")
@@ -949,6 +963,7 @@ const AddActivityToSession = async (
     getAllNutrition,
     addSessionFromCalendar,
     getTags,
-    patch_customer
+    patch_customer,
+    allocate_Nutrtion_Session
   };
 };
