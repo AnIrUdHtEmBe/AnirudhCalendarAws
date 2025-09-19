@@ -24,6 +24,8 @@ import {
   Trash2,
 } from "lucide-react";
 import "./SessionPage.css"; // Import the CSS file
+// Add these imports after the existing @mui/material imports
+import { Checkbox, ListItemText } from "@mui/material";
 
 import { Mediation, NordicWalking } from "@mui/icons-material";
 import Header from "../planPageComponent/Header";
@@ -60,10 +62,9 @@ function SessionPage() {
   // *** NEW FILTER STATES ***
   const [planNameFilter, setPlanNameFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
-
-  const [theme, setTheme] = useState(""); // currently selected theme
-
-  const [goal, setGoal] = useState(""); // current selected goal
+  // Replace the existing state declarations for theme and goal
+  const [theme, setTheme] = useState<string[]>([]);
+  const [goal, setGoal] = useState<string[]>([]);
 
   const [literals, setLiterals] = useState({
     themes: [],
@@ -124,8 +125,8 @@ function SessionPage() {
   const searchSessions = async () => {
     try {
       const body = {
-        themes: theme ? [theme] : [],
-        goals: goal ? [goal] : [],
+        themes: theme.length > 0 ? theme : [],
+        goals: goal.length > 0 ? goal : [],
         category: categoryFilter ? [categoryFilter] : [],
         matchMode: "any",
         skip: 0,
@@ -145,6 +146,35 @@ function SessionPage() {
     } catch (error) {
       console.error("Failed to search sessions:", error);
     }
+  };
+
+  // Add these handler functions after the existing state declarations (e.g., after const [goal, setGoal] = useState<string[]>([]);)
+  const handleThemeChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    const newValue = typeof value === "string" ? value.split(",") : value;
+    if (newValue.includes("all")) {
+      setTheme(literals.themes.filter((th) => th !== "NA" && th !== "ALL"));
+      return;
+    }
+    if (newValue.includes("none")) {
+      setTheme([]);
+      return;
+    }
+    setTheme(newValue);
+  };
+
+  const handleGoalChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    const newValue = typeof value === "string" ? value.split(",") : value;
+    if (newValue.includes("all")) {
+      setGoal(literals.goals.filter((gl) => gl !== "NA" && gl !== "ALL"));
+      return;
+    }
+    if (newValue.includes("none")) {
+      setGoal([]);
+      return;
+    }
+    setGoal(newValue);
   };
   // Updated filteredSessions applying *all* filters: your old searchTerm + activeFilter + new filters
   // const filteredSessions = sessions_api_call.filter((plan) => {
@@ -586,23 +616,49 @@ function SessionPage() {
                 </InputLabel>
                 <Select
                   labelId="theme-select-label"
+                  multiple
                   value={theme}
-                  onChange={(e) => setTheme(e.target.value)}
+                  onChange={handleThemeChange}
                   displayEmpty
                   renderValue={(selected) => {
-                    if (!selected) return <span></span>;
-                    return selected;
+                    if (selected.length === 0) {
+                      return <em>None</em>;
+                    }
+                    if (
+                      selected.length ===
+                      literals.themes.filter(
+                        (th) => th !== "NA" && th !== "ALL"
+                      ).length
+                    ) {
+                      return "All";
+                    }
+                    return selected.join(", ");
                   }}
                   sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
                 >
-                  <MenuItem value="">
-                    <em>None</em>
+                  <MenuItem value="none">
+                    <Checkbox checked={theme.length === 0} />
+                    <ListItemText primary="None" />
                   </MenuItem>
-                  {literals.themes.map((theme, i) => (
-                    <MenuItem key={i} value={theme}>
-                      {theme}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="all">
+                    <Checkbox
+                      checked={
+                        theme.length ===
+                        literals.themes.filter(
+                          (th) => th !== "NA" && th !== "ALL"
+                        ).length
+                      }
+                    />
+                    <ListItemText primary="Select All" />
+                  </MenuItem>
+                  {literals.themes
+                    .filter((th) => th !== "NA" && th !== "ALL")
+                    .map((th, i) => (
+                      <MenuItem key={i} value={th}>
+                        <Checkbox checked={theme.includes(th)} />
+                        <ListItemText primary={th} />
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             </div>
@@ -614,23 +670,48 @@ function SessionPage() {
                 </InputLabel>
                 <Select
                   labelId="goal-select-label"
+                  multiple
                   value={goal}
-                  onChange={(e) => setGoal(e.target.value)}
+                  onChange={handleGoalChange}
                   displayEmpty
-                  sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
                   renderValue={(selected) => {
-                    if (!selected) return <span></span>;
-                    return selected;
+                    if (selected.length === 0) {
+                      return <em>None</em>;
+                    }
+                    if (
+                      selected.length ===
+                      literals.goals.filter((gl) => gl !== "NA" && gl !== "ALL")
+                        .length
+                    ) {
+                      return "All";
+                    }
+                    return selected.join(", ");
                   }}
+                  sx={{ fontSize: "1.25rem", fontFamily: "Roboto" }}
                 >
-                  <MenuItem value="">
-                    <em>None</em>
+                  <MenuItem value="none">
+                    <Checkbox checked={goal.length === 0} />
+                    <ListItemText primary="None" />
                   </MenuItem>
-                  {literals.goals.map((goal, i) => (
-                    <MenuItem key={i} value={goal}>
-                      {goal}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="all">
+                    <Checkbox
+                      checked={
+                        goal.length ===
+                        literals.goals.filter(
+                          (gl) => gl !== "NA" && gl !== "ALL"
+                        ).length
+                      }
+                    />
+                    <ListItemText primary="Select All" />
+                  </MenuItem>
+                  {literals.goals
+                    .filter((gl) => gl !== "NA" && gl !== "ALL")
+                    .map((gl, i) => (
+                      <MenuItem key={i} value={gl}>
+                        <Checkbox checked={goal.includes(gl)} />
+                        <ListItemText primary={gl} />
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             </div>
@@ -654,12 +735,8 @@ function SessionPage() {
                   <th className="session-header" style={{ textAlign: "left" }}>
                     Session Name
                   </th>
-                  <th className="cat-header" >
-                    Category
-                  </th>
-                  <th className="prev-header" >
-                    Preview
-                  </th>
+                  <th className="cat-header">Category</th>
+                  <th className="prev-header">Preview</th>
                 </tr>
               </thead>
               <tbody>
@@ -691,7 +768,7 @@ function SessionPage() {
                     >
                       {session.title}
                     </td>
-                    <td >{session.category}</td>
+                    <td>{session.category}</td>
                     <td className="p-icon" style={{ textAlign: "left" }}>
                       <button onClick={() => handlePreviewClick(session)}>
                         <EyeIcon />

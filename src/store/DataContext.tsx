@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useState,
@@ -6,7 +5,6 @@ import React, {
   Dispatch,
   SetStateAction,
 } from "react";
-
 
 // ----------------- TYPES ----------------- //
 
@@ -16,17 +14,17 @@ export type createAssessmentTemplate = {
     questionId: string;
     isRequired: boolean;
   }[];
-}
+};
 
 export type Activity_Api_call = {
   activityId?: string;
-  name: string,
-  description: string,
-  target: number | null,
-  unit: string,
-  icon?: string,
+  name: string;
+  description: string;
+  target: number | null;
+  unit: string;
+  icon?: string;
   // type?:string,
-}
+};
 
 export type Session_Api_call = {
   sessionId?: string;
@@ -37,17 +35,19 @@ export type Session_Api_call = {
   activities?: Activity_Api_call[];
   type?: string;
   editedActivities?: {
-  activityId: string;
-  target?: number;
-  target2?: number;
-  unit?: string;
-  unit2?: string;
-  description?: string;
-  vegNonVeg?: string;
-  name?: string;
-}[];
-}
-export type Customers_Api_call ={
+    activityId: string;
+    target?: number;
+    target2?: number;
+    unit?: string;
+    unit2?: string;
+    description?: string;
+    vegNonVeg?: string;
+    name?: string;
+    themes?: string[]; // Add this line
+    goals?: string[];
+  }[];
+};
+export type Customers_Api_call = {
   userId: string;
   name: string;
   age: number;
@@ -57,7 +57,7 @@ export type Customers_Api_call ={
   height?: string;
   weight?: string;
   healthCondition?: string;
-  createdOn :string;
+  createdOn: string;
   updated_on?: string;
   membershipType: string;
   membershipValidity: {
@@ -79,8 +79,8 @@ export type Customers_Api_call ={
   faveUsers: string[];
   blockedUsers: string[];
   playedWithUsers: string[];
-}
-export type UserDetailsType={
+};
+export type UserDetailsType = {
   userId: string;
   name: string;
   age: number;
@@ -110,12 +110,11 @@ export type UserDetailsType={
   faveUsers: string[];
   blockedUsers: string[];
   playedWithUsers: string[];
-
-}
+};
 export type Plan_Instance_Api_call = {
   sessionTemplateIds: string[];
   scheduledDates: string[];
-}
+};
 
 // Assessments (dashboard page)
 export type Assessment_Api_call = {
@@ -123,10 +122,9 @@ export type Assessment_Api_call = {
   name: string;
   created_on: string;
   questions: object[];
-}
+};
 
-
-//  assessmentInstance for each user 
+//  assessmentInstance for each user
 export type Assessment_instance_expanded_Api_call = {
   assessmentInstanceId: string;
   tempelateId: string;
@@ -137,7 +135,7 @@ export type Assessment_instance_expanded_Api_call = {
   nextAssessmentOn: string;
   totalScore: number;
   template: object[];
-}
+};
 export interface Answer {
   questionId: string;
   mainText: string;
@@ -179,8 +177,6 @@ export interface AssessmentInstance_with_answer {
   template: Template;
 }
 
-
-
 type MCQQuestion = {
   questionId: number;
   questionText: string;
@@ -193,28 +189,26 @@ export type Question_Api_call = {
   mainText: string;
   answerType: string;
   options?: string[];
-}
+};
 export type Plan_Api_call = {
-  templateId ?: string;
-  title : string;
-  description : string;
-  category : string;
-  sessions : object[];
+  templateId?: string;
+  title: string;
+  description: string;
+  category: string;
+  sessions: object[];
   themes?: any;
   goals?: any;
-}
-
+};
 
 export type plans_full_api_call = {
-  templateId : string;
-  title : string;
-  description : string;
-  category : string;
-  sessionIds : string[];
-  sessions : object[];
-  status : string;
-}
-
+  templateId: string;
+  title: string;
+  description: string;
+  category: string;
+  sessionIds: string[];
+  sessions: object[];
+  status: string;
+};
 
 type MCQOption = {
   text: string;
@@ -222,16 +216,13 @@ type MCQOption = {
 };
 
 type DataContextType = {
-
   // authentication
-   isAuthenticated:boolean
-   setIsAuthenticated:Dispatch<SetStateAction<boolean>>
-  // customers 
+  isAuthenticated: boolean;
+  setIsAuthenticated: Dispatch<SetStateAction<boolean>>;
+  // customers
 
   customers_Api_call: Customers_Api_call[];
   setCustomers_Api_call: Dispatch<SetStateAction<Customers_Api_call[]>>;
-
-
 
   // Assessments -> Dashboard page
   assessments_Api_call: Assessment_Api_call[];
@@ -239,15 +230,18 @@ type DataContextType = {
 
   // Assessment instance for each user
   assessmentInstance_expanded_Api_call: Assessment_instance_expanded_Api_call[];
-  setAssessmentInstance_expanded_Api_call: Dispatch<SetStateAction<Assessment_instance_expanded_Api_call[]>>;
+  setAssessmentInstance_expanded_Api_call: Dispatch<
+    SetStateAction<Assessment_instance_expanded_Api_call[]>
+  >;
 
   // Assessment instance for user by assessment id
-  assessmentInstance_call:AssessmentInstance_with_answer[];
-  setAssessmentInstance_call:Dispatch<SetStateAction<AssessmentInstance_with_answer[]>>;
+  assessmentInstance_call: AssessmentInstance_with_answer[];
+  setAssessmentInstance_call: Dispatch<
+    SetStateAction<AssessmentInstance_with_answer[]>
+  >;
   // plans api call
   plans_full_api_call: plans_full_api_call[];
   setPlans_full_api_call: Dispatch<SetStateAction<plans_full_api_call[]>>;
-  
 
   // plan api call
   plan_api_call: Plan_Api_call[];
@@ -258,29 +252,27 @@ type DataContextType = {
   selectComponent: string;
   setSelectComponent: Dispatch<SetStateAction<string>>;
 
-
   questionsForQuestionBank: MCQQuestion[];
   setQuestionsForQuestionBank: Dispatch<SetStateAction<MCQQuestion[]>>;
 
   // activity type for plan creation
-  activities_api_call : Activity_Api_call[];
+  activities_api_call: Activity_Api_call[];
   setActivities_api_call: Dispatch<SetStateAction<Activity_Api_call[]>>;
 
   //questions for api call
   questionsForAPICall: Question_Api_call[];
-  setQuestionsForAPICall: Dispatch<SetStateAction<Question_Api_call[]>>
+  setQuestionsForAPICall: Dispatch<SetStateAction<Question_Api_call[]>>;
 
   // sessions for api call
   sessions_api_call: Session_Api_call[];
   setSessions_api_call: Dispatch<SetStateAction<Session_Api_call[]>>;
 
-  nutrition_api_call:Session_Api_call[];
-  setnutrition_api_call:Dispatch<SetStateAction<Session_Api_call[]>>;
+  nutrition_api_call: Session_Api_call[];
+  setnutrition_api_call: Dispatch<SetStateAction<Session_Api_call[]>>;
 
   // loading details
-  loading:boolean;
-  setLoading:Dispatch<SetStateAction<boolean>>;
-
+  loading: boolean;
+  setLoading: Dispatch<SetStateAction<boolean>>;
 };
 
 export const DataContext = createContext<DataContextType | undefined>(
@@ -291,42 +283,59 @@ type DataProviderProps = {
   children: ReactNode;
 };
 
-
 // ----------------- PROVIDER -----------------
 
 export const DataProvider = ({ children }: DataProviderProps) => {
   // authentication
-  const [isAuthenticated, setIsAuthenticated] = useState(() =>
-  !!sessionStorage.getItem("token")
-);
+  const [isAuthenticated, setIsAuthenticated] = useState(
+    () => !!sessionStorage.getItem("token")
+  );
   // customers
-  const [customers_Api_call , setCustomers_Api_call] = useState<Customers_Api_call[]>([]);
+  const [customers_Api_call, setCustomers_Api_call] = useState<
+    Customers_Api_call[]
+  >([]);
 
   // Assessments -> dashboard page
-  const [assessments_Api_call , setAssessments_Api_call] = useState<Assessment_Api_call[]>([]);
+  const [assessments_Api_call, setAssessments_Api_call] = useState<
+    Assessment_Api_call[]
+  >([]);
 
   //questions
-  const [questionsForAPICall, setQuestionsForAPICall] = useState<Question_Api_call[]>([]);
+  const [questionsForAPICall, setQuestionsForAPICall] = useState<
+    Question_Api_call[]
+  >([]);
   // Assessment instance for each user
-  const [assessmentInstance_expanded_Api_call , setAssessmentInstance_expanded_Api_call] = useState<Assessment_instance_expanded_Api_call[]>([]);
+  const [
+    assessmentInstance_expanded_Api_call,
+    setAssessmentInstance_expanded_Api_call,
+  ] = useState<Assessment_instance_expanded_Api_call[]>([]);
 
   // Assessment instance for each user by userid
-  const [assessmentInstance_call,setAssessmentInstance_call]=useState<AssessmentInstance_with_answer[]>([]);
+  const [assessmentInstance_call, setAssessmentInstance_call] = useState<
+    AssessmentInstance_with_answer[]
+  >([]);
   // activities api call
-  const [activities_api_call, setActivities_api_call] = useState<Activity_Api_call[]>([]);
+  const [activities_api_call, setActivities_api_call] = useState<
+    Activity_Api_call[]
+  >([]);
 
   // plans api call
-  const [plans_full_api_call, setPlans_full_api_call] = useState<plans_full_api_call[]>([]);
- 
+  const [plans_full_api_call, setPlans_full_api_call] = useState<
+    plans_full_api_call[]
+  >([]);
 
   const [header, setHeader] = useState<string>("Customer Dashboard");
   const [selectComponent, setSelectComponent] = useState<string>("dashboard");
 
-  const [sessions_api_call , setSessions_api_call] = useState<Session_Api_call[]>([]);
-  const[nutrition_api_call,setnutrition_api_call]= useState<Session_Api_call[]>([]);
+  const [sessions_api_call, setSessions_api_call] = useState<
+    Session_Api_call[]
+  >([]);
+  const [nutrition_api_call, setnutrition_api_call] = useState<
+    Session_Api_call[]
+  >([]);
 
-  const [plan_api_call , setPlan_api_call] = useState<Plan_Api_call[]>([]);
-  
+  const [plan_api_call, setPlan_api_call] = useState<Plan_Api_call[]>([]);
+
   const [loading, setLoading] = useState(false);
 
   return (
@@ -345,7 +354,6 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         questionsForAPICall,
         setQuestionsForAPICall,
 
-
         // Assessments (dashboard page)
         assessments_Api_call,
         setAssessments_Api_call,
@@ -359,16 +367,14 @@ export const DataProvider = ({ children }: DataProviderProps) => {
         assessmentInstance_call,
         setAssessmentInstance_call,
 
-        //activities 
+        //activities
         activities_api_call,
         setActivities_api_call,
 
-        
         // plans api call
         plans_full_api_call,
         setPlans_full_api_call,
         // plans api call
-
 
         header,
         setHeader,

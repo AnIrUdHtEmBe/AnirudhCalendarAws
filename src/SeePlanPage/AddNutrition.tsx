@@ -247,78 +247,7 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
             Nutriton Templates
           </Typography>
 
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel id="plan-select-label">Select Meal</InputLabel>
-            <Select
-              labelId="plan-select-label"
-              value={option}
-              label="Select Plan"
-              MenuProps={{
-                PaperProps: {
-                  style: {
-                    maxHeight: 200,
-                    overflowY: "auto",
-                  },
-                },
-              }}
-              onChange={(e) => setOption(e.target.value)}
-            >
-              {sessions
-                .filter((session) => session.vegNonVeg === selectedMealFilter)
-                .map((session) => {
-                  const vegNonVegStyle = getVegNonVegColor(session.vegNonVeg);
-                  const vegNonVegIcon = getVegNonVegIcon(session.vegNonVeg);
-
-                  return (
-                    <MenuItem
-                      key={session.sessionId}
-                      value={session.sessionId}
-                      sx={{
-                        ...vegNonVegStyle,
-                        borderRadius: "4px",
-                        margin: "2px",
-                        "&:hover": {
-                          opacity: 0.8,
-                          transform: "scale(0.98)",
-                        },
-                        "&.Mui-selected": {
-                          fontWeight: "bold",
-                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                        },
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        transition: "all 0.2s ease",
-                      }}
-                    >
-                      <span style={{ fontSize: "12px", marginRight: "8px" }}>
-                        {vegNonVegIcon}
-                      </span>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "flex-start",
-                        }}
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{ fontWeight: "medium" }}
-                        >
-                          {session.title}
-                        </Typography>
-                        <Typography
-                          variant="caption"
-                          sx={{ opacity: 0.8, fontSize: "0.7rem" }}
-                        >
-                          {session.vegNonVeg} • {session.type}
-                        </Typography>
-                      </Box>
-                    </MenuItem>
-                  );
-                })}
-            </Select>
-          </FormControl>
+          
 
           <LocalizationProvider dateAdapter={AdapterDayjs}>
             <DatePicker
@@ -499,7 +428,78 @@ function AddNutrition({ userId, userDate, planForAlacarte, getData }) {
               )}
             </Box>
           }
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel id="plan-select-label">Select Meal</InputLabel>
+            <Select
+              labelId="plan-select-label"
+              value={option}
+              label="Select Plan"
+              MenuProps={{
+                PaperProps: {
+                  style: {
+                    maxHeight: 200,
+                    overflowY: "auto",
+                  },
+                },
+              }}
+              onChange={(e) => setOption(e.target.value)}
+            >
+              {sessions
+                .filter((session) => session.vegNonVeg === selectedMealFilter)
+                .map((session) => {
+                  const vegNonVegStyle = getVegNonVegColor(session.vegNonVeg);
+                  const vegNonVegIcon = getVegNonVegIcon(session.vegNonVeg);
 
+                  return (
+                    <MenuItem
+                      key={session.sessionId}
+                      value={session.sessionId}
+                      sx={{
+                        ...vegNonVegStyle,
+                        borderRadius: "4px",
+                        margin: "2px",
+                        "&:hover": {
+                          opacity: 0.8,
+                          transform: "scale(0.98)",
+                        },
+                        "&.Mui-selected": {
+                          fontWeight: "bold",
+                          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        },
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        transition: "all 0.2s ease",
+                      }}
+                    >
+                      <span style={{ fontSize: "12px", marginRight: "8px" }}>
+                        {vegNonVegIcon}
+                      </span>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "flex-start",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: "medium" }}
+                        >
+                          {session.title}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{ opacity: 0.8, fontSize: "0.7rem" }}
+                        >
+                          {session.vegNonVeg} • {session.type}
+                        </Typography>
+                      </Box>
+                    </MenuItem>
+                  );
+                })}
+            </Select>
+          </FormControl>
           {/* Confirm Button */}
           <Button
             variant="contained"

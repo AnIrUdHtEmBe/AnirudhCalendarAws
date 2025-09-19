@@ -39,8 +39,8 @@ function NutritionActivityTable() {
 
   const [planName, setPlanName] = useState<string>("");
   const [category, setCategory] = useState<string>("NUTRITION");
-  const [theme, setTheme] = useState("");
-  const [goal, setGoal] = useState("");
+  const [theme, setTheme] = useState<string[]>([]);
+  const [goal, setGoal] = useState<string[]>([]);
 
   const [mealType, setMealType] = useState("");
   const mealTypes = [
@@ -160,10 +160,10 @@ function NutritionActivityTable() {
       description: "",
       category: category,
       activityIds: activityIds,
-      themes: theme ? [theme] : [],
-      goals: goal ? [goal] : [],
+      themes: theme ? theme : [],
+      goals: goal ? goal : [],
       vegNonVeg: sessionVegNonVeg,
-      type: mealType,
+      // type: mealType,
     };
     if (editedActivities.length > 0) {
       sessionToBeCreated.editedActivities = editedActivities.map(
@@ -177,8 +177,8 @@ function NutritionActivityTable() {
     await createSession(sessionToBeCreated);
     // Clear all fields
     setPlanName("");
-    setTheme("");
-    setGoal("");
+    setTheme([]); // Clear array
+    setGoal([]);
     setMealType("");
     setEmptyArr([
       {
@@ -692,26 +692,36 @@ function NutritionActivityTable() {
                   </InputLabel>
                   <Select
                     labelId="theme-select-label"
+                    multiple
                     value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
+                    onChange={(e) =>
+                      setTheme(
+                        typeof e.target.value === "string"
+                          ? [e.target.value]
+                          : e.target.value
+                      )
+                    }
                     displayEmpty
                     renderValue={(selected) => {
-                      if (!selected) {
+                      if (!selected || selected.length === 0) {
                         return <span></span>;
                       }
-                      return selected;
+                      return selected.join(", ");
                     }}
                     sx={{ fontSize: "0.9rem", fontFamily: "Roboto" }}
                     size="small"
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {literals.themes.map((theme, i) => (
-                      <MenuItem key={i} value={theme}>
-                        {theme}
-                      </MenuItem>
-                    ))}
+                    {literals.themes
+                      .filter(
+                        (themeItem) =>
+                          themeItem !== "All" && themeItem !== "NA"
+                      )
+                      .map((themeItem, i) => (
+                        <MenuItem key={i} value={themeItem}>
+                          <Checkbox checked={theme.indexOf(themeItem) > -1} />
+                          {themeItem}
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </div>
@@ -723,29 +733,40 @@ function NutritionActivityTable() {
                   </InputLabel>
                   <Select
                     labelId="goal-select-label"
+                    multiple
                     value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
+                    onChange={(e) =>
+                      setGoal(
+                        typeof e.target.value === "string"
+                          ? [e.target.value]
+                          : e.target.value
+                      )
+                    }
                     displayEmpty
                     sx={{ fontSize: "0.9rem", fontFamily: "Roboto" }}
                     renderValue={(selected) => {
-                      if (!selected) {
+                      if (!selected || selected.length === 0) {
                         return <span></span>;
                       }
-                      return selected;
+                      return selected.join(", ");
                     }}
                     size="small"
                   >
-                    <MenuItem value="">None</MenuItem>
-                    {literals.goals.map((goal, i) => (
-                      <MenuItem key={i} value={goal}>
-                        {goal}
-                      </MenuItem>
-                    ))}
+                    {literals.goals
+                      .filter(
+                        (goalItem) => goalItem !== "All" && goalItem !== "NA"
+                      )
+                      .map((goalItem, i) => (
+                        <MenuItem key={i} value={goalItem}>
+                          <Checkbox checked={goal.indexOf(goalItem) > -1} />
+                          {goalItem}
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </div>
 
-              <div className="min-w-0">
+              {/* <div className="min-w-0">
                 <FormControl fullWidth variant="standard">
                   <InputLabel id="meal-type-select-label" shrink={true}>
                     Type
@@ -772,7 +793,7 @@ function NutritionActivityTable() {
                     ))}
                   </Select>
                 </FormControl>
-              </div>
+              </div> */}
             </div>
 
             {/* Action Buttons Row */}

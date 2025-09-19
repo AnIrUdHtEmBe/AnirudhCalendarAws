@@ -62,8 +62,8 @@ function ActivityTable() {
   const { setSelectComponent, activities_api_call } = context;
   const [planName, setPlanName] = useState<string>("");
   const [category, setCategory] = useState<string>("Fitness");
-  const [theme, setTheme] = useState("");
-  const [goal, setGoal] = useState("");
+  const [theme, setTheme] = useState<string[]>([]);
+  const [goal, setGoal] = useState<string[]>([]);
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
@@ -144,25 +144,27 @@ function ActivityTable() {
       .map((item) => item.activityId)
       .filter((id): id is string => typeof id === "string");
 
-    const sessionToBeCreated: Session_Api_call = {
+    const sessionToBeCreated: any = {
       title: planName,
       description: "",
       category: category,
       activityIds: activityIds,
-      themes: theme ? [theme] : [],
-      goals: goal ? [goal] : [],
+      themes: theme, // Now as array
+      goals: goal, // Now as array
     };
+
     if (editedActivities.length > 0) {
       sessionToBeCreated.editedActivities = editedActivities;
     }
+
     console.log(sessionToBeCreated);
     await createSession(sessionToBeCreated);
 
     // Clear all form data after successful save
     setPlanName("");
     setCategory("Fitness");
-    setTheme("");
-    setGoal("");
+    setTheme([]);
+    setGoal([]);
     setEmptyArr([
       {
         name: "",
@@ -711,25 +713,34 @@ function ActivityTable() {
                   </InputLabel>
                   <Select
                     labelId="theme-select-label"
+                    multiple
                     value={theme}
-                    onChange={(e) => setTheme(e.target.value)}
+                    onChange={(e) =>
+                      setTheme(
+                        typeof e.target.value === "string"
+                          ? [e.target.value]
+                          : e.target.value
+                      )
+                    }
                     displayEmpty
                     renderValue={(selected) => {
-                      if (!selected) {
+                      if (!selected || selected.length === 0) {
                         return <span></span>;
                       }
-                      return selected;
+                      return selected.join(", ");
                     }}
                     sx={{ fontSize: "1rem", fontFamily: "Roboto" }}
                   >
-                    <MenuItem value="">
-                      <em>None</em>
-                    </MenuItem>
-                    {literals.themes.map((theme, i) => (
-                      <MenuItem key={i} value={theme}>
-                        {theme}
-                      </MenuItem>
-                    ))}
+                    {literals.themes
+                      .filter(
+                        (themeItem) => themeItem !== "All" && themeItem !== "NA"
+                      )
+                      .map((themeItem, i) => (
+                        <MenuItem key={i} value={themeItem}>
+                          <Checkbox checked={theme.indexOf(themeItem) > -1} />
+                          {themeItem}
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </div>
@@ -745,23 +756,34 @@ function ActivityTable() {
                   </InputLabel>
                   <Select
                     labelId="goal-select-label"
+                    multiple
                     value={goal}
-                    onChange={(e) => setGoal(e.target.value)}
+                    onChange={(e) =>
+                      setGoal(
+                        typeof e.target.value === "string"
+                          ? [e.target.value]
+                          : e.target.value
+                      )
+                    }
                     displayEmpty
                     sx={{ fontSize: "1rem", fontFamily: "Roboto" }}
                     renderValue={(selected) => {
-                      if (!selected) {
+                      if (!selected || selected.length === 0) {
                         return <span></span>;
                       }
-                      return selected;
+                      return selected.join(", ");
                     }}
                   >
-                    <MenuItem value="">None</MenuItem>
-                    {literals.goals.map((goal, i) => (
-                      <MenuItem key={i} value={goal}>
-                        {goal}
-                      </MenuItem>
-                    ))}
+                    {literals.goals
+                      .filter(
+                        (goalItem) => goalItem !== "All" && goalItem !== "NA"
+                      )
+                      .map((goalItem, i) => (
+                        <MenuItem key={i} value={goalItem}>
+                          <Checkbox checked={goal.indexOf(goalItem) > -1} />
+                          {goalItem}
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </div>
