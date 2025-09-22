@@ -1138,6 +1138,7 @@ const AllActivities: React.FC = () => {
             }}
             rows={rows}
             columns={columns}
+            rowBufferPx={35}
             initialState={{
               pagination: {
                 paginationModel: { page: 0, pageSize: 50 },

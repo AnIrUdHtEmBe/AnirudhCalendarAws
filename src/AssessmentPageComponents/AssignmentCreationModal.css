@@ -42,3 +42,18 @@
 .modal-button:hover {
   background-color: #1e40af; /* darker blue on hover */
 }
+
+
+.assignment-modal {
+  font-family: 'roboto', sans-serif;
+  padding: 2.5rem;
+  /* background-color: white;
+  height: 50px;
+  width: 60px; */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  gap: 10px; /* reduced from 40px to achieve 0.25h above/below per element */
+}

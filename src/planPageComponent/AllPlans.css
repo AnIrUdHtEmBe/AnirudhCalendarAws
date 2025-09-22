@@ -376,3 +376,188 @@
 
 /* eye button atom */
 .table td:last-child button { height: 16px; width: 16px; padding: 0; }
+
+
+/* Step 1: Update the .table th and td to reduce vertical padding from 0.75rem (~12px) to 3px (0.25 factor approximation of typical h~12px text height). This reduces the gap above/below text. */
+.table th,
+.table td {
+  padding: 3px 6px !important; /* Reduced top/bottom padding to 3px (0.25 factor) */
+}
+
+/* Step 2: Set a fixed smaller line-height to 1.2 (assuming original effective ~1.5 due to defaults), to reduce internal text spacing. */
+.table td {
+  line-height: 1.2 !important; /* Reduced line-height for tighter text fitting */
+}
+
+/* Step 3: To ensure rows don't have extra space, add this to tr to minimize vertical space. */
+.table tr {
+  height: auto !important; /* Let height be determined by content + reduced padding */
+}
+
+/* Step 4: Remove horizontal scroll by setting table to 100% width and enabling word-break for long content. */
+.table {
+  width: 100% !important; /* Force table to fit container width */
+  min-width: 0 !important; /* Allow shrinking */
+  table-layout: fixed !important; /* Fixed layout for column control */
+}
+
+/* Step 5: Enable word-breaking in cells to prevent overflow, especially for long plan/session names. */
+.table td,
+.table th {
+  word-break: break-word !important; /* Break long words to fit */
+  overflow-wrap: break-word !important;
+  hyphens: auto !important;
+  white-space: normal !important; /* Allow wrapping */
+}
+
+/* Step 6: Narrow the preview column and eye button to ensure visibility without scroll. */
+.table td:last-child,
+.table th:last-child {
+  width: 40px !important; /* Narrow fixed width for preview column */
+  min-width: 40px !important;
+  max-width: 40px !important;
+  padding: 3px 2px !important; /* Reduce horizontal padding */
+  text-align: center !important;
+}
+
+.table td:last-child button {
+  width: 20px !important; /* Small eye button */
+  height: 20px !important;
+  padding: 0 !important;
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+/* Step 7: Adjust checkbox column similarly for narrow fit. */
+.table td:first-child,
+.table th:first-child {
+  width: 40px !important; /* Narrow checkbox column */
+  min-width: 40px !important;
+  max-width: 40px !important;
+  padding: 3px 2px !important;
+  text-align: center !important;
+}
+
+/* Step 8: Narrow category and status columns. */
+.table td:nth-child(3),
+.table th:nth-child(3),
+.table td:nth-child(4),
+.table th:nth-child(4) {
+  width: 80px !important; /* Narrow for category/status */
+  min-width: 80px !important;
+  max-width: 80px !important;
+}
+
+/* Step 9: Make name column flexible to take remaining space. */
+.table td:nth-child(2),
+.table th:nth-child(2) {
+  width: auto !important; /* Flexible for name */
+}
+
+/* Step 10: Remove overflow-x from table-wrapper to eliminate horizontal scroll, relying on word-break. */
+.table-wrapper {
+  overflow-x: hidden !important; /* Hide any potential overflow instead of scrolling */
+}
+
+
+/* Step 1: Update .table td to set text-align: left for data cells (keeping headers centered). This aligns the plan/session names, categories, status to the left. */
+.table td {
+  text-align: left !important; /* Left align data cells */
+  line-height: 1.2 !important; /* Unchanged from previous */
+}
+
+/* Step 2: Keep .table th text-align: center for headers. */
+.table th {
+  text-align: center !important; /* Center align headers */
+}
+
+/* Step 3: Reduce horizontal padding slightly in .table th and td from 6px to 4px to reduce gap between columns. */
+.table th,
+.table td {
+  padding: 3px 4px !important; /* Reduced horizontal padding to 4px */
+}
+
+/* Step 4: For narrow columns (checkbox and preview), reduce horizontal padding slightly from 2px to 1px for tighter fit without scroll. */
+.table td:first-child,
+.table th:first-child,
+.table td:last-child,
+.table th:last-child {
+  padding: 3px 1px !important; /* Slightly reduced horizontal padding */
+}
+
+/* Step 5: Ensure category and status columns remain narrow but adjust padding. */
+.table td:nth-child(3),
+.table th:nth-child(3),
+.table td:nth-child(4),
+.table th:nth-child(4) {
+  padding: 3px 4px !important; /* Match reduced padding */
+}
+
+/* Step 6: Confirm no horizontal scroll by reinforcing table-wrapper and table styles (unchanged but ensures fit). */
+.table-wrapper {
+  overflow-x: hidden !important; /* No scroll */
+}
+
+.table {
+  width: 100% !important; /* Full width fit */
+}
+
+
+/* Step 1: Update .table th to set text-align: left for header cells (text headers will be left-aligned). */
+.table th {
+  text-align: left !important; /* Left align headers */
+}
+
+/* Step 2: Retain center alignment for checkbox and preview headers (overrides the general left align). */
+.table th:first-child,
+.table th:last-child {
+  text-align: center !important; /* Center align checkbox and preview headers */
+}
+
+/* Step 3: For data cells, retain left alignment for text columns, with center overrides for checkbox and preview already in place. No change needed here. */
+.table td {
+  text-align: left !important; /* Unchanged, left align data cells */
+}
+
+/* Step 4: Ensure checkbox and preview data cells remain centered (overrides already present, no change). */
+.table td:first-child,
+.table td:last-child {
+  text-align: center !important; /* Unchanged, center align checkbox and preview data */
+}
+
+
+
+/* Step 1: Reduce horizontal padding in .table th and .table td from 4px to 2px to decrease the gap between all columns, including between Plan Name and Category. */
+.table th,
+.table td {
+  padding: 3px 2px !important; /* Reduced horizontal padding to 2px */
+}
+
+/* Step 2: Adjust padding for narrow columns (checkbox, category, status, preview) to match the reduced gap, ensuring no horizontal scroll and better fit for preview. */
+.table td:first-child,
+.table th:first-child,
+.table td:last-child,
+.table th:last-child,
+.table td:nth-child(3),
+.table th:nth-child(3),
+.table td:nth-child(4),
+.table th:nth-child(4) {
+  padding: 3px 2px !important; /* Match reduced horizontal padding */
+}
+
+/* Step 3: Narrow the Plan Name column slightly (from auto to a max-width) to pull Category closer, reducing perceived gap and ensuring Preview fits without scroll. */
+.table td:nth-child(2),
+.table th:nth-child(2) {
+  max-width: 200px !important; /* Add max-width to constrain Plan Name, pulling Category left */
+  width: auto !important; /* Keep flexible but capped */
+}
+
+/* Step 4: Reinforce no horizontal scroll and full fit (unchanged but ensures Preview visibility). */
+.table-wrapper {
+  overflow-x: hidden !important; /* No scroll */
+}
+
+.table {
+  width: 100% !important; /* Full width fit */
+  min-width: 0 !important; /* Allow shrinking */
+}

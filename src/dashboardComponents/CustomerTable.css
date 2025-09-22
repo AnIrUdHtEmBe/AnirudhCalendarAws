@@ -269,3 +269,150 @@
     font-size: 12px;
   }
 }
+
+
+.customer-dashboard-table .MuiDataGrid-root {
+  --DataGrid-rowHeight: 44px; /* Reduced height */
+  flex: 1;
+  height: 100%;
+  width: 100%;
+  border: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Column header height reduction */
+.customer-dashboard-table .MuiDataGrid-columnHeaders {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #e0e0e0;
+  flex-shrink: 0;
+  --DataGrid-headerHeight: 40px; /* Reduced header height */
+}
+
+/* Cell padding optimization without breaking virtualization */
+.customer-dashboard-table .MuiDataGrid-cell {
+  padding: 8px 12px; /* Reduced padding */
+  font-size: 14px;
+  color: #374151;
+  border-right: none;
+  display: flex;
+  align-items: center;
+  line-height: 1.3;
+}
+
+/* Header cell padding */
+.customer-dashboard-table .MuiDataGrid-columnHeader {
+  font-weight: 600;
+  background-color: #f8f9fa;
+  color: #374151;
+  font-size: 14px;
+  padding: 8px 12px; /* Matching cell padding */
+}
+
+/* Action button styling - proper sizing without breaking layout */
+.customer-dashboard-table .MuiSelect-root {
+  min-height: 32px; /* Compact but not too small */
+  width: 120px; /* Fixed width for consistency */
+}
+
+.customer-dashboard-table .MuiOutlinedInput-root {
+  min-height: 32px;
+  font-size: 0.75rem;
+}
+
+.customer-dashboard-table .MuiSelect-select {
+  padding: 6px 32px 6px 12px !important; /* Proper padding for dropdown arrow */
+  min-height: auto;
+  display: flex;
+  align-items: center;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+/* Ensure dropdown arrow has proper space */
+.customer-dashboard-table .MuiSelect-icon {
+  right: 8px; /* Proper spacing for arrow */
+  color: white;
+}
+
+/* Action column centering */
+.customer-dashboard-table .MuiDataGrid-cell[data-field="action"] {
+  justify-content: center;
+  padding: 4px 8px;
+}
+
+/* Maintain smooth scrolling performance */
+.customer-dashboard-table .MuiDataGrid-virtualScroller {
+  flex: 1;
+  /* Remove any height constraints that break virtualization */
+}
+
+.customer-dashboard-table .MuiDataGrid-virtualScrollerContent {
+  width: 100%;
+  /* Let MUI handle the height calculations */
+}
+
+/* Hover effects - keep existing */
+.customer-dashboard-table .MuiDataGrid-row:hover {
+  background-color: #f8f9fa;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .customer-dashboard-table .MuiDataGrid-root {
+    --DataGrid-rowHeight: 46px;
+  }
+  
+  .customer-dashboard-table .MuiSelect-root {
+    width: 110px;
+  }
+}
+
+@media (max-width: 768px) {
+  .customer-dashboard-table .MuiDataGrid-root {
+    --DataGrid-rowHeight: 44px;
+    --DataGrid-headerHeight: 42px;
+  }
+  
+  .customer-dashboard-table .MuiDataGrid-cell {
+    padding: 6px 8px;
+    font-size: 13px;
+  }
+  
+  .customer-dashboard-table .MuiDataGrid-columnHeader {
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+  
+  .customer-dashboard-table .MuiSelect-root {
+    min-height: 28px;
+    width: 100px;
+  }
+  
+  .customer-dashboard-table .MuiSelect-select {
+    padding: 4px 28px 4px 8px !important;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .customer-dashboard-table .MuiDataGrid-root {
+    --DataGrid-rowHeight: 42px;
+    --DataGrid-headerHeight: 40px;
+  }
+  
+  .customer-dashboard-table .MuiDataGrid-cell {
+    padding: 5px 6px;
+    font-size: 12px;
+  }
+  
+  .customer-dashboard-table .MuiSelect-root {
+    min-height: 26px;
+    width: 90px;
+  }
+  
+  .customer-dashboard-table .MuiSelect-select {
+    padding: 3px 24px 3px 6px !important;
+    font-size: 0.65rem;
+  }
+}

@@ -101,8 +101,21 @@ const ActionsContainer = ({
         bgcolor: "#0070FF",
         color: "white",
         fontSize: "0.75rem",
-        minHeight: "30px",
-        ".MuiSelect-icon": { color: "white" },
+        minHeight: "20px", // Fixed height
+        width: "120px", // Fixed width
+        ".MuiSelect-select": {
+          padding: "6px 32px 6px 12px !important", // Proper padding for arrow space
+          minHeight: "auto",
+          display: "flex",
+          alignItems: "center",
+          fontSize: "0.75rem",
+          lineHeight: 1.2,
+        },
+        ".MuiSelect-icon": {
+          color: "white",
+          right: "8px", // Proper arrow positioning
+          fontSize: "20px", // Ensure arrow is visible but not too large
+        },
         "& .MuiOutlinedInput-notchedOutline": { borderColor: "transparent" },
         "&:hover .MuiOutlinedInput-notchedOutline": { borderColor: "white" },
         "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
@@ -123,34 +136,44 @@ const ActionsContainer = ({
   );
 };
 
-
 interface FormFieldWithIconProps {
   Icon: React.ElementType;
   label: string;
   children: React.ReactNode;
 }
 
-const FormFieldWithIcon = React.memo<FormFieldWithIconProps>(({ Icon, label, children }) => (
-  <Box sx={{ mb: 0.8 }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.2 }}>
-      <Box sx={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        width: 12,
-        height: 12,
-        mr: 0.4,
-        color: '#1976d2'
-      }}>
-        <Icon sx={{ fontSize: '12px' }} />
+const FormFieldWithIcon = React.memo<FormFieldWithIconProps>(
+  ({ Icon, label, children }) => (
+    <Box sx={{ mb: 0.2 }}>
+      {" "}
+      {/* Changed from mb: 0.8 to mb: 0.2 */}
+      <Box sx={{ display: "flex", alignItems: "center", mb: 0.1 }}>
+        {" "}
+        {/* Changed from mb: 0.2 to mb: 0.1 */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 12,
+            height: 12,
+            mr: 0.4,
+            color: "#1976d2",
+          }}
+        >
+          <Icon sx={{ fontSize: "12px" }} />
+        </Box>
+        <Typography
+          variant="caption"
+          sx={{ fontWeight: 500, color: "#333", fontSize: "0.65rem" }}
+        >
+          {label}
+        </Typography>
       </Box>
-      <Typography variant="caption" sx={{ fontWeight: 500, color: '#333', fontSize: '0.65rem' }}>
-        {label}
-      </Typography>
+      {children}
     </Box>
-    {children}
-  </Box>
-));
+  )
+);
 
 const CustomerTable = () => {
   const days = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -285,7 +308,7 @@ const CustomerTable = () => {
   };
 
   //changed to handle new form data
-  const handleInputChange = (e: { target: { name: any; value: any; }; }) => {
+  const handleInputChange = (e: { target: { name: any; value: any } }) => {
     const { name, value } = e.target;
 
     setFormData((prevData) => {
@@ -309,7 +332,7 @@ const CustomerTable = () => {
     });
   };
 
-  const handleEditInputChange = (e: { target: { name: any; value: any; }; }) => {
+  const handleEditInputChange = (e: { target: { name: any; value: any } }) => {
     const { name, value } = e.target;
 
     setEditFormData((prevData) => {
@@ -332,34 +355,38 @@ const CustomerTable = () => {
       return newData;
     });
   };
-  
-const assignUserToRM = async (rmId: string, userId: string, silent = false, suppressError = false) => {
-  try {
-    const res = await fetch(`${API_BASE_URL2}/human/rm/assignusers`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rmId, userIds: [userId] }),
-    });
 
-    if (!res.ok) throw new Error("Failed to assign user to RM");
-
-    if (!silent) {
-      enqueueSnackbar("Successfully assigned user to RM", {
-        variant: "success",
-        autoHideDuration: 3000,
+  const assignUserToRM = async (
+    rmId: string,
+    userId: string,
+    silent = false,
+    suppressError = false
+  ) => {
+    try {
+      const res = await fetch(`${API_BASE_URL2}/human/rm/assignusers`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rmId, userIds: [userId] }),
       });
-    }
-  } catch (e) {
-    if (!silent && !suppressError) {
-      enqueueSnackbar("Failed to assign user to RM", {
-        variant: "error",
-        autoHideDuration: 3000,
-      });
-    }
-  }
-};
 
-  
+      if (!res.ok) throw new Error("Failed to assign user to RM");
+
+      if (!silent) {
+        enqueueSnackbar("Successfully assigned user to RM", {
+          variant: "success",
+          autoHideDuration: 3000,
+        });
+      }
+    } catch (e) {
+      if (!silent && !suppressError) {
+        enqueueSnackbar("Failed to assign user to RM", {
+          variant: "error",
+          autoHideDuration: 3000,
+        });
+      }
+    }
+  };
+
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Convert numeric fields
@@ -423,46 +450,51 @@ const assignUserToRM = async (rmId: string, userId: string, silent = false, supp
     // Optionally, reset form fields here
   };
 
-const handleEditFormSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  // Convert numeric fields
-  const payload = {
-    ...editFormData,
-    age: Number(editFormData.age),
-    height: Number(editFormData.height) || null,
-    weight: Number(editFormData.weight) || null,
-    healthCondition: editFormData.healthCondition || null,
-    nutritionKYC: editFormData.nutritionKYC,
-  };
+  const handleEditFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    // Convert numeric fields
+    const payload = {
+      ...editFormData,
+      age: Number(editFormData.age),
+      height: Number(editFormData.height) || null,
+      weight: Number(editFormData.weight) || null,
+      healthCondition: editFormData.healthCondition || null,
+      nutritionKYC: editFormData.nutritionKYC,
+    };
 
-  console.log("Edit payload:", payload);
-  const res = await patch_customer(editingCustomer.userId, payload);
-  if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
-    await assignUserToRM(editFormData.assignedRM, editingCustomer.userId, false, true); // Pass suppressError as true
-  }
-  setEditModalOpen(false);
-  setIsEditWeeklySaved(false);
-  setEditingCustomer(null);
-  // Clear the edit form
-  setEditFormData({
-    name: "",
-    dob: "",
-    age: "",
-    gender: "",
-    mobile: "",
-    email: "",
-    password: "",
-    type: "",
-    height: "",
-    weight: "",
-    healthCondition: "",
-    membershipType: "",
-    startDate: "",
-    endDate: "",
-    assignedRM: "",
-    nutritionKYC: defaultWeeklyPlan,
-  });
-};
+    console.log("Edit payload:", payload);
+    const res = await patch_customer(editingCustomer.userId, payload);
+    if (res && editFormData.assignedRM !== editingCustomer.assignedRM) {
+      await assignUserToRM(
+        editFormData.assignedRM,
+        editingCustomer.userId,
+        false,
+        true
+      ); // Pass suppressError as true
+    }
+    setEditModalOpen(false);
+    setIsEditWeeklySaved(false);
+    setEditingCustomer(null);
+    // Clear the edit form
+    setEditFormData({
+      name: "",
+      dob: "",
+      age: "",
+      gender: "",
+      mobile: "",
+      email: "",
+      password: "",
+      type: "",
+      height: "",
+      weight: "",
+      healthCondition: "",
+      membershipType: "",
+      startDate: "",
+      endDate: "",
+      assignedRM: "",
+      nutritionKYC: defaultWeeklyPlan,
+    });
+  };
 
   const handleCloseModal = () => {
     setModalOpen(false);
@@ -749,7 +781,10 @@ const handleEditFormSubmit = async (e: React.FormEvent) => {
   ).length;
 
   // enddate calculation
-  const calculateEndDate = (startDate: string | number | Date, membershipType: string) => {
+  const calculateEndDate = (
+    startDate: string | number | Date,
+    membershipType: string
+  ) => {
     if (!startDate || !membershipType) return "";
 
     const start = new Date(startDate);
@@ -772,7 +807,9 @@ const handleEditFormSubmit = async (e: React.FormEvent) => {
     return endDate.toISOString().split("T")[0];
   };
 
-  const getWeeklyPlanSummary = (plan: { [s: string]: unknown; } | ArrayLike<unknown>) => {
+  const getWeeklyPlanSummary = (
+    plan: { [s: string]: unknown } | ArrayLike<unknown>
+  ) => {
     const dayLabels = {
       MON: "Mon",
       TUE: "Tue",
@@ -791,878 +828,1745 @@ const handleEditFormSubmit = async (e: React.FormEvent) => {
   };
 
   // Custom Form Field Component
-// Compact Form Field Component
-// Memoized FormFieldWithIcon component to prevent re-renders
-// const FormFieldWithIcon = React.memo(({ Icon, label, children }) => (
-//   <Box sx={{ mb: 0.8 }}>
-//     <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.2 }}>
-//       <Box sx={{ 
-//         display: 'flex', 
-//         alignItems: 'center', 
-//         justifyContent: 'center',
-//         width: 12,
-//         height: 12,
-//         mr: 0.4,
-//         color: '#1976d2'
-//       }}>
-//         <Icon sx={{ fontSize: '12px' }} />
-//       </Box>
-//       <Typography variant="caption" sx={{ fontWeight: 500, color: '#333', fontSize: '0.65rem' }}>
-//         {label}
-//       </Typography>
-//     </Box>
-//     {children}
-//   </Box>
-// ));
+  // Compact Form Field Component
+  // Memoized FormFieldWithIcon component to prevent re-renders
+  // const FormFieldWithIcon = React.memo(({ Icon, label, children }) => (
+  //   <Box sx={{ mb: 0.8 }}>
+  //     <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.2 }}>
+  //       <Box sx={{
+  //         display: 'flex',
+  //         alignItems: 'center',
+  //         justifyContent: 'center',
+  //         width: 12,
+  //         height: 12,
+  //         mr: 0.4,
+  //         color: '#1976d2'
+  //       }}>
+  //         <Icon sx={{ fontSize: '12px' }} />
+  //       </Box>
+  //       <Typography variant="caption" sx={{ fontWeight: 500, color: '#333', fontSize: '0.65rem' }}>
+  //         {label}
+  //       </Typography>
+  //     </Box>
+  //     {children}
+  //   </Box>
+  // ));
 
-return (
-  <>
-    <div className="customer-dashboard-outlay-container">
-      <div className="--side-bar"></div>
-      <div className="customer-dashboard-container" ref={ref}>
-        <div className="customer-dashboard-main-table-container">
-          <div className="customer-dashboard-main-top-filter-container">
-            <div className="customer-dashboard-search-container">
-              <TextField
-                value={term}
-                onChange={(e) => setTerm(e.target.value)}
-                variant="outlined"
-                size="small"
-                placeholder="Search by name, mobile or membership..."
+  return (
+    <>
+      <div className="customer-dashboard-outlay-container">
+        <div className="--side-bar"></div>
+        <div className="customer-dashboard-container" ref={ref}>
+          <div className="customer-dashboard-main-table-container">
+            <div className="customer-dashboard-main-top-filter-container">
+              <div className="customer-dashboard-search-container">
+                <TextField
+                  value={term}
+                  onChange={(e) => setTerm(e.target.value)}
+                  variant="outlined"
+                  size="small"
+                  placeholder="Search by name, mobile or membership..."
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: 1,
+                      fontSize: "1rem",
+                      "& input": { py: 1.5, px: 1.5 },
+                      "&:hover fieldset": { borderColor: "#1976d2" },
+                    },
+                  }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              </div>
+              <div className="customer-dashboard-filter-container">
+                <div className="--add-customer">
+                  <People className="text-green-700" />
+                  <button className="text-green-700" onClick={handleModal}>
+                    Add New Customer
+                  </button>
+                </div>
+                <div className="--date">
+                  <LocalizationProvider dateAdapter={AdapterDayjs}>
+                    <DateTimePicker
+                      value={selectedDate}
+                      onChange={(newDate) => setSelectedDate(newDate)}
+                      slotProps={{
+                        textField: {
+                          size: "small",
+                          sx: { maxWidth: 150, fontSize: "0.8rem" },
+                        },
+                      }}
+                      label="Joined On"
+                    />
+                  </LocalizationProvider>
+                </div>
+                <div className="--delete">
+                  <Button
+                    onClick={handleDeactivate}
+                    variant="outlined"
+                    color="error"
+                    sx={{
+                      padding: "5px 12px",
+                      border: "1.3px solid rgba(0,0,0,0.15)",
+                    }}
+                    startIcon={<DeleteIcon />}
+                    size="small"
+                  >
+                    Deactivate
+                  </Button>
+                </div>
+                <div className="--export">
+                  <Button
+                    onClick={handleExport}
+                    variant="outlined"
+                    sx={{
+                      padding: "5px 12px",
+                      background: "#FFFFFF",
+                      color: "rgba(0, 0, 0, 0.8)",
+                      border: "1.3px solid rgba(0,0,0,0.15)",
+                    }}
+                    startIcon={<FileDownloadIcon />}
+                    size="small"
+                  >
+                    Export CSV
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="customer-dashboard-table">
+              <DataGrid
+                rows={filteredRows}
+                columns={columns}
+                pageSizeOptions={[5, 10]}
+                checkboxSelection
                 sx={{
-                  '& .MuiOutlinedInput-root': {
-                    borderRadius: 1,
-                    fontSize: '1rem',
-                    '& input': { py: 1.5, px: 1.5 },
-                    '&:hover fieldset': { borderColor: '#1976d2' }
-                  }
+                  border: 0,
+                  // Use proper MUI DataGrid row height configuration
+                  "& .MuiDataGrid-row": {
+                    minHeight: "40px !important", // Reduced height
+                    maxHeight: "40px !important",
+                  },
+                  "& .MuiDataGrid-cell": {
+                    padding: "8px 10px", // Reduced padding
+                    display: "flex",
+                    alignItems: "center",
+                    lineHeight: 1.3,
+                  },
+                  "& .MuiDataGrid-columnHeaders": {
+                    minHeight: "40px !important", // Reduced header height
+                  },
+                  "& .MuiDataGrid-columnHeader": {
+                    padding: "8px 6px",
+                  },
+                  // Ensure smooth scrolling performance
+                  "& .MuiDataGrid-virtualScroller": {
+                    // Remove any height constraints that might break virtualization
+                  },
+                  "& .MuiDataGrid-virtualScrollerContent": {
+                    width: "100%",
+                  },
+                  // Action column specific styling
+                  '& .MuiDataGrid-cell[data-field="action"]': {
+                    justifyContent: "center",
+                    padding: "4px 8px",
+                  },
                 }}
-                InputProps={{
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon />
-                    </InputAdornment>
-                  ),
-                }}
+                onRowSelectionModelChange={(ids) => setSelectedUserIDs(ids)}
+                // Add these performance optimizations
+                rowHeight={44} // Reduced row height
+                columnHeaderHeight={40} // Reduced header height
+                disableRowSelectionOnClick
+                disableColumnMenu
+                disableColumnSelector
+                disableDensitySelector
               />
             </div>
-            <div className="customer-dashboard-filter-container">
-              <div className="--add-customer">
-                <People className="text-green-700" />
-                <button className="text-green-700" onClick={handleModal}>
-                  Add New Customer
-                </button>
-              </div>
-              <div className="--date">
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DateTimePicker
-                    value={selectedDate}
-                    onChange={(newDate) => setSelectedDate(newDate)}
-                    slotProps={{
-                      textField: {
-                        size: 'small',
-                        sx: { maxWidth: 150, fontSize: '0.8rem' },
-                      },
-                    }}
-                    label="Joined On"
-                  />
-                </LocalizationProvider>
-              </div>
-              <div className="--delete">
-                <Button
-                  onClick={handleDeactivate}
-                  variant="outlined"
-                  color="error"
-                  sx={{
-                    padding: '5px 12px',
-                    border: '1.3px solid rgba(0,0,0,0.15)',
-                  }}
-                  startIcon={<DeleteIcon />}
-                  size="small"
-                >
-                  Deactivate
-                </Button>
-              </div>
-              <div className="--export">
-                <Button
-                  onClick={handleExport}
-                  variant="outlined"
-                  sx={{
-                    padding: '5px 12px',
-                    background: '#FFFFFF',
-                    color: 'rgba(0, 0, 0, 0.8)',
-                    border: '1.3px solid rgba(0,0,0,0.15)',
-                  }}
-                  startIcon={<FileDownloadIcon />}
-                  size="small"
-                >
-                  Export CSV
-                </Button>
-              </div>
-            </div>
-          </div>
-          <div className="customer-dashboard-table">
-            <DataGrid
-              rows={filteredRows}
-              columns={columns}
-              pageSizeOptions={[5, 10]}
-              checkboxSelection
-              sx={{ border: 0 }}
-              onRowSelectionModelChange={(ids) => setSelectedUserIDs(ids)}
-            />
           </div>
         </div>
-      </div>
 
-      {/* ---------- ADD CUSTOMER MODAL ---------- */}
-      <Dialog
-        open={modalOpen}
-        onClose={handleCloseModal}
-        fullWidth
-        maxWidth="lg"
-        PaperProps={{
-          sx: {
-            height: '80vh',
-            maxHeight: '80vh',
-            m: 1,
-            width: '65%',
-            maxWidth: '1000px',
-          }
-        }}
-      >
-        <DialogTitle sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f8f9fa', py: 0.8, px: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1rem' }}>
-              Create New Customer
-            </Typography>
-            <IconButton aria-label="close" onClick={handleCloseModal} size="small" sx={{ color: '#666' }}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 0, bgcolor: '#fafafa', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Box component="form" id="create-customer-form" onSubmit={handleFormSubmit} sx={{ height: '100%', display: 'flex', flex: 1, overflow: 'hidden' }}>
-            {/* LEFT PANEL */}
-            <Paper elevation={0} sx={{ flex: 1, bgcolor: 'white', borderRight: '1px solid #e0e0e0', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Box sx={{ px: 1.5, py: 0.8, borderBottom: '1px solid #1976d2', bgcolor: '#f8f9fa', flexShrink: 0 }}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: '#1976d2', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <PersonIcon sx={{ fontSize: '12px' }} /> Personal Info
-                </Typography>
-              </Box>
-              <Box sx={{ p: 1.2, flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr', gap: 0.8, alignContent: 'start' }}>
-                <FormFieldWithIcon Icon={PersonIcon} label="Full Name">
-                  <TextField 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleInputChange} 
-                    required 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Enter full name" 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <FormFieldWithIcon Icon={EmailIcon} label="Email">
-                  <TextField 
-                    name="email" 
-                    type="email" 
-                    value={formData.email} 
-                    onChange={handleInputChange} 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Enter email" 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <FormFieldWithIcon Icon={LockIcon} label="Password">
-                  <TextField 
-                    name="password" 
-                    type="text" 
-                    value={formData.password} 
-                    onChange={handleInputChange} 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Enter password" 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 1 }}>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="Date of Birth">
-                    <TextField 
-                      name="dob" 
-                      type="date" 
-                      value={formData.dob} 
-                      onChange={handleInputChange} 
-                      InputLabelProps={{ shrink: true }} 
-                      required 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="Age">
-                    <TextField 
-                      type="number" 
-                      name="age" 
-                      value={formData.age} 
-                      onChange={handleInputChange} 
-                      InputProps={{ readOnly: true }} 
-                      required 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={PersonIcon} label="Gender">
-                    <FormControl fullWidth required size="small">
-                      <Select 
-                        name="gender" 
-                        value={formData.gender} 
-                        onChange={handleInputChange} 
-                        sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                      >
-                        <MenuItem value="male">Male</MenuItem>
-                        <MenuItem value="female">Female</MenuItem>
-                        <MenuItem value="other">Other</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={PhoneIcon} label="Mobile">
-                    <TextField 
-                      name="mobile" 
-                      value={formData.mobile} 
-                      onChange={handleInputChange} 
-                      fullWidth 
-                      size="small" 
-                      placeholder="10-digit mobile" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* RIGHT PANEL */}
-            <Paper elevation={0} sx={{ flex: 1, bgcolor: 'white', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Box sx={{ px: 1.5, py: 0.8, borderBottom: '1px solid #1976d2', bgcolor: '#f8f9fa', flexShrink: 0 }}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: '#1976d2', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <BusinessCenterIcon sx={{ fontSize: '12px' }} /> Professional & Health
-                </Typography>
-              </Box>
-              <Box sx={{ p: 1.5, flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr', gap: 1, alignContent: 'start' }}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={HeightIcon} label="Height (cm)">
-                    <TextField 
-                      name="height" 
-                      type="number" 
-                      value={formData.height} 
-                      onChange={handleInputChange} 
-                      fullWidth 
-                      size="small" 
-                      placeholder="Height" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={MonitorWeightIcon} label="Weight (kg)">
-                    <TextField 
-                      name="weight" 
-                      type="number" 
-                      step="0.1" 
-                      value={formData.weight} 
-                      onChange={handleInputChange} 
-                      fullWidth 
-                      size="small" 
-                      placeholder="Weight" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-                <FormFieldWithIcon Icon={LocalHospitalIcon} label="Health Condition">
-                  <TextField 
-                    name="healthCondition" 
-                    value={formData.healthCondition} 
-                    onChange={handleInputChange} 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Health conditions" 
-                    multiline 
-                    rows={1.5} 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& textarea':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={BusinessCenterIcon} label="Type">
-                    <FormControl fullWidth required size="small">
-                      <Select 
-                        name="type" 
-                        value={formData.type} 
-                        onChange={handleInputChange} 
-                        sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                      >
-                        <MenuItem value="forge">Forge</MenuItem>
-                        <MenuItem value="play">Play</MenuItem>
-                        <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
-                        <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
-                        <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
-                        <MenuItem value="employee">EMPLOYEE</MenuItem>
-                        <MenuItem value="other">OTHERS</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={CardMembershipIcon} label="Membership">
-                    <FormControl fullWidth size="small">
-                      <Select 
-                        name="membershipType" 
-                        value={formData.membershipType} 
-                        onChange={handleInputChange} 
-                        sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                      >
-                        <MenuItem value="premium">PREMIUM</MenuItem>
-                        <MenuItem value="basic">BASIC</MenuItem>
-                        <MenuItem value="vip">VIP</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormFieldWithIcon>
-                </Box>
-                <FormFieldWithIcon Icon={SupervisorAccountIcon} label="Assign RM">
-                  <FormControl fullWidth size="small">
-                    <Select 
-                      name="assignedRM" 
-                      value={formData.assignedRM} 
-                      onChange={handleInputChange} 
-                      disabled={loadingAdmins} 
-                      sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                    >
-                      {adminUsers.map((admin) => (
-                        <MenuItem key={admin.userId} value={admin.userId}>
-                          {admin.name} ({admin.userType})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </FormFieldWithIcon>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="Start Date">
-                    <TextField 
-                      name="startDate" 
-                      type="date" 
-                      value={formData.startDate} 
-                      onChange={handleInputChange} 
-                      InputLabelProps={{ shrink: true }} 
-                      required 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="End Date">
-                    <TextField 
-                      name="endDate" 
-                      type="date" 
-                      value={formData.endDate} 
-                      InputLabelProps={{ shrink: true }} 
-                      InputProps={{ readOnly: true }} 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-                <FormFieldWithIcon Icon={Restaurant} label="Meal Plan">
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => { 
-                        setCurrentWeeklyPlan(formData.nutritionKYC); 
-                        setIsCreatingWeekly(true); 
-                        setWeeklyModalOpen(true); 
-                      }} 
-                      sx={{ 
-                        borderRadius: 1, 
-                        textTransform: 'none', 
-                        borderColor: '#1976d2', 
-                        color: '#1976d2', 
-                        fontSize: '0.7rem', 
-                        py: 0.4, 
-                        minHeight: 'auto', 
-                        '&:hover': { bgcolor: '#1976d2', color: 'white' } 
-                      }}
-                    >
-                      Configure Meal Plan
-                    </Button>
-                    {isCreateWeeklySaved && getWeeklyPlanSummary(formData.nutritionKYC) && (
-                      <Typography variant="caption" sx={{ color: '#666', p: 0.5, bgcolor: '#f0f8ff', borderRadius: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}>
-                        {getWeeklyPlanSummary(formData.nutritionKYC)}
-                      </Typography>
-                    )}
-                  </Box>
-                </FormFieldWithIcon>
-              </Box>
-            </Paper>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ justifyContent: 'space-between', p: 1, borderTop: '1px solid #e0e0e0', bgcolor: '#f8f9fa', flexShrink: 0 }}>
-          <Button onClick={handleCloseModal} size="small" sx={{ color: '#666', textTransform: 'none', fontSize: '0.8rem', '&:hover': { bgcolor: '#f0f0f0' } }}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="contained" color="primary" form="create-customer-form" size="small" sx={{ textTransform: 'none', px: 2, fontSize: '0.8rem', borderRadius: 1, boxShadow: '0 2px 8px rgba(25,118,210,0.3)' }}>
-            Create Customer
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ---------- EDIT CUSTOMER MODAL ---------- */}
-      <Dialog
-        open={editModalOpen}
-        onClose={handleCloseEditModal}
-        fullWidth
-        maxWidth="lg"
-        PaperProps={{
-          sx: {
-            height: '80vh',
-            maxHeight: '80vh',
-            m: 1,
-            width: '65%',
-            maxWidth: '1000px',
-          }
-        }}
-      >
-        <DialogTitle sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f8f9fa', py: 0.8, px: 1.5 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2', fontSize: '1rem' }}>
-              Edit Customer
-            </Typography>
-            <IconButton aria-label="close" onClick={handleCloseEditModal} size="small" sx={{ color: '#666' }}>
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 0, bgcolor: '#fafafa', flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <Box component="form" id="edit-customer-form" onSubmit={handleEditFormSubmit} sx={{ height: '100%', display: 'flex', flex: 1, overflow: 'hidden' }}>
-            {/* LEFT PANEL */}
-            <Paper elevation={0} sx={{ flex: 1, bgcolor: 'white', borderRight: '1px solid #e0e0e0', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Box sx={{ px: 1.5, py: 0.8, borderBottom: '1px solid #1976d2', bgcolor: '#f8f9fa', flexShrink: 0 }}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: '#1976d2', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <PersonIcon sx={{ fontSize: '12px' }} /> Personal Info
-                </Typography>
-              </Box>
-              <Box sx={{ p: 1.2, flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr', gap: 0.8, alignContent: 'start' }}>
-                <FormFieldWithIcon Icon={PersonIcon} label="Full Name">
-                  <TextField 
-                    name="name" 
-                    value={editFormData.name} 
-                    onChange={handleEditInputChange} 
-                    required 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Enter full name" 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <FormFieldWithIcon Icon={EmailIcon} label="Email">
-                  <TextField 
-                    name="email" 
-                    type="email" 
-                    value={editFormData.email} 
-                    onChange={handleEditInputChange} 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Enter email" 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <FormFieldWithIcon Icon={LockIcon} label="Password">
-                  <TextField 
-                    name="password" 
-                    type="text" 
-                    value={editFormData.password} 
-                    onChange={handleEditInputChange} 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Enter password" 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 80px', gap: 1 }}>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="Date of Birth">
-                    <TextField 
-                      name="dob" 
-                      type="date" 
-                      value={editFormData.dob} 
-                      onChange={handleEditInputChange} 
-                      InputLabelProps={{ shrink: true }} 
-                      required 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="Age">
-                    <TextField 
-                      type="number" 
-                      name="age" 
-                      value={editFormData.age} 
-                      onChange={handleEditInputChange} 
-                      InputProps={{ readOnly: true }} 
-                      required 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={PersonIcon} label="Gender">
-                    <FormControl fullWidth required size="small">
-                      <Select 
-                        name="gender" 
-                        value={editFormData.gender} 
-                        onChange={handleEditInputChange} 
-                        sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                      >
-                        <MenuItem value="male">Male</MenuItem>
-                        <MenuItem value="female">Female</MenuItem>
-                        <MenuItem value="other">Other</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={PhoneIcon} label="Mobile">
-                    <TextField 
-                      name="mobile" 
-                      value={editFormData.mobile} 
-                      onChange={handleEditInputChange} 
-                      fullWidth 
-                      size="small" 
-                      placeholder="10-digit mobile" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-              </Box>
-            </Paper>
-
-            {/* RIGHT PANEL */}
-            <Paper elevation={0} sx={{ flex: 1, bgcolor: 'white', borderRadius: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-              <Box sx={{ px: 1.5, py: 0.8, borderBottom: '1px solid #1976d2', bgcolor: '#f8f9fa', flexShrink: 0 }}>
-                <Typography variant="caption" sx={{ fontWeight: 600, color: '#1976d2', display: 'flex', alignItems: 'center', gap: 0.5, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <BusinessCenterIcon sx={{ fontSize: '12px' }} /> Professional & Health
-                </Typography>
-              </Box>
-              <Box sx={{ p: 1.5, flex: 1, overflow: 'hidden', display: 'grid', gridTemplateColumns: '1fr', gap: 1, alignContent: 'start' }}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={HeightIcon} label="Height (cm)">
-                    <TextField 
-                      name="height" 
-                      type="number" 
-                      value={editFormData.height} 
-                      onChange={handleEditInputChange} 
-                      fullWidth 
-                      size="small" 
-                      placeholder="Height" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={MonitorWeightIcon} label="Weight (kg)">
-                    <TextField 
-                      name="weight" 
-                      type="number" 
-                      step="0.1" 
-                      value={editFormData.weight} 
-                      onChange={handleEditInputChange} 
-                      fullWidth 
-                      size="small" 
-                      placeholder="Weight" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-                <FormFieldWithIcon Icon={LocalHospitalIcon} label="Health Condition">
-                  <TextField 
-                    name="healthCondition" 
-                    value={editFormData.healthCondition} 
-                    onChange={handleEditInputChange} 
-                    fullWidth 
-                    size="small" 
-                    placeholder="Health conditions" 
-                    multiline 
-                    rows={1.5} 
-                    sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& textarea':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                  />
-                </FormFieldWithIcon>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={BusinessCenterIcon} label="Type">
-                    <FormControl fullWidth required size="small">
-                      <Select 
-                        name="type" 
-                        value={editFormData.type} 
-                        onChange={handleEditInputChange} 
-                        sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                      >
-                        <MenuItem value="forge">Forge</MenuItem>
-                        <MenuItem value="play">Play</MenuItem>
-                        <MenuItem value="coach_wellness">COACH WELLNESS</MenuItem>
-                        <MenuItem value="coach_fitness">COACH FITNESS</MenuItem>
-                        <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
-                        <MenuItem value="employee">EMPLOYEE</MenuItem>
-                        <MenuItem value="other">OTHERS</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={CardMembershipIcon} label="Membership">
-                    <FormControl fullWidth size="small">
-                      <Select 
-                        name="membershipType" 
-                        value={editFormData.membershipType} 
-                        onChange={handleEditInputChange} 
-                        sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                      >
-                        <MenuItem value="premium">PREMIUM</MenuItem>
-                        <MenuItem value="basic">BASIC</MenuItem>
-                        <MenuItem value="vip">VIP</MenuItem>
-                      </Select>
-                    </FormControl>
-                  </FormFieldWithIcon>
-                </Box>
-                <FormFieldWithIcon Icon={SupervisorAccountIcon} label="Assign RM">
-                  <FormControl fullWidth size="small">
-                    <Select 
-                      name="assignedRM" 
-                      value={editFormData.assignedRM} 
-                      onChange={handleEditInputChange} 
-                      disabled={loadingAdmins} 
-                      sx={{ borderRadius: 1, fontSize: '0.8rem', '& .MuiSelect-select': { py: 0.6 }, '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: '#1976d2' } }}
-                    >
-                      {adminUsers.map((admin) => (
-                        <MenuItem key={admin.userId} value={admin.userId}>
-                          {admin.name} ({admin.userType})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                </FormFieldWithIcon>
-                <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="Start Date">
-                    <TextField 
-                      name="startDate" 
-                      type="date" 
-                      value={editFormData.startDate} 
-                      onChange={handleEditInputChange} 
-                      InputLabelProps={{ shrink: true }} 
-                      required 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                  <FormFieldWithIcon Icon={CalendarTodayIcon} label="End Date">
-                    <TextField 
-                      name="endDate" 
-                      type="date" 
-                      value={editFormData.endDate} 
-                      InputLabelProps={{ shrink: true }} 
-                      InputProps={{ readOnly: true }} 
-                      fullWidth 
-                      size="small" 
-                      sx={{'& .MuiOutlinedInput-root':{borderRadius:1,fontSize:'0.75rem','& input':{py:0.5,px:0.8},'&:hover fieldset':{borderColor:'#1976d2'}}}} 
-                    />
-                  </FormFieldWithIcon>
-                </Box>
-                <FormFieldWithIcon Icon={Restaurant} label="Meal Plan">
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    <Button 
-                      variant="outlined" 
-                      size="small" 
-                      onClick={() => { 
-                        setCurrentWeeklyPlan(editFormData.nutritionKYC); 
-                        setIsCreatingWeekly(false); 
-                        setWeeklyModalOpen(true); 
-                      }} 
-                      sx={{ 
-                        borderRadius: 1, 
-                        textTransform: 'none', 
-                        borderColor: '#1976d2', 
-                        color: '#1976d2', 
-                        fontSize: '0.7rem', 
-                        py: 0.4, 
-                        minHeight: 'auto', 
-                        '&:hover': { bgcolor: '#1976d2', color: 'white' } 
-                      }}
-                    >
-                      Configure Meal Plan
-                    </Button>
-                    {isEditWeeklySaved && getWeeklyPlanSummary(editFormData.nutritionKYC) && (
-                      <Typography variant="caption" sx={{ color: '#666', p: 0.5, bgcolor: '#f0f8ff', borderRadius: 0.5, fontSize: '0.65rem', lineHeight: 1.2 }}>
-                        {getWeeklyPlanSummary(editFormData.nutritionKYC)}
-                      </Typography>
-                    )}
-                  </Box>
-                </FormFieldWithIcon>
-              </Box>
-            </Paper>
-          </Box>
-        </DialogContent>
-
-        <DialogActions sx={{ justifyContent: 'space-between', p: 1, borderTop: '1px solid #e0e0e0', bgcolor: '#f8f9fa', flexShrink: 0 }}>
-          <Button onClick={handleCloseEditModal} size="small" sx={{ color: '#666', textTransform: 'none', fontSize: '0.8rem', '&:hover': { bgcolor: '#f0f0f0' } }}>
-            Cancel
-          </Button>
-          <Button type="submit" variant="contained" color="primary" form="edit-customer-form" size="small" sx={{ textTransform: 'none', px: 2, fontSize: '0.8rem', borderRadius: 1, boxShadow: '0 2px 8px rgba(25,118,210,0.3)' }}>
-            Update Customer
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* ---------- WEEKLY MEAL PLAN MODAL ---------- */}
-      <Dialog open={weeklyModalOpen} onClose={() => setWeeklyModalOpen(false)} maxWidth="lg" fullWidth>
-        <DialogTitle>
-          Weekly Meal Plan
-          <IconButton 
-            aria-label="close" 
-            onClick={() => setWeeklyModalOpen(false)} 
-            sx={{ position: 'absolute', right: 8, top: 8, color: (theme) => theme.palette.grey[500] }}
+        {/* ---------- ADD CUSTOMER MODAL ---------- */}
+        <Dialog
+          open={modalOpen}
+          onClose={handleCloseModal}
+          fullWidth
+          maxWidth="lg"
+          PaperProps={{
+            sx: {
+              height: "80vh",
+              maxHeight: "80vh",
+              m: 1,
+              width: "65%",
+              maxWidth: "1000px",
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              borderBottom: "1px solid #e0e0e0",
+              bgcolor: "#f8f9fa",
+              py: 0.8,
+              px: 1.5,
+            }}
           >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ p: 2 }}>
-            <Box sx={{ mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                sx={{ 
-                  backgroundColor: Object.values(currentWeeklyPlan).every((day) => day === 0) && Object.values(currentWeeklyPlan).every((day) => day !== null) ? '#007bff' : 'transparent', 
-                  color: Object.values(currentWeeklyPlan).every((day) => day === 0) && Object.values(currentWeeklyPlan).every((day) => day !== null) ? 'white' : 'inherit' 
-                }} 
-                onClick={() => { 
-                  const allVeg = days.reduce((acc, day) => ({ ...acc, [day]: 0 }), {}); 
-                  setCurrentWeeklyPlan(allVeg); 
-                }}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 600, color: "#1976d2", fontSize: "1rem" }}
               >
-                All Veg
-              </Button>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                sx={{ 
-                  backgroundColor: Object.values(currentWeeklyPlan).every((day) => day === 2) && Object.values(currentWeeklyPlan).every((day) => day !== null) ? '#007bff' : 'transparent', 
-                  color: Object.values(currentWeeklyPlan).every((day) => day === 2) && Object.values(currentWeeklyPlan).every((day) => day !== null) ? 'white' : 'inherit' 
-                }} 
-                onClick={() => { 
-                  const allNonVeg = days.reduce((acc, day) => ({ ...acc, [day]: 2 }), {}); 
-                  setCurrentWeeklyPlan(allNonVeg); 
-                }}
+                Create New Customer
+              </Typography>
+              <IconButton
+                aria-label="close"
+                onClick={handleCloseModal}
+                size="small"
+                sx={{ color: "#666" }}
               >
-                All Non-Veg
-              </Button>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                sx={{ 
-                  backgroundColor: Object.values(currentWeeklyPlan).every((day) => day === 1) && Object.values(currentWeeklyPlan).every((day) => day !== null) ? '#007bff' : 'transparent', 
-                  color: Object.values(currentWeeklyPlan).every((day) => day === 1) && Object.values(currentWeeklyPlan).every((day) => day !== null) ? 'white' : 'inherit' 
-                }} 
-                onClick={() => { 
-                  const allEgg = days.reduce((acc, day) => ({ ...acc, [day]: 1 }), {}); 
-                  setCurrentWeeklyPlan(allEgg); 
-                }}
-              >
-                All Egg
-              </Button>
-              <Button 
-                variant="outlined" 
-                size="small" 
-                sx={{ 
-                  backgroundColor: !(Object.values(currentWeeklyPlan).every((day) => day === 0) && Object.values(currentWeeklyPlan).every((day) => day !== null)) && !(Object.values(currentWeeklyPlan).every((day) => day === 2) && Object.values(currentWeeklyPlan).every((day) => day !== null)) && !(Object.values(currentWeeklyPlan).every((day) => day === 1) && Object.values(currentWeeklyPlan).every((day) => day !== null)) && Object.values(currentWeeklyPlan).some((day) => day !== null) ? '#007bff' : 'transparent', 
-                  color: !(Object.values(currentWeeklyPlan).every((day) => day === 0) && Object.values(currentWeeklyPlan).every((day) => day !== null)) && !(Object.values(currentWeeklyPlan).every((day) => day === 2) && Object.values(currentWeeklyPlan).every((day) => day !== null)) && !(Object.values(currentWeeklyPlan).every((day) => day === 1) && Object.values(currentWeeklyPlan).every((day) => day !== null)) && Object.values(currentWeeklyPlan).some((day) => day !== null) ? 'white' : 'inherit' 
-                }} 
-                onClick={() => { 
-                  const custom = days.reduce((acc, day) => ({ ...acc, [day]: null }), {}); 
-                  setCurrentWeeklyPlan(custom); 
-                }}
-              >
-                Custom
-              </Button>
+                <CloseIcon fontSize="small" />
+              </IconButton>
             </Box>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 2, border: '1px solid #e0e0e0', borderRadius: '8px', p: 2, bgcolor: '#fafafa' }}>
-              {days.map((day) => (
-                <Box key={day} sx={{ textAlign: 'left' }}>
-                  <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600, fontSize: '0.875rem', color: '#333' }}>
-                    {day.charAt(0).toUpperCase() + day.slice(1).substring(0, 2)}
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              p: 0,
+              bgcolor: "#fafafa",
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              component="form"
+              id="create-customer-form"
+              onSubmit={handleFormSubmit}
+              sx={{
+                height: "100%",
+                display: "flex",
+                flex: 1,
+                overflow: "hidden",
+              }}
+            >
+              {/* LEFT PANEL */}
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  bgcolor: "white",
+                  borderRight: "1px solid #e0e0e0",
+                  borderRadius: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 1.5,
+                    py: 0.8,
+                    borderBottom: "1px solid #1976d2",
+                    bgcolor: "#f8f9fa",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      color: "#1976d2",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    <PersonIcon sx={{ fontSize: "12px" }} /> Personal Info
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                    {[0, 1, 2].map((option) => (
-                      <Box 
-                        key={option} 
-                        sx={{ 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          fontSize: '0.75rem', 
-                          cursor: 'pointer', 
-                          p: 0.25 
-                        }} 
-                        onClick={() => { 
-                          setCurrentWeeklyPlan((prev) => ({ 
-                            ...prev, 
-                            [day]: prev[day] === option ? null : option 
-                          })); 
+                </Box>
+                <Box
+                  sx={{
+                    p: 1.2,
+                    flex: 1,
+                    overflow: "hidden",
+                    display: "grid",
+                    gridTemplateColumns: "1fr",
+                    gap: 0.2,
+                    alignContent: "start",
+                  }}
+                >
+                  <FormFieldWithIcon Icon={PersonIcon} label="Full Name">
+                    <TextField
+                      name="name"
+                      value={formData.name}
+                      onChange={handleInputChange}
+                      required
+                      fullWidth
+                      size="small"
+                      placeholder="Enter full name"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& input": { py: 0.2, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <FormFieldWithIcon Icon={EmailIcon} label="Email">
+                    <TextField
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      fullWidth
+                      size="small"
+                      placeholder="Enter email"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& input": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <FormFieldWithIcon Icon={LockIcon} label="Password">
+                    <TextField
+                      name="password"
+                      type="text"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      fullWidth
+                      size="small"
+                      placeholder="Enter password"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& input": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 80px",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon
+                      Icon={CalendarTodayIcon}
+                      label="Date of Birth"
+                    >
+                      <TextField
+                        name="dob"
+                        type="date"
+                        value={formData.dob}
+                        onChange={handleInputChange}
+                        InputLabelProps={{ shrink: true }}
+                        required
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon Icon={CalendarTodayIcon} label="Age">
+                      <TextField
+                        type="number"
+                        name="age"
+                        value={formData.age}
+                        onChange={handleInputChange}
+                        InputProps={{ readOnly: true }}
+                        required
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon Icon={PersonIcon} label="Gender">
+                      <FormControl fullWidth required size="small">
+                        <Select
+                          name="gender"
+                          value={formData.gender}
+                          onChange={handleInputChange}
+                          sx={{
+                            borderRadius: 1,
+                            fontSize: "0.8rem",
+                            "& .MuiSelect-select": { py: 0.6 },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          <MenuItem value="male">Male</MenuItem>
+                          <MenuItem value="female">Female</MenuItem>
+                          <MenuItem value="other">Other</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon Icon={PhoneIcon} label="Mobile">
+                      <TextField
+                        name="mobile"
+                        value={formData.mobile}
+                        onChange={handleInputChange}
+                        fullWidth
+                        size="small"
+                        placeholder="10-digit mobile"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                </Box>
+              </Paper>
+
+              {/* RIGHT PANEL */}
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  bgcolor: "white",
+                  borderRadius: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 1.5,
+                    py: 0.8,
+                    borderBottom: "1px solid #1976d2",
+                    bgcolor: "#f8f9fa",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      color: "#1976d2",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    <BusinessCenterIcon sx={{ fontSize: "12px" }} />{" "}
+                    Professional & Health
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    flex: 1,
+                    overflow: "hidden",
+                    display: "grid",
+                    gridTemplateColumns: "1fr",
+                    gap: 1,
+                    alignContent: "start",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon Icon={HeightIcon} label="Height (cm)">
+                      <TextField
+                        name="height"
+                        type="number"
+                        value={formData.height}
+                        onChange={handleInputChange}
+                        fullWidth
+                        size="small"
+                        placeholder="Height"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon
+                      Icon={MonitorWeightIcon}
+                      label="Weight (kg)"
+                    >
+                      <TextField
+                        name="weight"
+                        type="number"
+                        step="0.1"
+                        value={formData.weight}
+                        onChange={handleInputChange}
+                        fullWidth
+                        size="small"
+                        placeholder="Weight"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                  <FormFieldWithIcon
+                    Icon={LocalHospitalIcon}
+                    label="Health Condition"
+                  >
+                    <TextField
+                      name="healthCondition"
+                      value={formData.healthCondition}
+                      onChange={handleInputChange}
+                      fullWidth
+                      size="small"
+                      placeholder="Health conditions"
+                      multiline
+                      rows={1.5}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& textarea": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon Icon={BusinessCenterIcon} label="Type">
+                      <FormControl fullWidth required size="small">
+                        <Select
+                          name="type"
+                          value={formData.type}
+                          onChange={handleInputChange}
+                          sx={{
+                            borderRadius: 1,
+                            fontSize: "0.8rem",
+                            "& .MuiSelect-select": { py: 0.6 },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          <MenuItem value="forge">Forge</MenuItem>
+                          <MenuItem value="play">Play</MenuItem>
+                          <MenuItem value="coach_wellness">
+                            COACH WELLNESS
+                          </MenuItem>
+                          <MenuItem value="coach_fitness">
+                            COACH FITNESS
+                          </MenuItem>
+                          <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+                          <MenuItem value="employee">EMPLOYEE</MenuItem>
+                          <MenuItem value="other">OTHERS</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon
+                      Icon={CardMembershipIcon}
+                      label="Membership"
+                    >
+                      <FormControl fullWidth size="small">
+                        <Select
+                          name="membershipType"
+                          value={formData.membershipType}
+                          onChange={handleInputChange}
+                          sx={{
+                            borderRadius: 1,
+                            fontSize: "0.8rem",
+                            "& .MuiSelect-select": { py: 0.6 },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          <MenuItem value="premium">PREMIUM</MenuItem>
+                          <MenuItem value="basic">BASIC</MenuItem>
+                          <MenuItem value="vip">VIP</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormFieldWithIcon>
+                  </Box>
+                  <FormFieldWithIcon
+                    Icon={SupervisorAccountIcon}
+                    label="Assign RM"
+                  >
+                    <FormControl fullWidth size="small">
+                      <Select
+                        name="assignedRM"
+                        value={formData.assignedRM}
+                        onChange={handleInputChange}
+                        disabled={loadingAdmins}
+                        sx={{
+                          borderRadius: 1,
+                          fontSize: "0.8rem",
+                          "& .MuiSelect-select": { py: 0.6 },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#1976d2",
+                          },
                         }}
                       >
-                        <Box sx={{ 
-                          width: 16, 
-                          height: 16, 
-                          border: '1px solid #ccc', 
-                          borderRadius: '2px', 
-                          mr: 0.75, 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          justifyContent: 'center', 
-                          bgcolor: currentWeeklyPlan[day] === option ? '#007bff' : 'white', 
-                          color: currentWeeklyPlan[day] === option ? 'white' : 'transparent', 
-                          fontSize: '12px', 
-                          fontWeight: 'bold' 
-                        }}>
-                          ✓
-                        </Box>
-                        <span style={{ userSelect: 'none' }}>
-                          {option === 0 ? 'Veg' : option === 2 ? 'Non-Veg' : 'Egg'}
-                        </span>
-                      </Box>
-                    ))}
+                        {adminUsers.map((admin) => (
+                          <MenuItem key={admin.userId} value={admin.userId}>
+                            {admin.name} ({admin.userType})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </FormFieldWithIcon>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon
+                      Icon={CalendarTodayIcon}
+                      label="Start Date"
+                    >
+                      <TextField
+                        name="startDate"
+                        type="date"
+                        value={formData.startDate}
+                        onChange={handleInputChange}
+                        InputLabelProps={{ shrink: true }}
+                        required
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon
+                      Icon={CalendarTodayIcon}
+                      label="End Date"
+                    >
+                      <TextField
+                        name="endDate"
+                        type="date"
+                        value={formData.endDate}
+                        InputLabelProps={{ shrink: true }}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                  <FormFieldWithIcon Icon={Restaurant} label="Meal Plan">
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.5,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setCurrentWeeklyPlan(formData.nutritionKYC);
+                          setIsCreatingWeekly(true);
+                          setWeeklyModalOpen(true);
+                        }}
+                        sx={{
+                          borderRadius: 1,
+                          textTransform: "none",
+                          borderColor: "#1976d2",
+                          color: "#1976d2",
+                          fontSize: "0.7rem",
+                          py: 0.4,
+                          minHeight: "auto",
+                          "&:hover": { bgcolor: "#1976d2", color: "white" },
+                        }}
+                      >
+                        Configure Meal Plan
+                      </Button>
+                      {isCreateWeeklySaved &&
+                        getWeeklyPlanSummary(formData.nutritionKYC) && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#666",
+                              p: 0.5,
+                              bgcolor: "#f0f8ff",
+                              borderRadius: 0.5,
+                              fontSize: "0.65rem",
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {getWeeklyPlanSummary(formData.nutritionKYC)}
+                          </Typography>
+                        )}
+                    </Box>
+                  </FormFieldWithIcon>
+                </Box>
+              </Paper>
+            </Box>
+          </DialogContent>
+
+          <DialogActions
+            sx={{
+              justifyContent: "space-between",
+              p: 1,
+              borderTop: "1px solid #e0e0e0",
+              bgcolor: "#f8f9fa",
+              flexShrink: 0,
+            }}
+          >
+            <Button
+              onClick={handleCloseModal}
+              size="small"
+              sx={{
+                color: "#666",
+                textTransform: "none",
+                fontSize: "0.8rem",
+                "&:hover": { bgcolor: "#f0f0f0" },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              form="create-customer-form"
+              size="small"
+              sx={{
+                textTransform: "none",
+                px: 2,
+                fontSize: "0.8rem",
+                borderRadius: 1,
+                boxShadow: "0 2px 8px rgba(25,118,210,0.3)",
+              }}
+            >
+              Create Customer
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ---------- EDIT CUSTOMER MODAL ---------- */}
+        <Dialog
+          open={editModalOpen}
+          onClose={handleCloseEditModal}
+          fullWidth
+          maxWidth="lg"
+          PaperProps={{
+            sx: {
+              height: "80vh",
+              maxHeight: "80vh",
+              m: 1,
+              width: "65%",
+              maxWidth: "1000px",
+            },
+          }}
+        >
+          <DialogTitle
+            sx={{
+              borderBottom: "1px solid #e0e0e0",
+              bgcolor: "#f8f9fa",
+              py: 0.8,
+              px: 1.5,
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+            >
+              <Typography
+                variant="subtitle1"
+                sx={{ fontWeight: 600, color: "#1976d2", fontSize: "1rem" }}
+              >
+                Edit Customer
+              </Typography>
+              <IconButton
+                aria-label="close"
+                onClick={handleCloseEditModal}
+                size="small"
+                sx={{ color: "#666" }}
+              >
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </DialogTitle>
+
+          <DialogContent
+            sx={{
+              p: 0,
+              bgcolor: "#fafafa",
+              flex: 1,
+              display: "flex",
+              flexDirection: "column",
+              overflow: "hidden",
+            }}
+          >
+            <Box
+              component="form"
+              id="edit-customer-form"
+              onSubmit={handleEditFormSubmit}
+              sx={{
+                height: "100%",
+                display: "flex",
+                flex: 1,
+                overflow: "hidden",
+              }}
+            >
+              {/* LEFT PANEL */}
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  bgcolor: "white",
+                  borderRight: "1px solid #e0e0e0",
+                  borderRadius: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 1.5,
+                    py: 0.8,
+                    borderBottom: "1px solid #1976d2",
+                    bgcolor: "#f8f9fa",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      color: "#1976d2",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    <PersonIcon sx={{ fontSize: "12px" }} /> Personal Info
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    p: 1.2,
+                    flex: 1,
+                    overflow: "hidden",
+                    display: "grid",
+                    gridTemplateColumns: "1fr",
+                    gap: 0.8,
+                    alignContent: "start",
+                  }}
+                >
+                  <FormFieldWithIcon Icon={PersonIcon} label="Full Name">
+                    <TextField
+                      name="name"
+                      value={editFormData.name}
+                      onChange={handleEditInputChange}
+                      required
+                      fullWidth
+                      size="small"
+                      placeholder="Enter full name"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& input": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <FormFieldWithIcon Icon={EmailIcon} label="Email">
+                    <TextField
+                      name="email"
+                      type="email"
+                      value={editFormData.email}
+                      onChange={handleEditInputChange}
+                      fullWidth
+                      size="small"
+                      placeholder="Enter email"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& input": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <FormFieldWithIcon Icon={LockIcon} label="Password">
+                    <TextField
+                      name="password"
+                      type="text"
+                      value={editFormData.password}
+                      onChange={handleEditInputChange}
+                      fullWidth
+                      size="small"
+                      placeholder="Enter password"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& input": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 80px",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon
+                      Icon={CalendarTodayIcon}
+                      label="Date of Birth"
+                    >
+                      <TextField
+                        name="dob"
+                        type="date"
+                        value={editFormData.dob}
+                        onChange={handleEditInputChange}
+                        InputLabelProps={{ shrink: true }}
+                        required
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon Icon={CalendarTodayIcon} label="Age">
+                      <TextField
+                        type="number"
+                        name="age"
+                        value={editFormData.age}
+                        onChange={handleEditInputChange}
+                        InputProps={{ readOnly: true }}
+                        required
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon Icon={PersonIcon} label="Gender">
+                      <FormControl fullWidth required size="small">
+                        <Select
+                          name="gender"
+                          value={editFormData.gender}
+                          onChange={handleEditInputChange}
+                          sx={{
+                            borderRadius: 1,
+                            fontSize: "0.8rem",
+                            "& .MuiSelect-select": { py: 0.6 },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          <MenuItem value="male">Male</MenuItem>
+                          <MenuItem value="female">Female</MenuItem>
+                          <MenuItem value="other">Other</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon Icon={PhoneIcon} label="Mobile">
+                      <TextField
+                        name="mobile"
+                        value={editFormData.mobile}
+                        onChange={handleEditInputChange}
+                        fullWidth
+                        size="small"
+                        placeholder="10-digit mobile"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
                   </Box>
                 </Box>
-              ))}
+              </Paper>
+
+              {/* RIGHT PANEL */}
+              <Paper
+                elevation={0}
+                sx={{
+                  flex: 1,
+                  bgcolor: "white",
+                  borderRadius: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    px: 1.5,
+                    py: 0.8,
+                    borderBottom: "1px solid #1976d2",
+                    bgcolor: "#f8f9fa",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      color: "#1976d2",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.5,
+                      fontSize: "0.75rem",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.5px",
+                    }}
+                  >
+                    <BusinessCenterIcon sx={{ fontSize: "12px" }} />{" "}
+                    Professional & Health
+                  </Typography>
+                </Box>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    flex: 1,
+                    overflow: "hidden",
+                    display: "grid",
+                    gridTemplateColumns: "1fr",
+                    gap: 1,
+                    alignContent: "start",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon Icon={HeightIcon} label="Height (cm)">
+                      <TextField
+                        name="height"
+                        type="number"
+                        value={editFormData.height}
+                        onChange={handleEditInputChange}
+                        fullWidth
+                        size="small"
+                        placeholder="Height"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon
+                      Icon={MonitorWeightIcon}
+                      label="Weight (kg)"
+                    >
+                      <TextField
+                        name="weight"
+                        type="number"
+                        step="0.1"
+                        value={editFormData.weight}
+                        onChange={handleEditInputChange}
+                        fullWidth
+                        size="small"
+                        placeholder="Weight"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                  <FormFieldWithIcon
+                    Icon={LocalHospitalIcon}
+                    label="Health Condition"
+                  >
+                    <TextField
+                      name="healthCondition"
+                      value={editFormData.healthCondition}
+                      onChange={handleEditInputChange}
+                      fullWidth
+                      size="small"
+                      placeholder="Health conditions"
+                      multiline
+                      rows={1.5}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: 1,
+                          fontSize: "0.75rem",
+                          "& textarea": { py: 0.5, px: 0.8 },
+                          "&:hover fieldset": { borderColor: "#1976d2" },
+                        },
+                      }}
+                    />
+                  </FormFieldWithIcon>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon Icon={BusinessCenterIcon} label="Type">
+                      <FormControl fullWidth required size="small">
+                        <Select
+                          name="type"
+                          value={editFormData.type}
+                          onChange={handleEditInputChange}
+                          sx={{
+                            borderRadius: 1,
+                            fontSize: "0.8rem",
+                            "& .MuiSelect-select": { py: 0.6 },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          <MenuItem value="forge">Forge</MenuItem>
+                          <MenuItem value="play">Play</MenuItem>
+                          <MenuItem value="coach_wellness">
+                            COACH WELLNESS
+                          </MenuItem>
+                          <MenuItem value="coach_fitness">
+                            COACH FITNESS
+                          </MenuItem>
+                          <MenuItem value="coach_sports">COACH SPORTS</MenuItem>
+                          <MenuItem value="employee">EMPLOYEE</MenuItem>
+                          <MenuItem value="other">OTHERS</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon
+                      Icon={CardMembershipIcon}
+                      label="Membership"
+                    >
+                      <FormControl fullWidth size="small">
+                        <Select
+                          name="membershipType"
+                          value={editFormData.membershipType}
+                          onChange={handleEditInputChange}
+                          sx={{
+                            borderRadius: 1,
+                            fontSize: "0.8rem",
+                            "& .MuiSelect-select": { py: 0.6 },
+                            "&:hover .MuiOutlinedInput-notchedOutline": {
+                              borderColor: "#1976d2",
+                            },
+                          }}
+                        >
+                          <MenuItem value="premium">PREMIUM</MenuItem>
+                          <MenuItem value="basic">BASIC</MenuItem>
+                          <MenuItem value="vip">VIP</MenuItem>
+                        </Select>
+                      </FormControl>
+                    </FormFieldWithIcon>
+                  </Box>
+                  <FormFieldWithIcon
+                    Icon={SupervisorAccountIcon}
+                    label="Assign RM"
+                  >
+                    <FormControl fullWidth size="small">
+                      <Select
+                        name="assignedRM"
+                        value={editFormData.assignedRM}
+                        onChange={handleEditInputChange}
+                        disabled={loadingAdmins}
+                        sx={{
+                          borderRadius: 1,
+                          fontSize: "0.8rem",
+                          "& .MuiSelect-select": { py: 0.6 },
+                          "&:hover .MuiOutlinedInput-notchedOutline": {
+                            borderColor: "#1976d2",
+                          },
+                        }}
+                      >
+                        {adminUsers.map((admin) => (
+                          <MenuItem key={admin.userId} value={admin.userId}>
+                            {admin.name} ({admin.userType})
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </FormFieldWithIcon>
+                  <Box
+                    sx={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 1,
+                    }}
+                  >
+                    <FormFieldWithIcon
+                      Icon={CalendarTodayIcon}
+                      label="Start Date"
+                    >
+                      <TextField
+                        name="startDate"
+                        type="date"
+                        value={editFormData.startDate}
+                        onChange={handleEditInputChange}
+                        InputLabelProps={{ shrink: true }}
+                        required
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                    <FormFieldWithIcon
+                      Icon={CalendarTodayIcon}
+                      label="End Date"
+                    >
+                      <TextField
+                        name="endDate"
+                        type="date"
+                        value={editFormData.endDate}
+                        InputLabelProps={{ shrink: true }}
+                        InputProps={{ readOnly: true }}
+                        fullWidth
+                        size="small"
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: 1,
+                            fontSize: "0.75rem",
+                            "& input": { py: 0.5, px: 0.8 },
+                            "&:hover fieldset": { borderColor: "#1976d2" },
+                          },
+                        }}
+                      />
+                    </FormFieldWithIcon>
+                  </Box>
+                  <FormFieldWithIcon Icon={Restaurant} label="Meal Plan">
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.5,
+                      }}
+                    >
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setCurrentWeeklyPlan(editFormData.nutritionKYC);
+                          setIsCreatingWeekly(false);
+                          setWeeklyModalOpen(true);
+                        }}
+                        sx={{
+                          borderRadius: 1,
+                          textTransform: "none",
+                          borderColor: "#1976d2",
+                          color: "#1976d2",
+                          fontSize: "0.7rem",
+                          py: 0.4,
+                          minHeight: "auto",
+                          "&:hover": { bgcolor: "#1976d2", color: "white" },
+                        }}
+                      >
+                        Configure Meal Plan
+                      </Button>
+                      {isEditWeeklySaved &&
+                        getWeeklyPlanSummary(editFormData.nutritionKYC) && (
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              color: "#666",
+                              p: 0.5,
+                              bgcolor: "#f0f8ff",
+                              borderRadius: 0.5,
+                              fontSize: "0.65rem",
+                              lineHeight: 1.2,
+                            }}
+                          >
+                            {getWeeklyPlanSummary(editFormData.nutritionKYC)}
+                          </Typography>
+                        )}
+                    </Box>
+                  </FormFieldWithIcon>
+                </Box>
+              </Paper>
             </Box>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setWeeklyModalOpen(false)}>Cancel</Button>
-          <Button 
-            onClick={() => { 
-              if (isCreatingWeekly) { 
-                setFormData((prev) => ({ ...prev, nutritionKYC: currentWeeklyPlan })); 
-                setIsCreateWeeklySaved(true); 
-              } else { 
-                setEditFormData((prev) => ({ ...prev, nutritionKYC: currentWeeklyPlan })); 
-                setIsEditWeeklySaved(true); 
-              } 
-              setWeeklyModalOpen(false); 
-            }} 
-            variant="contained"
+          </DialogContent>
+
+          <DialogActions
+            sx={{
+              justifyContent: "space-between",
+              p: 1,
+              borderTop: "1px solid #e0e0e0",
+              bgcolor: "#f8f9fa",
+              flexShrink: 0,
+            }}
           >
-            Save
-          </Button>
-        </DialogActions>
-      </Dialog>
-    </div>
-  </>
-);
+            <Button
+              onClick={handleCloseEditModal}
+              size="small"
+              sx={{
+                color: "#666",
+                textTransform: "none",
+                fontSize: "0.8rem",
+                "&:hover": { bgcolor: "#f0f0f0" },
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              form="edit-customer-form"
+              size="small"
+              sx={{
+                textTransform: "none",
+                px: 2,
+                fontSize: "0.8rem",
+                borderRadius: 1,
+                boxShadow: "0 2px 8px rgba(25,118,210,0.3)",
+              }}
+            >
+              Update Customer
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* ---------- WEEKLY MEAL PLAN MODAL ---------- */}
+        <Dialog
+          open={weeklyModalOpen}
+          onClose={() => setWeeklyModalOpen(false)}
+          maxWidth="lg"
+          fullWidth
+        >
+          <DialogTitle>
+            Weekly Meal Plan
+            <IconButton
+              aria-label="close"
+              onClick={() => setWeeklyModalOpen(false)}
+              sx={{
+                position: "absolute",
+                right: 8,
+                top: 8,
+                color: (theme) => theme.palette.grey[500],
+              }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Box sx={{ p: 2 }}>
+              <Box sx={{ mb: 2, display: "flex", gap: 1, flexWrap: "wrap" }}>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    backgroundColor:
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day === 0
+                      ) &&
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day !== null
+                      )
+                        ? "#007bff"
+                        : "transparent",
+                    color:
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day === 0
+                      ) &&
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day !== null
+                      )
+                        ? "white"
+                        : "inherit",
+                  }}
+                  onClick={() => {
+                    const allVeg = days.reduce(
+                      (acc, day) => ({ ...acc, [day]: 0 }),
+                      {}
+                    );
+                    setCurrentWeeklyPlan(allVeg);
+                  }}
+                >
+                  All Veg
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    backgroundColor:
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day === 2
+                      ) &&
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day !== null
+                      )
+                        ? "#007bff"
+                        : "transparent",
+                    color:
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day === 2
+                      ) &&
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day !== null
+                      )
+                        ? "white"
+                        : "inherit",
+                  }}
+                  onClick={() => {
+                    const allNonVeg = days.reduce(
+                      (acc, day) => ({ ...acc, [day]: 2 }),
+                      {}
+                    );
+                    setCurrentWeeklyPlan(allNonVeg);
+                  }}
+                >
+                  All Non-Veg
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    backgroundColor:
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day === 1
+                      ) &&
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day !== null
+                      )
+                        ? "#007bff"
+                        : "transparent",
+                    color:
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day === 1
+                      ) &&
+                      Object.values(currentWeeklyPlan).every(
+                        (day) => day !== null
+                      )
+                        ? "white"
+                        : "inherit",
+                  }}
+                  onClick={() => {
+                    const allEgg = days.reduce(
+                      (acc, day) => ({ ...acc, [day]: 1 }),
+                      {}
+                    );
+                    setCurrentWeeklyPlan(allEgg);
+                  }}
+                >
+                  All Egg
+                </Button>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    backgroundColor:
+                      !(
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 0
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                      ) &&
+                      !(
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 2
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                      ) &&
+                      !(
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 1
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                      ) &&
+                      Object.values(currentWeeklyPlan).some(
+                        (day) => day !== null
+                      )
+                        ? "#007bff"
+                        : "transparent",
+                    color:
+                      !(
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 0
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                      ) &&
+                      !(
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 2
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                      ) &&
+                      !(
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day === 1
+                        ) &&
+                        Object.values(currentWeeklyPlan).every(
+                          (day) => day !== null
+                        )
+                      ) &&
+                      Object.values(currentWeeklyPlan).some(
+                        (day) => day !== null
+                      )
+                        ? "white"
+                        : "inherit",
+                  }}
+                  onClick={() => {
+                    const custom = days.reduce(
+                      (acc, day) => ({ ...acc, [day]: null }),
+                      {}
+                    );
+                    setCurrentWeeklyPlan(custom);
+                  }}
+                >
+                  Custom
+                </Button>
+              </Box>
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(7, 1fr)",
+                  gap: 2,
+                  border: "1px solid #e0e0e0",
+                  borderRadius: "8px",
+                  p: 2,
+                  bgcolor: "#fafafa",
+                }}
+              >
+                {days.map((day) => (
+                  <Box key={day} sx={{ textAlign: "left" }}>
+                    <Typography
+                      variant="subtitle2"
+                      gutterBottom
+                      sx={{
+                        fontWeight: 600,
+                        fontSize: "0.875rem",
+                        color: "#333",
+                      }}
+                    >
+                      {day.charAt(0).toUpperCase() +
+                        day.slice(1).substring(0, 2)}
+                    </Typography>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 0.5,
+                      }}
+                    >
+                      {[0, 1, 2].map((option) => (
+                        <Box
+                          key={option}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            fontSize: "0.75rem",
+                            cursor: "pointer",
+                            p: 0.25,
+                          }}
+                          onClick={() => {
+                            setCurrentWeeklyPlan((prev) => ({
+                              ...prev,
+                              [day]: prev[day] === option ? null : option,
+                            }));
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              width: 16,
+                              height: 16,
+                              border: "1px solid #ccc",
+                              borderRadius: "2px",
+                              mr: 0.75,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              bgcolor:
+                                currentWeeklyPlan[day] === option
+                                  ? "#007bff"
+                                  : "white",
+                              color:
+                                currentWeeklyPlan[day] === option
+                                  ? "white"
+                                  : "transparent",
+                              fontSize: "12px",
+                              fontWeight: "bold",
+                            }}
+                          >
+                            ✓
+                          </Box>
+                          <span style={{ userSelect: "none" }}>
+                            {option === 0
+                              ? "Veg"
+                              : option === 2
+                              ? "Non-Veg"
+                              : "Egg"}
+                          </span>
+                        </Box>
+                      ))}
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setWeeklyModalOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (isCreatingWeekly) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    nutritionKYC: currentWeeklyPlan,
+                  }));
+                  setIsCreateWeeklySaved(true);
+                } else {
+                  setEditFormData((prev) => ({
+                    ...prev,
+                    nutritionKYC: currentWeeklyPlan,
+                  }));
+                  setIsEditWeeklySaved(true);
+                }
+                setWeeklyModalOpen(false);
+              }}
+              variant="contained"
+            >
+              Save
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </div>
+    </>
+  );
 };
 
 export default CustomerTable;

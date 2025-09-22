@@ -778,3 +778,44 @@ body {
 .p-icon             { height: 20px !important; line-height: 20px; margin-top: 15px; }
 .p-icon button      { height: 16px; width: 16px; padding: 0; vertical-align: middle; }
 
+
+
+
+
+/* Existing compact setup */
+.plans-table th,
+.plans-table td {
+  padding: 1px 4px !important;
+}
+
+.plans-table td {
+  line-height: 1.2 !important;
+}
+
+.plan-title {
+  line-height: 1.2 !important;
+}
+
+.p-icon {
+  height: auto !important;
+}
+
+.table-row {
+  height: auto !important;
+}
+
+/* Tiny nano-adjustment to prevent visual collapse */
+.plans-table td,
+.table-row {
+  min-height: 1.5rem !important; /* Slightly more than line-height to give ultra-small breathing room */
+}
+
+
+/* Vertically center sessionName cell */
+.plans-table td .plan-title {
+  display: flex !important;
+  align-items: center !important;
+  height: 100% !important;
+  line-height: normal !important;
+  vertical-align: middle !important;
+}

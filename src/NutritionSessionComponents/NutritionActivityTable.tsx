@@ -57,7 +57,7 @@ function NutritionActivityTable() {
     "after workout",
     "post dinner",
   ];
-// git stash
+  // git stash
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
@@ -635,39 +635,39 @@ function NutritionActivityTable() {
                     }`}
                     onClick={() => handleActivitySelect(activity)}
                   >
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       <Checkbox
                         checked={selectedActivityIds.has(activity.activityId!)}
                         size="small"
                         color="primary"
                       />
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       {index + 1}
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200">
+                    <td className="px-1 border-b border-gray-200">
                       <div className="break-words font-medium text-left">
                         {activity.name}
                       </div>
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200">
+                    <td className="px-1 border-b border-gray-200">
                       <div className="break-words text-left">
                         {activity.description}
                       </div>
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       {activity.target}
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       {formatUnit(activity.unit)}
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       {activity.target2}
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       {formatUnit(activity.unit2)}
                     </td>
-                    <td className="px-1 py-2 border-b border-gray-200 text-center">
+                    <td className="px-1 border-b border-gray-200 text-center">
                       {activity.vegNonVeg || "VEG"}
                     </td>
                   </tr>

@@ -164,16 +164,16 @@ function ViewAllAssessment() {
 
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th className="p-3 text-base text-center border-b border-gray-200">
+                    <th className="py-1 px-3 text-base text-center border-b border-gray-200">
                       Sl.No
                     </th>
-                    <th className="p-3 text-base text-left border-b  border-gray-200">
+                    <th className="py-1 px-3 text-base text-left border-b  border-gray-200">
                       Assessment
                     </th>
-                    <th className="p-3 text-base text-center   border-b border-gray-200">
+                    <th className="py-1 px-3 text-base text-center   border-b border-gray-200">
                       No.of Questions
                     </th>
-                    <th className="p-3 text-base text-center  border-b border-gray-200">
+                    <th className="py-1 px-3 text-base text-center  border-b border-gray-200">
                       Preview
                     </th>
                   </tr>
@@ -190,16 +190,16 @@ function ViewAllAssessment() {
                             : "hover-row hover:bg-gray-50"
                         }`}
                       >
-                        <td className="p-3 text-base text-center text-gray-900">
+                        <td className="py-1 px-3 text-base text-center text-gray-900">
                           {index + 1}
                         </td>
-                        <td className="p-3 text-base text-left text-gray-900">
+                        <td className="py-1 px-3 text-base text-left text-gray-900">
                           {assessment.name}
                         </td>
-                        <td className="p-3 text-base text-center text-gray-900">
+                        <td className="py-1 px-3 text-base text-center text-gray-900">
                           {assessment.questions.length}
                         </td>
-                        <td className="p-3 text-base text-center">
+                        <td className="py-1 px-3 text-base text-center">
                           {assessment.questions.length !== 0 && (
                             <button
                               className="preview-button inline-flex items-center justify-center p-1 rounded-md hover:bg-gray-100 transition-colors duration-150"

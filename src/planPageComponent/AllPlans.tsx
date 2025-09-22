@@ -297,7 +297,7 @@ function AllPlans() {
                     <th>Plan Name</th>
                     <th>Category</th>
                     <th>Status</th>
-                    <th>Preview</th>
+                    <th>View</th>
                   </tr>
                 </thead>
                 {loading ? (

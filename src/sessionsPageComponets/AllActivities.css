@@ -195,3 +195,14 @@
   position: relative;
   z-index: 2;
 }
+
+
+
+/* AllActivities.css */
+.MuiDataGrid-row {
+  padding: 0px 0; /* Set vertical padding to 0px to eliminate top/bottom padding */
+  min-height: 45px !important; /* Reduced from default ~52px to 30px for compact rows */
+  max-height: 45px !important; /* Ensure consistent height */
+}
+
+

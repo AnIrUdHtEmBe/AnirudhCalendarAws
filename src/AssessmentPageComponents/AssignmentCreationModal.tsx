@@ -12,27 +12,18 @@ function AssignmentCreationModal() {
 
   const { setSelectComponent } = context;
 
-  return (
-    <>
-    
+return (
+  <>
     <div className="assignment-modal">
-      {/* <div className="modal-title">Create Assessment</div> */}
-      {/* <div className="modal-description">
-        Create a personalized assessment to analyze customer goals and recommend
-        a tailored fitness plan.
-      </div> 
-      <div>*/}
-      
-        <button
-          className="modal-button"
-          onClick={() => setSelectComponent("AssessmentCreationPage2")}
-        >
-          Create Assessment
-        </button>
-      {/* </div> */}
+      <button
+        className="modal-button"
+        onClick={() => setSelectComponent("AssessmentCreationPage2")}
+      >
+        Create Assessment
+      </button>
     </div>
-    </>
-  );
+  </>
+);
 }
 
 export default AssignmentCreationModal;
