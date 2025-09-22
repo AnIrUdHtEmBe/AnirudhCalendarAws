@@ -1,0 +1,8 @@
+.cursor-col-resize {
+  cursor: col-resize;
+}
+
+.cursor-col-resize:hover {
+  background-color: #3b82f6;
+  transition: background-color 0.2s;
+}

@@ -82,6 +82,7 @@ function ActivityTable() {
   const [selectedActivityIds, setSelectedActivityIds] = useState<Set<string>>(
     new Set()
   );
+  const [leftPanelWidth, setLeftPanelWidth] = useState(40); // percentage
 
   useEffect(() => {});
   useEffect(() => {
@@ -402,6 +403,29 @@ function ActivityTable() {
     updateTheActivitityById(value, id);
   };
 
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    const containerRect = document
+      .querySelector(".activity-table-container")
+      .getBoundingClientRect();
+    const newWidth =
+      ((e.clientX - containerRect.left) / containerRect.width) * 100;
+
+    // Constrain between 20% and 80%
+    const constrainedWidth = Math.max(20, Math.min(80, newWidth));
+    setLeftPanelWidth(constrainedWidth);
+  };
+
+  const handleMouseUp = () => {
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
+
   const handleVideoLinkClick = (videoLink: string, activityName?: string) => {
     if (videoLink) {
       setCurrentVideoUrl(videoLink);
@@ -447,14 +471,17 @@ function ActivityTable() {
   return (
     <div className="w-full h-screen flex flex-col">
       <Header />
-      <div className="activity-table-container bg-white w-full flex flex-col md:flex-row flex-1 rounded-2xl shadow-lg overflow-hidden gap-3 p-3">
+      <div className="activity-table-container bg-white w-full flex flex-row flex-1 rounded-2xl shadow-lg overflow-hidden p-3 relative">
         {/* Left Panel - Activities List */}
-        <div className="w-full md:w-1.5/3 border-b md:border-r md:border-b-0 border-gray-300 flex flex-col">
+        <div
+          className="border-r border-gray-300 flex flex-col"
+          style={{ width: `${leftPanelWidth}%` }}
+        >
           {/* Left Panel Header */}
-          <div className="p-3 border-b border-gray-200">
-            <div className="flex justify-between items-center mb-3">
+          <div className="p-2 border-b border-gray-200">
+            <div className="flex flex-col gap-3 mb-3">
               <h2 className="text-lg font-medium">Activities</h2>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col gap-2">
                 {/* Select Activity Autocomplete */}
                 <Autocomplete
                   key={`left-activity-${resetKey}`}
@@ -513,11 +540,11 @@ function ActivityTable() {
                       label="Select Activity"
                       variant="outlined"
                       size="small"
-                      sx={{ width: 200 }}
+                      fullWidth
                       value="" // Ensure input is cleared
                     />
                   )}
-                  sx={{ width: 200, backgroundColor: "white" }}
+                  sx={{ width: "100%", backgroundColor: "white" }}
                   isOptionEqualToValue={(option, value) =>
                     option.activityId === value.activityId
                   }
@@ -530,7 +557,7 @@ function ActivityTable() {
 
                 {/* Create New Activity Button */}
                 <button
-                  className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity"
+                  className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity w-full rounded border border-blue-500 hover:bg-blue-50"
                   onClick={() => setShowModal(true)}
                 >
                   <Plus size={16} />
@@ -545,29 +572,29 @@ function ActivityTable() {
             <table className="w-full table-auto border-collapse text-xs">
               <thead className="sticky top-0 bg-white z-10">
                 <tr className="text-left text-gray-700">
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-8"></th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-10">
-                    Sl No.
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-6"></th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-8">
+                    Sl
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left min-w-0">
                     Activity
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-left min-w-0">
                     Description
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-16">
-                    Target 1
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
+                    T1
+                  </th>
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-10">
+                    U1
                   </th>
                   <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
-                    Unit 1
+                    T2
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-16">
-                    Target 2
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-10">
+                    U2
                   </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
-                    Unit 2
-                  </th>
-                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-12">
+                  <th className="font-roberto px-1 py-2 border-b border-gray-300 text-center w-10">
                     Video
                   </th>
                 </tr>
@@ -656,8 +683,19 @@ function ActivityTable() {
           </div>
         </div>
 
+        {/* Resizer */}
+        <div
+          className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize flex-shrink-0 relative group"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500 group-hover:opacity-20"></div>
+        </div>
+
         {/* Right Panel - Session Creator */}
-        <div className="w-full md:w-5/3 flex flex-col">
+        <div
+          className="flex flex-col flex-1 ml-3"
+          style={{ width: `${100 - leftPanelWidth}%` }}
+        >
           {/* Right Panel Header */}
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center py-3 gap-3 mb-3">
             <div className="flex flex-col lg:flex-row w-full gap-2 lg:gap-3">

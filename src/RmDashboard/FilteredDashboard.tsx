@@ -32,7 +32,7 @@ import {
 } from "@ably/chat/react";
 import { AblyProvider } from "ably/react";
 import UserChats from "../GoToChat/UserChats";
-import { API_BASE_URL , API_BASE_URL2 } from "../store/axios";
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 // Types (duplicated from main for isolation)
 interface User {
   userId: string;
@@ -53,7 +53,7 @@ interface ChatRoom {
 interface UserWithRooms {
   user: User;
   rooms: ChatRoom[];
-  hasNewMessages: { [roomType: string]: boolean };
+  hasNewMessages: { [roomType: string]: number };
   lastMessageTime: { [roomType: string]: number };
 }
 
@@ -93,7 +93,6 @@ const ChatBox = ({
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const nameRequestsCache = useRef<Set<string>>(new Set());
 
-
   function getUserId() {
     try {
       const t = sessionStorage.getItem("token");
@@ -103,40 +102,47 @@ const ChatBox = ({
     }
   }
 
-const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
-  try {
-    const payload = [{
-      action,
-      userId: getUserId(),
-      roomId: roomName,
-      timeStamp: Date.now(),
-    }];
+  const recordPresence = async (
+    action: "ENTER" | "EXIT",
+    useBeacon = false
+  ) => {
+    try {
+      const payload = [
+        {
+          action,
+          userId: getUserId(),
+          roomId: roomName,
+          timeStamp: Date.now(),
+        },
+      ];
 
-    const url = `${API_BASE_URL2}/chatV1/presence/record`;
+      const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
-    if (useBeacon && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      const success = navigator.sendBeacon(url, blob);
-      console.log(`${action.toLowerCase()} beacon sent:`, success);
-      if (success) return;
+      if (useBeacon && navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], {
+          type: "application/json",
+        });
+        const success = navigator.sendBeacon(url, blob);
+        console.log(`${action.toLowerCase()} beacon sent:`, success);
+        if (success) return;
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      });
+
+      if (response.ok) {
+        console.log(`${action} presence recorded successfully`);
+      }
+    } catch (error) {
+      console.error(`Error recording ${action} presence:`, error);
     }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-    
-    if (response.ok) {
-      console.log(`${action} presence recorded successfully`);
-    }
-  } catch (error) {
-    console.error(`Error recording ${action} presence:`, error);
-  }
-};
+  };
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -160,35 +166,35 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
       return "Guest";
     }
   }, []);
-  
-    useEffect(() => {
+
+  useEffect(() => {
     recordPresence("ENTER");
     return () => {
       recordPresence("EXIT");
     };
   }, [roomName]);
 
-useEffect(() => {
-  const handleBeforeUnload = () => {
-    recordPresence("EXIT", true);
-  };
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT", true);
+    };
 
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'hidden') {
-      recordPresence("EXIT", false);
-    } else {
-      recordPresence("ENTER", false);
-    }
-  };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        recordPresence("EXIT", false);
+      } else {
+        recordPresence("ENTER", false);
+      }
+    };
 
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [roomName]);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [roomName]);
 
   const fetchSenderName = useCallback(
     async (clientId: string) => {
@@ -204,9 +210,7 @@ useEffect(() => {
       nameRequestsCache.current.add(clientId);
 
       try {
-        const res = await axios.get(
-          `${API_BASE_URL2}/human/${clientId}`
-        );
+        const res = await axios.get(`${API_BASE_URL2}/human/${clientId}`);
         if (res.data?.name) {
           setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
         } else {
@@ -272,12 +276,12 @@ useEffect(() => {
   const sendMessage = useCallback(async () => {
     if (!inputValue.trim()) return;
     try {
-      await send({ 
-  text: inputValue.trim(),
-  metadata: {
-    location: "Filtered-RM-Dashboard"
-  }
-});
+      await send({
+        text: inputValue.trim(),
+        metadata: {
+          location: "Filtered-RM-Dashboard",
+        },
+      });
       setInputValue("");
     } catch (err) {
       console.error("Send error", err);
@@ -463,16 +467,16 @@ const HandleChatModal = ({
   );
 };
 
-const FilteredDashboard = ({ 
-  onBack, 
+const FilteredDashboard = ({
+  onBack,
   initialSelectedRms = [],
   initialFromDate = "",
   initialFromTime = "",
   initialToDate = "",
   initialToTime = "",
-  initialApply = false 
-}: { 
-  onBack: () => void; 
+  initialApply = false,
+}: {
+  onBack: () => void;
   initialSelectedRms?: string[];
   initialFromDate?: string;
   initialFromTime?: string;
@@ -482,6 +486,7 @@ const FilteredDashboard = ({
 }) => {
   const [loggedInUser, setLoggedInUser] = useState("");
   const [loggedInUserId, setLoggedInUserId] = useState("");
+  const currentClientId = loggedInUserId;
   const [allUsers, setAllUsers] = useState<User[]>([]);
   const [usersWithRooms, setUsersWithRooms] = useState<UserWithRooms[]>([]);
   const [loading, setLoading] = useState(true);
@@ -598,9 +603,7 @@ const FilteredDashboard = ({
   useEffect(() => {
     const fetchRms = async () => {
       try {
-        const response = await axios.get(
-          `${API_BASE_URL2}/human/all?type=RM`
-        );
+        const response = await axios.get(`${API_BASE_URL2}/human/all?type=RM`);
         setRms(
           response.data.map((rm: any) => ({ userId: rm.userId, name: rm.name }))
         );
@@ -613,56 +616,61 @@ const FilteredDashboard = ({
     const hostName = sessionStorage.getItem("hostName");
     setLoggedInUser(hostName || "RM Dashboard Filtered");
     const hostId = sessionStorage.getItem("token") || "abcd";
-    const id=  JSON.parse(atob(hostId.split(".")[1])).sub;
+    const id = JSON.parse(atob(hostId.split(".")[1])).sub;
     setLoggedInUserId(id);
   }, []);
 
   // Fetch users based on selected RM (all if "all", assigned if specific)
   useEffect(() => {
     if (!isFiltersApplied || selectedRms.length === 0) {
-    setAllUsers([]);
-    return;
-  }
-
-const fetchUsers = async () => {
-    try {
-      let users: User[] = [];
-
-      if (selectedRms.includes('all')) {
-        const response = await axios.get(
-          `${API_BASE_URL2}/human/all?type=forge`
-        );
-        users = response.data
-          .map((user: any) => ({
-            userId: user.userId,
-            name: user.name,
-            type: user.type || "play",
-          }))
-          .slice(0, 100);
-      } else {
-        let allAssignedUsers: any[] = [];
-        for (const rmId of selectedRms) {
-          const response = await axios.get(
-            `${API_BASE_URL2}/human/rm/getassignedusers?userID=${rmId}`
-          );
-          allAssignedUsers = [...allAssignedUsers, ...response.data.assignedUsers];
-        }
-        // Deduplicate
-        const uniqueUsersMap = new Map(allAssignedUsers.map(u => [u.userId, u]));
-        users = Array.from(uniqueUsersMap.values()).map((u: any) => ({
-          userId: u.userId,
-          name: u.name,
-          type: u.type || "forge",
-        }));
-      }
-      setAllUsers(users);
-    } catch (error) {
-      console.error("Failed to fetch users:", error);
       setAllUsers([]);
+      return;
     }
-  };
-  fetchUsers();
-}, [isFiltersApplied, selectedRms]);
+
+    const fetchUsers = async () => {
+      try {
+        let users: User[] = [];
+
+        if (selectedRms.includes("all")) {
+          const response = await axios.get(
+            `${API_BASE_URL2}/human/all?type=forge`
+          );
+          users = response.data
+            .map((user: any) => ({
+              userId: user.userId,
+              name: user.name,
+              type: user.type || "play",
+            }))
+            .slice(0, 100);
+        } else {
+          let allAssignedUsers: any[] = [];
+          for (const rmId of selectedRms) {
+            const response = await axios.get(
+              `${API_BASE_URL2}/human/rm/getassignedusers?userID=${rmId}`
+            );
+            allAssignedUsers = [
+              ...allAssignedUsers,
+              ...response.data.assignedUsers,
+            ];
+          }
+          // Deduplicate
+          const uniqueUsersMap = new Map(
+            allAssignedUsers.map((u) => [u.userId, u])
+          );
+          users = Array.from(uniqueUsersMap.values()).map((u: any) => ({
+            userId: u.userId,
+            name: u.name,
+            type: u.type || "forge",
+          }));
+        }
+        setAllUsers(users);
+      } catch (error) {
+        console.error("Failed to fetch users:", error);
+        setAllUsers([]);
+      }
+    };
+    fetchUsers();
+  }, [isFiltersApplied, selectedRms]);
 
   // Fetch room data for users (same as main)
   useEffect(() => {
@@ -837,30 +845,30 @@ const fetchUsers = async () => {
                 const messages = messageHistory.items;
 
                 const seenByTeamAtDate = new Date(room.handledAt * 1000);
-                let hasNew = false;
+                let messageCount = 0;
                 let latestTimestamp = 0;
 
-                messages.forEach((message: any) => {
-                  const messageTimestamp =
-                    message.createdAt || message.timestamp;
-                  const msgDate = new Date(messageTimestamp);
-
-                  const inRange =
-                    (!fromDateTime || msgDate >= fromDateTime) &&
-                    (!toDateTime || msgDate <= toDateTime);
-
-                  if (
-                    messageTimestamp &&
-                    msgDate > seenByTeamAtDate &&
-                    inRange
-                  ) {
-                    hasNew = true;
-                    const msgTime = msgDate.getTime();
-                    if (msgTime > latestTimestamp) {
-                      latestTimestamp = msgTime;
+                messages.forEach(
+                  (message: {
+                    createdAt: any;
+                    timestamp: any;
+                    clientId: any;
+                  }) => {
+                    const messageTimestamp =
+                      message.createdAt || message.timestamp;
+                    if (
+                      messageTimestamp &&
+                      new Date(messageTimestamp) > seenByTeamAtDate &&
+                      message.clientId !== currentClientId
+                    ) {
+                      messageCount++;
+                      const msgTime = new Date(messageTimestamp).getTime();
+                      if (msgTime > latestTimestamp) {
+                        latestTimestamp = msgTime;
+                      }
                     }
                   }
-                });
+                );
 
                 setUsersWithRooms((prev) =>
                   prev.map((uwr) => {
@@ -869,7 +877,7 @@ const fetchUsers = async () => {
                         ...uwr,
                         hasNewMessages: {
                           ...uwr.hasNewMessages,
-                          [room.roomType]: hasNew,
+                          [room.roomType]: messageCount,
                         },
                         lastMessageTime: {
                           ...uwr.lastMessageTime,
@@ -916,7 +924,8 @@ const fetchUsers = async () => {
                 if (
                   messageTimestamp &&
                   msgDate > currentSeenByTeamAtDate &&
-                  inRange
+                  inRange &&
+                  message.clientId !== currentClientId
                 ) {
                   const msgTime = msgDate.getTime();
 
@@ -926,7 +935,8 @@ const fetchUsers = async () => {
                         ...uwr,
                         hasNewMessages: {
                           ...uwr.hasNewMessages,
-                          [room.roomType]: true,
+                          [room.roomType]:
+                            (uwr.hasNewMessages[room.roomType] || 0) + 1,
                         },
                         lastMessageTime: {
                           ...uwr.lastMessageTime,
@@ -1012,23 +1022,25 @@ const fetchUsers = async () => {
   //   }
   // };
 
-const applyFilters = () => {
-  if (selectedRms.length > 0 && hasDatesSet) {
-    setIsFiltersApplied(true);
-  } else {
-    alert("Please select at least one RM and set both from and to date/time.");
-  }
-};
+  const applyFilters = () => {
+    if (selectedRms.length > 0 && hasDatesSet) {
+      setIsFiltersApplied(true);
+    } else {
+      alert(
+        "Please select at least one RM and set both from and to date/time."
+      );
+    }
+  };
 
   const getUsersForColumn = (roomType: string) => {
     return usersWithRooms
       .filter((uwr) => {
-        const hasNewMessagesInThisRoom = uwr.hasNewMessages[roomType] || false;
+        const hasNewMessagesInThisRoom = uwr.hasNewMessages[roomType] || 0;
         const hasRoomOfThisType = uwr.rooms.some(
           (room) => room.roomType === roomType
         );
 
-        return hasRoomOfThisType && hasNewMessagesInThisRoom;
+        return hasRoomOfThisType && hasNewMessagesInThisRoom > 0;
       })
       .sort((a, b) => {
         const aTime = a.lastMessageTime[roomType] || 0;
@@ -1065,15 +1077,12 @@ const applyFilters = () => {
     });
     setOpenChat(null);
     try {
-      await axios.patch(
-        `${API_BASE_URL2}/human/human/mark-seen`,
-        {
-          userId: handleChatModal.userId,
-          roomType: handleChatModal.roomType,
-          userType: "team",
-          handledMsg: comment,
-        }
-      );
+      await axios.patch(`${API_BASE_URL2}/human/human/mark-seen`, {
+        userId: handleChatModal.userId,
+        roomType: handleChatModal.roomType,
+        userType: "team",
+        handledMsg: comment,
+      });
 
       setInterval(async () => {
         await refreshUserRoomDataAndRecalculate(
@@ -1138,25 +1147,25 @@ const applyFilters = () => {
           const messages = messageHistory.items;
           const newSeenByTeamAtDate = new Date(updatedRoom.handledAt * 1000);
 
-          let hasNew = false;
+          let messageCount = 0;
           let latestTimestamp = 0;
 
-          messages.forEach((message: { createdAt: any; timestamp: any }) => {
-            const messageTimestamp = message.createdAt || message.timestamp;
-            const msgDate = new Date(messageTimestamp);
-
-            const inRange =
-              (!fromDateTime || msgDate >= fromDateTime) &&
-              (!toDateTime || msgDate <= toDateTime);
-
-            if (messageTimestamp && msgDate > newSeenByTeamAtDate && inRange) {
-              hasNew = true;
-              const msgTime = msgDate.getTime();
-              if (msgTime > latestTimestamp) {
-                latestTimestamp = msgTime;
+          messages.forEach(
+            (message: { createdAt: any; timestamp: any; clientId: any }) => {
+              const messageTimestamp = message.createdAt || message.timestamp;
+              if (
+                messageTimestamp &&
+                new Date(messageTimestamp) > newSeenByTeamAtDate &&
+                message.clientId !== currentClientId
+              ) {
+                messageCount++;
+                const msgTime = new Date(messageTimestamp).getTime();
+                if (msgTime > latestTimestamp) {
+                  latestTimestamp = msgTime;
+                }
               }
             }
-          });
+          );
 
           setUsersWithRooms((prev) => {
             const userIndex = prev.findIndex(
@@ -1170,7 +1179,7 @@ const applyFilters = () => {
               rooms: updatedRooms,
               hasNewMessages: {
                 ...currentUser.hasNewMessages,
-                [roomType]: hasNew,
+                [roomType]: messageCount,
               },
               lastMessageTime: {
                 ...currentUser.lastMessageTime,
@@ -1179,7 +1188,7 @@ const applyFilters = () => {
             };
 
             const hasMessagesChanged =
-              currentUser.hasNewMessages[roomType] !== hasNew;
+              currentUser.hasNewMessages[roomType] !== messageCount;
             const hasTimeChanged =
               currentUser.lastMessageTime[roomType] !== latestTimestamp;
 
@@ -1215,11 +1224,11 @@ const applyFilters = () => {
     }
   }, [searchQuery, allUsers]);
 
-useEffect(() => {
-  if (initialApply && selectedRms.length > 0 && hasDatesSet) {
-    setIsFiltersApplied(true);
-  }
-}, [initialApply, selectedRms, hasDatesSet]);
+  useEffect(() => {
+    if (initialApply && selectedRms.length > 0 && hasDatesSet) {
+      setIsFiltersApplied(true);
+    }
+  }, [initialApply, selectedRms, hasDatesSet]);
 
   // if (loading) {
   //   return (
@@ -1351,75 +1360,84 @@ useEffect(() => {
                 {/* Filters */}
                 <div className="mt-6 flex justify-center space-x-4 items-end">
                   <div className="relative">
-  <button
-    type="button"
-    onClick={() => setIsRmDropdownOpen(!isRmDropdownOpen)}
-    className="border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48 text-left flex items-center justify-between"
-  >
-    <span className="truncate">
-      {selectedRms.length === 0 
-        ? "Select RM Name" 
-        : selectedRms.includes('all') 
-        ? "All RMs" 
-        : selectedRms.length === 1 
-        ? rms.find(rm => rm.userId === selectedRms[0])?.name || "Selected RM"
-        : `${selectedRms.length} RMs selected`
-      }
-    </span>
-    <svg 
-      className={`w-4 h-4 transition-transform ${isRmDropdownOpen ? 'rotate-180' : ''}`}
-      fill="none" 
-      stroke="currentColor" 
-      viewBox="0 0 24 24"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-    </svg>
-  </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsRmDropdownOpen(!isRmDropdownOpen)}
+                      className="border rounded px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-48 text-left flex items-center justify-between"
+                    >
+                      <span className="truncate">
+                        {selectedRms.length === 0
+                          ? "Select RM Name"
+                          : selectedRms.includes("all")
+                          ? "All RMs"
+                          : selectedRms.length === 1
+                          ? rms.find((rm) => rm.userId === selectedRms[0])
+                              ?.name || "Selected RM"
+                          : `${selectedRms.length} RMs selected`}
+                      </span>
+                      <svg
+                        className={`w-4 h-4 transition-transform ${
+                          isRmDropdownOpen ? "rotate-180" : ""
+                        }`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    </button>
 
-  {isRmDropdownOpen && (
-    <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
-      <div
-        className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
-        onClick={() => {
-          setSelectedRms(['all']);
-          setIsRmDropdownOpen(false);
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={selectedRms.includes('all')}
-          readOnly
-          className="mr-2"
-        />
-        <span>All RMs</span>
-      </div>
-      {rms.map((rm) => (
-        <div
-          key={rm.userId}
-          className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
-          onClick={() => {
-            if (selectedRms.includes('all')) {
-              setSelectedRms([rm.userId]);
-            } else if (selectedRms.includes(rm.userId)) {
-              const newSelection = selectedRms.filter(id => id !== rm.userId);
-              setSelectedRms(newSelection);
-            } else {
-              setSelectedRms([...selectedRms, rm.userId]);
-            }
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={selectedRms.includes(rm.userId)}
-            readOnly
-            className="mr-2"
-          />
-          <span>{rm.name}</span>
-        </div>
-      ))}
-    </div>
-  )}
-</div>
+                    {isRmDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                        <div
+                          className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
+                          onClick={() => {
+                            setSelectedRms(["all"]);
+                            setIsRmDropdownOpen(false);
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedRms.includes("all")}
+                            readOnly
+                            className="mr-2"
+                          />
+                          <span>All RMs</span>
+                        </div>
+                        {rms.map((rm) => (
+                          <div
+                            key={rm.userId}
+                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center"
+                            onClick={() => {
+                              if (selectedRms.includes("all")) {
+                                setSelectedRms([rm.userId]);
+                              } else if (selectedRms.includes(rm.userId)) {
+                                const newSelection = selectedRms.filter(
+                                  (id) => id !== rm.userId
+                                );
+                                setSelectedRms(newSelection);
+                              } else {
+                                setSelectedRms([...selectedRms, rm.userId]);
+                              }
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedRms.includes(rm.userId)}
+                              readOnly
+                              className="mr-2"
+                            />
+                            <span>{rm.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <input
                     type="date"
                     value={fromDate}
@@ -1503,8 +1521,7 @@ useEffect(() => {
                         ) : (
                           usersInColumn.slice(0, 50).map((userWithRooms) => {
                             const hasNewMessages =
-                              userWithRooms.hasNewMessages[column.type] ||
-                              false;
+                              userWithRooms.hasNewMessages[column.type] || 0;
 
                             return (
                               <div
@@ -1516,8 +1533,12 @@ useEffect(() => {
                                     <span className="text-sm font-medium text-gray-800 truncate">
                                       {userWithRooms.user.name}
                                     </span>
-                                    {hasNewMessages && (
-                                      <div className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0"></div>
+                                    {hasNewMessages > 0 && (
+                                      <div className="w-4 h-4 bg-red-500 rounded-full flex-shrink-0 flex items-center justify-center text-white text-[8px]">
+                                        {hasNewMessages > 9
+                                          ? "9+"
+                                          : hasNewMessages}
+                                      </div>
                                     )}
                                   </div>
 

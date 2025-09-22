@@ -60,7 +60,7 @@ interface CellProps {
   onClick?: (row: number, col: number) => void;
   onDropAction?: (from: [number, number], to: [number, number]) => void;
   isSelected?: any;
-  cellMessageCounts?: { [bookingId: string]: boolean };
+  cellMessageCounts?: { [bookingId: string]: number };
   getBookingIdForOccupiedCell?: (
     row: number,
     col: number
@@ -150,7 +150,7 @@ const RedDotIndicator = React.memo(
   }: {
     row: number;
     col: number;
-    cellMessageCounts: { [bookingId: string]: boolean };
+    cellMessageCounts: { [bookingId: string]: number };
     getBookingIdForOccupiedCell: (
       row: number,
       col: number
@@ -165,6 +165,7 @@ const RedDotIndicator = React.memo(
     >;
   }) => {
     const [hasNewMessages, setHasNewMessages] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [bookingId, setBookingId] = useState<string | null>(null);
     const [isVisible, setIsVisible] = useState(false);
 
@@ -204,14 +205,18 @@ const RedDotIndicator = React.memo(
 
           setBookingId(id);
 
-          if (id && cellMessageCounts[id] === true) {
-            setHasNewMessages(true);
+          if (id) {
+            const count = cellMessageCounts[id] ?? 0;
+            setUnreadCount(count);
+            setHasNewMessages(count > 0);
           } else {
+            setUnreadCount(0);
             setHasNewMessages(false);
           }
         } catch (error) {
           if (isMounted) {
             setHasNewMessages(false);
+            setUnreadCount(0);
             setBookingId(null);
           }
         }
@@ -234,12 +239,14 @@ const RedDotIndicator = React.memo(
     ]);
 
     // Return null after all hooks have been called
-    if (!isFirstCellOfSpan || !hasNewMessages || !isVisible) {
+    if (!isFirstCellOfSpan || unreadCount === 0 || !isVisible) {
       return null;
     }
 
     return (
-      <div className="absolute top-2 right-2 transform -translate-x-1/2 -translate-y-1/2 w-2 h-2 bg-red-500 rounded-full z-10"></div>
+      <div className="absolute top-2 right-1 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-red-500 rounded-full z-10 flex items-center justify-center text-white text-[10px] font-bold">
+        {unreadCount}
+      </div>
     );
   }
 );
@@ -392,7 +399,7 @@ const CellGridLatestP3 = () => {
 
   // Message polling states - add after existing state declarations
   const [cellMessageCounts, setCellMessageCounts] = useState<{
-    [bookingId: string]: boolean; // Changed to boolean for red dot only
+    [bookingId: string]: number; // Changed to boolean for red dot only
   }>({});
   const [cellAblyRooms, setCellAblyRooms] = useState<{
     [roomKey: string]: any;
@@ -407,6 +414,14 @@ const CellGridLatestP3 = () => {
   // Add this near other useRef declarations (around line 180)
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
   const [hostName, setHostName] = useState<string>("");
+  const currentClientId = (() => {
+    try {
+      const t = sessionStorage.getItem("token");
+      return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
+    } catch {
+      return "Guest";
+    }
+  })();
   const [bookingSpans, setBookingSpans] = useState<
     Record<
       string,
@@ -581,7 +596,7 @@ const CellGridLatestP3 = () => {
       bookingId,
     };
     console.log("cell Data", data);
-    
+
     // Update the state with the fetched data
     setCellData(data);
 
@@ -694,9 +709,7 @@ const CellGridLatestP3 = () => {
 
   const fetchArenaData = async () => {
     try {
-      const response = await fetch(
-        "${API_BASE_URL_Latest}/arena/AREN_JZSW15"
-      );
+      const response = await fetch("${API_BASE_URL_Latest}/arena/AREN_JZSW15");
       const arenaData = await response.json();
 
       // Convert from UTC to IST
@@ -2600,88 +2613,92 @@ const CellGridLatestP3 = () => {
   // Replace the existing subscribeToRoom function
   // In subscribeToRoom function, replace individual setCellMessageCounts calls with batched updates
   // Replace the existing subscribeToRoom function
-  const subscribeToRoom = async (
-    bookingId: string,
-    userId: string,
-    roomType: string,
-    chatId: string,
-    roomName: string,
-    seenByTeamAt: number
-  ) => {
-    const roomKey = `${chatId}`;
+const subscribeToRoom = async (
+  bookingId: string,
+  userId: string,
+  roomType: string,
+  chatId: string,
+  roomName: string,
+  seenByTeamAt: number
+) => {
+  const roomKey = `${chatId}`;
 
-    try {
-      console.log(`📨 Subscribing to room: ${roomKey}`);
+  try {
+    console.log(`📨 Subscribing to room: ${roomKey}`);
 
-      const room = await cellChatClient.rooms.get(roomKey);
-      roomConnections.current.set(roomKey, room);
+    const room = await cellChatClient.rooms.get(roomKey);
+    roomConnections.current.set(roomKey, room);
 
-      const seenByTeamAtIST = new Date(seenByTeamAt * 1000);
-      let hasUnreadMessages = false;
+    const seenByTeamAtIST = new Date(seenByTeamAt * 1000);
 
-      // 1. Check historical messages in background
-      setTimeout(async () => {
-        try {
-          const messageHistory = await room.messages.history({ limit: 60 });
-          const messages = messageHistory.items;
+    // 1. Check historical messages in background
+    setTimeout(async () => {
+      try {
+        const messageHistory = await room.messages.history({ limit: 60 });
+        const messages = messageHistory.items;
 
-          console.log(
-            `📚 Fetched ${messages.length} historical messages for room: ${roomKey}`
-          );
+        console.log(
+          `📚 Fetched ${messages.length} historical messages for room: ${roomKey}`
+        );
 
-          messages.forEach((message) => {
-            const messageTimestamp = message.createdAt || message.timestamp;
-            if (messageTimestamp) {
-              const msgDate = new Date(messageTimestamp);
-              if (msgDate.getTime() > seenByTeamAtIST.getTime()) {
-                hasUnreadMessages = true;
-              }
+        let unreadCount = 0;
+        messages.forEach((message) => {
+          const messageTimestamp = message.createdAt || message.timestamp;
+          if (messageTimestamp) {
+            const msgDate = new Date(messageTimestamp);
+            if (
+              msgDate.getTime() > seenByTeamAtIST.getTime() &&
+              message.clientId !== currentClientId
+            ) {
+              unreadCount++;
             }
-          });
-
-          // Use requestAnimationFrame for smooth state updates
-          if (hasUnreadMessages) {
-            requestAnimationFrame(() => {
-              setCellMessageCounts((prev) => ({
-                ...prev,
-                [bookingId]: true,
-              }));
-            });
-          }
-        } catch (historyError) {
-          console.error(
-            `❌ Failed to fetch message history for room ${roomKey}:`,
-            historyError
-          );
-        }
-      }, 0);
-
-      // 2. Set up subscription for future messages (non-blocking)
-      setTimeout(() => {
-        room.messages.subscribe((message: any) => {
-          const messageTimestamp =
-            message.data?.createdAt ||
-            message.data?.timestamp ||
-            message.createdAt;
-
-          if (
-            messageTimestamp &&
-            new Date(messageTimestamp) > seenByTeamAtIST
-          ) {
-            // Use requestAnimationFrame for smooth updates
-            requestAnimationFrame(() => {
-              setCellMessageCounts((prev) => ({
-                ...prev,
-                [bookingId]: true,
-              }));
-            });
           }
         });
-      }, 100); // Small delay to prevent blocking
-    } catch (error) {
-      console.error(`Failed to subscribe to room ${roomKey}:`, error);
-    }
-  };
+
+        // Use requestAnimationFrame for smooth state updates
+        if (unreadCount > 0) {
+          requestAnimationFrame(() => {
+            setCellMessageCounts((prev) => ({
+              ...prev,
+              [bookingId]: (prev[bookingId] ?? 0) + unreadCount,
+            }));
+          });
+        }
+      } catch (historyError) {
+        console.error(
+          `❌ Failed to fetch message history for room ${roomKey}:`,
+          historyError
+        );
+      }
+    }, 0);
+
+    // 2. Set up subscription for future messages (non-blocking)
+    setTimeout(() => {
+      room.messages.subscribe((message: any) => {
+        const messageTimestamp =
+          message.data?.createdAt ||
+          message.data?.timestamp ||
+          message.createdAt;
+
+        if (
+          messageTimestamp &&
+          new Date(messageTimestamp) > seenByTeamAtIST &&
+          message.clientId !== currentClientId
+        ) {
+          // Use requestAnimationFrame for smooth updates
+          requestAnimationFrame(() => {
+            setCellMessageCounts((prev) => ({
+              ...prev,
+              [bookingId]: (prev[bookingId] ?? 0) + 1,
+            }));
+          });
+        }
+      });
+    }, 100); // Small delay to prevent blocking
+  } catch (error) {
+    console.error(`Failed to subscribe to room ${roomKey}:`, error);
+  }
+};
 
   // Replace the existing initializeMessagePollingForCell function
   const initializeMessagePollingForCell = async (bookingId: string) => {
@@ -2722,7 +2739,7 @@ const CellGridLatestP3 = () => {
 
         // Use requestAnimationFrame for smooth UI updates
         requestAnimationFrame(() => {
-          setCellMessageCounts((prev) => ({ ...prev, [bookingId]: false }));
+          setCellMessageCounts((prev) => ({ ...prev, [bookingId]: 0 }));
         });
 
         // Process users in smaller chunks
@@ -3135,23 +3152,29 @@ const CellGridLatestP3 = () => {
     }
   }, [firstSelected, grid]); // Add 'grid' to the dependency array
 
+  useEffect(() => {
+    hasRetried.current = false;
+  }, [firstSelected]); // reset when selection changes
 
   useEffect(() => {
-  hasRetried.current = false;
-}, [firstSelected]); // reset when selection changes
-
-useEffect(() => {
-  if (firstSelected && 
-      grid[firstSelected[0]]?.[firstSelected[1]] === "occupied" && 
-      selectedCellDetails.currentBooking === null && 
-      !hasRetried.current) {
-    hasRetried.current = true;
-    const timer = setTimeout(() => {
-      fetchCellDetails(firstSelected[0], firstSelected[1]);
-    }, 500);
-    return () => clearTimeout(timer);
-  }
-}, [firstSelected, selectedCellDetails.currentBooking, grid, fetchCellDetails]);
+    if (
+      firstSelected &&
+      grid[firstSelected[0]]?.[firstSelected[1]] === "occupied" &&
+      selectedCellDetails.currentBooking === null &&
+      !hasRetried.current
+    ) {
+      hasRetried.current = true;
+      const timer = setTimeout(() => {
+        fetchCellDetails(firstSelected[0], firstSelected[1]);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [
+    firstSelected,
+    selectedCellDetails.currentBooking,
+    grid,
+    fetchCellDetails,
+  ]);
 
   const formatTime = (date: Date) => {
     const hour = date.getHours();
@@ -3870,12 +3893,11 @@ useEffect(() => {
                               className="w-full bg-indigo-500 text-white px-3 py-2 rounded hover:bg-indigo-600 transition-colors font-medium text-xs"
                               onClick={() => applyAction("booking")}
                             >
-                              {filteredCourtId[firstSelected[0]]?.name.startsWith(
-                          "court_"
-                        )
-                          ? "Create One-on-One Session"
-                          : "Create Booking"}
-                              
+                              {filteredCourtId[
+                                firstSelected[0]
+                              ]?.name.startsWith("court_")
+                                ? "Create One-on-One Session"
+                                : "Create Booking"}
                             </button>
                             <button
                               className="w-full bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors font-medium text-xs"
@@ -3891,10 +3913,10 @@ useEffect(() => {
                             onClick={() => applyAction("occupied")}
                           >
                             {filteredCourtId[firstSelected[0]]?.name.startsWith(
-                          "court_"
-                        )
-                          ? "Create Group Session"
-                          : "Create Game"}
+                              "court_"
+                            )
+                              ? "Create Group Session"
+                              : "Create Game"}
                           </button>
                         )}
                       </>
@@ -3928,37 +3950,35 @@ useEffect(() => {
                       </button>
                     )}
                     {["occupied", "booking"].includes(
-  grid[firstSelected[0]][firstSelected[1]]
-) && (
-  !showConfirm ? (
-    <button
-      className="w-full bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition-colors font-medium text-xs"
-      onClick={() => setShowConfirm(true)}
-    >
-      Cancel
-    </button>
-  ) : (
-    <div className="flex gap-2 w-full">
-      <button
-        className="flex-1 bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 transition-colors font-medium text-xs"
-        onClick={() => setShowConfirm(false)}
-      >
-        Don't Cancel
-      </button>
-      <button
-        className="flex-1 bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors font-medium text-xs"
-        onClick={() => {
-          applyAction("unbook");
-          setSelected([]);
-          setShowConfirm(false);
-        }}
-      >
-        Yes, Cancel
-      </button>
-      
-    </div>
-  )
-)}
+                      grid[firstSelected[0]][firstSelected[1]]
+                    ) &&
+                      (!showConfirm ? (
+                        <button
+                          className="w-full bg-yellow-500 text-white px-3 py-2 rounded hover:bg-yellow-600 transition-colors font-medium text-xs"
+                          onClick={() => setShowConfirm(true)}
+                        >
+                          Cancel
+                        </button>
+                      ) : (
+                        <div className="flex gap-2 w-full">
+                          <button
+                            className="flex-1 bg-gray-500 text-white px-3 py-2 rounded hover:bg-gray-600 transition-colors font-medium text-xs"
+                            onClick={() => setShowConfirm(false)}
+                          >
+                            Don't Cancel
+                          </button>
+                          <button
+                            className="flex-1 bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors font-medium text-xs"
+                            onClick={() => {
+                              applyAction("unbook");
+                              setSelected([]);
+                              setShowConfirm(false);
+                            }}
+                          >
+                            Yes, Cancel
+                          </button>
+                        </div>
+                      ))}
                   </div>
                 </div>
               )}

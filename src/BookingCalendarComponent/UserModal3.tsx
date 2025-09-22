@@ -587,7 +587,10 @@ const CellModal3: React.FC<CellModalProps> = ({
                       message.createdAt || message.timestamp;
                     if (messageTimestamp) {
                       const msgDate = new Date(messageTimestamp);
-                      if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
+                      if (
+                        msgDate.getTime() > seenByTeamAtDate.getTime() &&
+                        message.clientId !== clientId
+                      ) {
                         messageCount++;
                       }
                     }
@@ -648,7 +651,10 @@ const CellModal3: React.FC<CellModalProps> = ({
 
                 if (messageTimestamp) {
                   const msgDate = new Date(messageTimestamp);
-                  if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
+                  if (
+                    msgDate.getTime() > seenByTeamAtDate.getTime() &&
+                    message.clientId !== clientId
+                  ) {
                     setNewMessagesCount((prev) => {
                       const newCount = (prev[roomKey] || 0) + 1;
                       console.log(
@@ -1095,15 +1101,12 @@ const CellModal3: React.FC<CellModalProps> = ({
           setInputValue("");
 
           // Mark as seen by team after sending
-          await axios.patch(
-            `${API_BASE_URL_Latest}/human/human/mark-seen`,
-            {
-              userId: userId,
-              roomType: roomType,
-              userType: "team",
-              handledMsg: "",
-            }
-          );
+          await axios.patch(`${API_BASE_URL_Latest}/human/human/mark-seen`, {
+            userId: userId,
+            roomType: roomType,
+            userType: "team",
+            handledMsg: "",
+          });
           console.log("✅ Team message sent and marked as seen");
         } catch (err) {
           console.error("❌ Send error:", err);
@@ -1334,15 +1337,12 @@ const CellModal3: React.FC<CellModalProps> = ({
 
     try {
       // Mark chat as handled with comment
-      await axios.patch(
-        `${API_BASE_URL_Latest}/human/human/mark-seen`,
-        {
-          userId: smallChatBoxData.userId,
-          roomType: smallChatBoxData.roomType,
-          userType: "team",
-          handledMsg: comment,
-        }
-      );
+      await axios.patch(`${API_BASE_URL_Latest}/human/human/mark-seen`, {
+        userId: smallChatBoxData.userId,
+        roomType: smallChatBoxData.roomType,
+        userType: "team",
+        handledMsg: comment,
+      });
 
       // Refresh user room data to get updated handledAt
       const response = await axios.get(
@@ -1392,15 +1392,20 @@ const CellModal3: React.FC<CellModalProps> = ({
           const seenByTeamAtDate = new Date(newHandledAt * 1000);
 
           let messageCount = 0;
-          messages.forEach((message: { createdAt: any; timestamp: any }) => {
-            const messageTimestamp = message.createdAt || message.timestamp;
-            if (messageTimestamp) {
-              const msgDate = new Date(messageTimestamp);
-              if (msgDate.getTime() > seenByTeamAtDate.getTime()) {
-                messageCount++;
+          messages.forEach(
+            (message: { createdAt: any; timestamp: any; clientId: any }) => {
+              const messageTimestamp = message.createdAt || message.timestamp;
+              if (messageTimestamp) {
+                const msgDate = new Date(messageTimestamp);
+                if (
+                  msgDate.getTime() > seenByTeamAtDate.getTime() &&
+                  message.clientId !== clientId
+                ) {
+                  messageCount++;
+                }
               }
             }
-          });
+          );
 
           console.log(
             `🔄 Recalculated message count after handle: ${messageCount}`
@@ -1947,7 +1952,9 @@ const CellModal3: React.FC<CellModalProps> = ({
                         const count = newMessagesCount[roomKey] || 0;
 
                         return count > 0 ? (
-                          <span className="absolute top-1 right-14 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center" />
+                          <span className="absolute top-1 right-14 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
+                            {count}
+                          </span>
                         ) : null;
                       })()}
                     </td>

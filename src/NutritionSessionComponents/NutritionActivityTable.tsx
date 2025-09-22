@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { useApiCalls } from "../store/axios";
 import { NutritionUnits, NutritionUtils } from "../Utils/NutritionUtils";
+import "./NutritionActivityTable.css";
 
 function NutritionActivityTable() {
   const context = useContext(DataContext);
@@ -60,6 +61,7 @@ function NutritionActivityTable() {
   const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
   const [showModal, setShowModal] = useState(false);
   const [resetKey, setResetKey] = useState(0);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(45); // percentage
   const [literals, setLiterals] = useState({
     themes: [],
     goals: [],
@@ -431,6 +433,29 @@ function NutritionActivityTable() {
     });
   };
 
+  const handleMouseDown = (e) => {
+    e.preventDefault();
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = (e) => {
+    const containerRect = document
+      .querySelector(".activity-table-container")
+      .getBoundingClientRect();
+    const newWidth =
+      ((e.clientX - containerRect.left) / containerRect.width) * 100;
+
+    // Constrain between 20% and 80%
+    const constrainedWidth = Math.max(20, Math.min(80, newWidth));
+    setLeftPanelWidth(constrainedWidth);
+  };
+
+  const handleMouseUp = () => {
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  };
+
   const updateTheActivitityById = async (activityId: string, index: number) => {
     if (!activityId) return;
     const activity = await getActivityById(activityId);
@@ -511,9 +536,12 @@ function NutritionActivityTable() {
 
   return (
     <div className="w-full h-screen flex flex-col">
-      <div className="activity-table-container bg-white w-full flex flex-1 rounded-2xl shadow-lg overflow-hidden gap-3 p-3">
+      <div className="activity-table-container bg-white w-full flex flex-row flex-1 rounded-2xl shadow-lg overflow-hidden p-3 relative">
         {/* Left Panel - Activities List */}
-        <div className="w-full md:w-2/3 border-b md:border-r md:border-b-0 border-gray-300 flex flex-col">
+        <div
+          className="border-r border-gray-300 flex flex-col"
+          style={{ width: `${leftPanelWidth}%` }}
+        >
           {/* Left Panel Header */}
           <div className="p-2 border-b border-gray-200">
             <div className="flex flex-col gap-2">
@@ -649,8 +677,19 @@ function NutritionActivityTable() {
           </div>
         </div>
 
+        {/* Resizer */}
+        <div
+          className="w-1 bg-gray-300 hover:bg-blue-500 cursor-col-resize flex-shrink-0 relative group"
+          onMouseDown={handleMouseDown}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-blue-500 group-hover:opacity-20"></div>
+        </div>
+
         {/* Right Panel - Session Creator */}
-        <div className="w-full md:w-6/3 flex flex-col">
+        <div
+          className="flex flex-col flex-1 ml-3"
+          style={{ width: `${100 - leftPanelWidth}%` }}
+        >
           {/* Right Panel Header */}
 
           <div className="flex flex-col gap-3 py-3 mb-3 border-b border-gray-200">
@@ -713,8 +752,7 @@ function NutritionActivityTable() {
                   >
                     {literals.themes
                       .filter(
-                        (themeItem) =>
-                          themeItem !== "All" && themeItem !== "NA"
+                        (themeItem) => themeItem !== "All" && themeItem !== "NA"
                       )
                       .map((themeItem, i) => (
                         <MenuItem key={i} value={themeItem}>

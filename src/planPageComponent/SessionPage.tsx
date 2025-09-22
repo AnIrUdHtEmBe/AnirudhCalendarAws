@@ -50,8 +50,8 @@ function SessionPage() {
   const [sessionName, setSessionName] = useState("");
   const [category, setCategory] = useState("");
   const [planCategory, setPlanCategory] = useState("");
-  const [planTheme, setPlanTheme] = useState("");
-  const [planGoal, setPlanGoal] = useState("");
+  const [planTheme, setPlanTheme] = useState<string[]>([]);
+  const [planGoal, setPlanGoal] = useState<string[]>([]);
   const [sessionThemes, setSessionThemes] = useState<string[]>([]);
   const [sessionGoals, setSessionGoals] = useState<string[]>([]);
   const [selectedTheme, setSelectedTheme] = useState("");
@@ -176,6 +176,34 @@ function SessionPage() {
     }
     setGoal(newValue);
   };
+
+  const handlePlanThemeChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    const newValue = typeof value === "string" ? value.split(",") : value;
+    if (newValue.includes("all")) {
+      setPlanTheme(literals.themes.filter((th) => th !== "NA" && th !== "ALL"));
+      return;
+    }
+    if (newValue.includes("none")) {
+      setPlanTheme([]);
+      return;
+    }
+    setPlanTheme(newValue);
+  };
+
+  const handlePlanGoalChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    const newValue = typeof value === "string" ? value.split(",") : value;
+    if (newValue.includes("all")) {
+      setPlanGoal(literals.goals.filter((gl) => gl !== "NA" && gl !== "ALL"));
+      return;
+    }
+    if (newValue.includes("none")) {
+      setPlanGoal([]);
+      return;
+    }
+    setPlanGoal(newValue);
+  };
   // Updated filteredSessions applying *all* filters: your old searchTerm + activeFilter + new filters
   // const filteredSessions = sessions_api_call.filter((plan) => {
   //   const matchesSearchOrActiveFilter =
@@ -255,8 +283,8 @@ function SessionPage() {
       title: planName,
       description: "",
       category: planCategory || "FITNESS",
-      themes: planTheme ? [planTheme] : ["NA"],
-      goals: planGoal ? [planGoal] : ["NA"],
+      themes: planTheme.length > 0 ? planTheme : ["NA"],
+      goals: planGoal.length > 0 ? planGoal : ["NA"],
       sessions: sessions.map((session) => ({
         sessionId: session.sessionId,
         scheduledDay: session.scheduledDay,
@@ -267,16 +295,16 @@ function SessionPage() {
     setSessions([]);
     setSessionSelected(null);
     setBlocks(28);
-    setTheme("");
-    setGoal("");
+    setTheme([]);
+    setGoal([]);
     setCategoryFilter("");
     setActiveFilter(null);
     setPlanNameFilter("");
     setSearchTerm("");
     setSelectedIds([]);
     setPlanCategory("");
-    setPlanTheme("");
-    setPlanGoal("");
+    setPlanTheme([]);
+    setPlanGoal([]);
   };
 
   const toggleSelectAll = () => {
@@ -811,40 +839,106 @@ function SessionPage() {
                     ))}
                   </Select>
                 </FormControl>
-                <FormControl variant="standard" sx={{ minWidth: 120 }}>
+                <FormControl variant="standard" sx={{ minWidth: 100 }}>
                   <InputLabel shrink>Theme</InputLabel>
                   <Select
+                    multiple
                     value={planTheme}
-                    onChange={(e) => setPlanTheme(e.target.value)}
+                    onChange={handlePlanThemeChange}
                     displayEmpty
                     label="Theme"
+                    renderValue={(selected) => {
+                      if (selected.length === 0) {
+                        return <em>None</em>;
+                      }
+                      if (
+                        selected.length ===
+                        literals.themes.filter(
+                          (th) => th !== "NA" && th !== "ALL"
+                        ).length
+                      ) {
+                        return "All";
+                      }
+                      if (selected.length === 1) {
+                        return selected[0];
+                      }
+                      return `${selected.length} selected`;
+                    }}
                   >
-                    <MenuItem value="">
-                      <em>None</em>
+                    <MenuItem value="none">
+                      <Checkbox checked={planTheme.length === 0} />
+                      <ListItemText primary="None" />
                     </MenuItem>
-                    {literals.themes.map((th, i) => (
-                      <MenuItem key={i} value={th}>
-                        {th}
-                      </MenuItem>
-                    ))}
+                    <MenuItem value="all">
+                      <Checkbox
+                        checked={
+                          planTheme.length ===
+                          literals.themes.filter(
+                            (th) => th !== "NA" && th !== "ALL"
+                          ).length
+                        }
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+                    {literals.themes
+                      .filter((th) => th !== "NA" && th !== "ALL")
+                      .map((th, i) => (
+                        <MenuItem key={i} value={th}>
+                          <Checkbox checked={planTheme.includes(th)} />
+                          <ListItemText primary={th} />
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
                 <FormControl variant="standard" sx={{ minWidth: 120 }}>
                   <InputLabel shrink>Goal</InputLabel>
                   <Select
+                    multiple
                     value={planGoal}
-                    onChange={(e) => setPlanGoal(e.target.value)}
+                    onChange={handlePlanGoalChange}
                     displayEmpty
                     label="Goal"
+                    renderValue={(selected) => {
+                      if (selected.length === 0) {
+                        return <em>None</em>;
+                      }
+                      if (
+                        selected.length ===
+                        literals.goals.filter(
+                          (gl) => gl !== "NA" && gl !== "ALL"
+                        ).length
+                      ) {
+                        return "All";
+                      }
+                      if (selected.length === 1) {
+                        return selected[0];
+                      }
+                      return `${selected.length} selected`;
+                    }}
                   >
-                    <MenuItem value="">
-                      <em>None</em>
+                    <MenuItem value="none">
+                      <Checkbox checked={planGoal.length === 0} />
+                      <ListItemText primary="None" />
                     </MenuItem>
-                    {literals.goals.map((gl, i) => (
-                      <MenuItem key={i} value={gl}>
-                        {gl}
-                      </MenuItem>
-                    ))}
+                    <MenuItem value="all">
+                      <Checkbox
+                        checked={
+                          planGoal.length ===
+                          literals.goals.filter(
+                            (gl) => gl !== "NA" && gl !== "ALL"
+                          ).length
+                        }
+                      />
+                      <ListItemText primary="Select All" />
+                    </MenuItem>
+                    {literals.goals
+                      .filter((gl) => gl !== "NA" && gl !== "ALL")
+                      .map((gl, i) => (
+                        <MenuItem key={i} value={gl}>
+                          <Checkbox checked={planGoal.includes(gl)} />
+                          <ListItemText primary={gl} />
+                        </MenuItem>
+                      ))}
                   </Select>
                 </FormControl>
               </div>

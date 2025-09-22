@@ -23,7 +23,7 @@ import { enqueueSnackbar } from "notistack";
 // export const API_BASE_URL2 = "https://testplaybackend.forgehub.in";
 
 
-const mode = "development";  // or "development", or other
+const mode = "production";  // or "development", or other
 let API_BASE_URL: string;
 let API_BASE_URL2: string;
 

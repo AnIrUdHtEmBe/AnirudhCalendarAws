@@ -28,7 +28,7 @@ import { Send, X } from "lucide-react";
 import axios from "axios";
 import WeekPlanView from "../WeeklyDateView/WeekViewPlan";
 import { getArrayOfDatesFromSundayToSaturday } from "../WeeklyDateView/date";
-import { API_BASE_URL ,API_BASE_URL2 } from "../store/axios";
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 interface User {
   userId: string;
   name: string;
@@ -84,8 +84,7 @@ const ChatBox = ({
   const [clientNames, setClientNames] = useState<Record<string, string>>({});
   const nameRequestsCache = useRef<Set<string>>(new Set());
 
-
-function getUserId() {
+  function getUserId() {
     try {
       const t = sessionStorage.getItem("token");
       return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
@@ -94,40 +93,47 @@ function getUserId() {
     }
   }
 
-const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
-  try {
-    const payload = [{
-      action,
-      userId: getUserId(),
-      roomId: roomName,
-      timeStamp: Date.now(),
-    }];
+  const recordPresence = async (
+    action: "ENTER" | "EXIT",
+    useBeacon = false
+  ) => {
+    try {
+      const payload = [
+        {
+          action,
+          userId: getUserId(),
+          roomId: roomName,
+          timeStamp: Date.now(),
+        },
+      ];
 
-    const url = `${API_BASE_URL2}/chatV1/presence/record`;
+      const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
-    if (useBeacon && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      const success = navigator.sendBeacon(url, blob);
-      console.log(`${action.toLowerCase()} beacon sent:`, success);
-      if (success) return;
+      if (useBeacon && navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], {
+          type: "application/json",
+        });
+        const success = navigator.sendBeacon(url, blob);
+        console.log(`${action.toLowerCase()} beacon sent:`, success);
+        if (success) return;
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      });
+
+      if (response.ok) {
+        console.log(`${action} presence recorded successfully`);
+      }
+    } catch (error) {
+      console.error(`Error recording ${action} presence:`, error);
     }
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-    
-    if (response.ok) {
-      console.log(`${action} presence recorded successfully`);
-    }
-  } catch (error) {
-    console.error(`Error recording ${action} presence:`, error);
-  }
-};
+  };
 
   console.log(`ChatBox opened for user: ${userId} (${userName})`);
 
@@ -145,35 +151,34 @@ const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
     },
   });
 
-    useEffect(() => {
+  useEffect(() => {
     recordPresence("ENTER");
     return () => {
       recordPresence("EXIT");
     };
   }, [roomName]);
 
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT", true);
+    };
 
-useEffect(() => {
-  const handleBeforeUnload = () => {
-    recordPresence("EXIT", true);
-  };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        recordPresence("EXIT", false);
+      } else {
+        recordPresence("ENTER", false);
+      }
+    };
 
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'hidden') {
-      recordPresence("EXIT", false);
-    } else {
-      recordPresence("ENTER", false);
-    }
-  };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
-
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [roomName]);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [roomName]);
 
   // ✅ Get correct Ably clientId for this logged-in agent
   const currentClientId = useMemo(() => {
@@ -205,9 +210,7 @@ useEffect(() => {
       nameRequestsCache.current.add(clientId);
 
       try {
-        const res = await axios.get(
-          `${API_BASE_URL2}/human/${clientId}`
-        );
+        const res = await axios.get(`${API_BASE_URL2}/human/${clientId}`);
         if (res.data?.name) {
           setClientNames((prev) => ({ ...prev, [clientId]: res.data.name }));
         } else {
@@ -226,15 +229,12 @@ useEffect(() => {
   const markSeenByTeam = useCallback(async (targetUserId: string) => {
     console.log(`markSeenByTeam called for userId: ${targetUserId}`);
     try {
-      const res = await axios.patch(
-        `${API_BASE_URL2}/human/human/mark-seen`,
-        {
-          userId: targetUserId,
-          roomType: "NUTRITION",
-          userType: "team",
-          handledMsg: "",
-        }
-      );
+      const res = await axios.patch(`${API_BASE_URL2}/human/human/mark-seen`, {
+        userId: targetUserId,
+        roomType: "NUTRITION",
+        userType: "team",
+        handledMsg: "",
+      });
       console.log(
         `✅ Marked chat as seen by team for user ${targetUserId}`,
         res.data
@@ -347,7 +347,10 @@ useEffect(() => {
   const sendMessage = useCallback(async () => {
     if (!inputValue.trim()) return;
     try {
-      await send({ text: inputValue.trim(), metadata: {location: "Nutrition-Tracker"} });
+      await send({
+        text: inputValue.trim(),
+        metadata: { location: "Nutrition-Tracker" },
+      });
       setInputValue("");
       await markSeenByTeam(userId);
     } catch (err) {
@@ -424,19 +427,19 @@ useEffect(() => {
                 const isMine = msg.clientId === currentClientId;
                 const date = new Date(msg.timestamp);
 
-                  const day = date.getDate(); // 25
-                  const month = date.toLocaleString("en-US", {
-                    month: "short",
-                  }); // Aug
+                const day = date.getDate(); // 25
+                const month = date.toLocaleString("en-US", {
+                  month: "short",
+                }); // Aug
 
-                  const time = date.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+                const time = date.toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                });
 
-                  const timestamp = `${day} ${month} - ${time}`;
+                const timestamp = `${day} ${month} - ${time}`;
 
-                  console.log(timestamp);
+                console.log(timestamp);
                 const displayName = clientNames[msg.clientId] || msg.clientId;
 
                 return (
@@ -849,7 +852,7 @@ const NutritionMain = () => {
               </button>
               {newMsgCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center">
-                  {/* {newMsgCount} */}
+                   {newMsgCount} 
                 </span>
               )}
             </div>
@@ -912,15 +915,12 @@ const NutritionMain = () => {
   // Add this function to handle the mark-seen API call
   const handleUserAction = async (userId: string, message: string) => {
     try {
-      await axios.patch(
-        `${API_BASE_URL2}/human/human/mark-seen`,
-        {
-          userId: userId,
-          roomType: "NUTRITION",
-          userType: "team",
-          handledMsg: message,
-        }
-      );
+      await axios.patch(`${API_BASE_URL2}/human/human/mark-seen`, {
+        userId: userId,
+        roomType: "NUTRITION",
+        userType: "team",
+        handledMsg: message,
+      });
 
       // Mark handled locally for immediate handling
       setHandledUsers((prev) => new Set([...prev, userId]));
@@ -1008,6 +1008,7 @@ const NutritionMain = () => {
       const currentClientId = getCurrentClientId();
 
       // Set up real-time message listener for new message indicator
+      // Set up real-time message listener for new message indicator
       const messageListener = (messageEvent: any) => {
         const message = messageEvent.message || messageEvent;
         const messageTimestamp = message.createdAt || message.timestamp;
@@ -1032,27 +1033,30 @@ const NutritionMain = () => {
       room.messages.subscribe(messageListener);
 
       // Initial check for existing new messages
-      const messageHistory = await room.messages.history({ limit: 50 });
-      const messages = messageHistory.items;
-      const seenByTeamAtDate = new Date(seenByTeamAtUnix * 1000);
-
-      let newMessageCount = 0;
-      messages.forEach((message: any) => {
-        const messageTimestamp = message.createdAt || message.timestamp;
-        // Only count messages that are not from the current user and are newer than seenByTeamAt
-        if (
-          messageTimestamp &&
-          new Date(messageTimestamp) > seenByTeamAtDate &&
-          message.clientId !== currentClientId
-        ) {
-          newMessageCount++;
-        }
-      });
-
-      setNewMessagesCount((prev) => ({
-        ...prev,
-        [roomKey]: newMessageCount,
-      }));
+      room.messages
+        .history({ limit: 50 })
+        .then((messageHistory) => {
+          const messages = messageHistory.items;
+          const seenByTeamAtDate = new Date(seenByTeamAtUnix * 1000);
+          let newMessageCount = 0;
+          messages.forEach((message: any) => {
+            const messageTimestamp = message.createdAt || message.timestamp;
+            if (
+              messageTimestamp &&
+              new Date(messageTimestamp) > seenByTeamAtDate &&
+              message.clientId !== currentClientId
+            ) {
+              newMessageCount++;
+            }
+          });
+          setNewMessagesCount((prev) => ({
+            ...prev,
+            [roomKey]: newMessageCount,
+          }));
+        })
+        .catch((error) => {
+          console.error(`Failed to fetch history for ${roomKey}:`, error);
+        });
     } catch (error) {
       console.error(`Failed to setup message polling for ${roomKey}:`, error);
     }

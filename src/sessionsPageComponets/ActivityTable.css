@@ -1,25 +1,25 @@
-.btn1{
-  text:#0070FF;
-  border: #0070FF 1px solid;
+.btn1 {
+  text: #0070ff;
+  border: #0070ff 1px solid;
   border-radius: 6px;
 }
 
-.btn2{
-  background-color: #0070FF;
+.btn2 {
+  background-color: #0070ff;
 }
 
-.activity-table-container{
+.activity-table-container {
   height: calc(100vh - 185px);
-  font-family: 'robroto', sans-serif;
+  font-family: "robroto", sans-serif;
 }
 
-.activity-save-button{
+.activity-save-button {
   margin-right: 20px;
 }
 
-.add-row{
-  color: #0070FF;
-  border: #0070FF 1px solid;
+.add-row {
+  color: #0070ff;
+  border: #0070ff 1px solid;
   width: 170px;
   display: flex;
   justify-content: center;
@@ -27,15 +27,15 @@
   border-radius: 3px;
 }
 
-.plus-new-actvity{
-  color: #0070FF;
+.plus-new-actvity {
+  color: #0070ff;
   font-size: 20px;
   margin-right: 5px;
-  border: #0070FF 1px solid;
+  border: #0070ff 1px solid;
   border-radius: 7.5px;
 }
 
-.heya{
+.heya {
   border-radius: 2.1px;
 }
 
@@ -49,7 +49,6 @@
   max-height: calc(100vh - 200px); /* Adjust based on header + form heights */
 }
 
-
 .activity-table-container {
   height: calc(100vh - 120px); /* Adjusted for padding */
   overflow: hidden;
@@ -61,20 +60,27 @@
   background-color: #f3f4f6; /* Light gray background like in image */
 }
 
-
 /* =====  RESPONSIVE HELPERS  ===== */
 @media (max-width: 1024px) {
-  .hide-lg { display: none !important; }
+  .hide-lg {
+    display: none !important;
+  }
 }
 @media (max-width: 768px) {
-  .hide-md { display: none !important; }
+  .hide-md {
+    display: none !important;
+  }
 }
 @media (max-width: 640px) {
-  .hide-sm { display: none !important; }
+  .hide-sm {
+    display: none !important;
+  }
 }
 
 /* =====  NO-X-SCROLL  ===== */
-.no-x-scroll { overflow-x: hidden !important; }
+.no-x-scroll {
+  overflow-x: hidden !important;
+}
 
 /* =====  FIXED-COLUMNS  ===== */
 .sticky-col {
@@ -82,4 +88,13 @@
   left: 0;
   z-index: 11;
   background: #fff;
+}
+
+.cursor-col-resize {
+  cursor: col-resize;
+}
+
+.cursor-col-resize:hover {
+  background-color: #3b82f6;
+  transition: background-color 0.2s;
 }
