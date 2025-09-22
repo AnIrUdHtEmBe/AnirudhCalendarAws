@@ -185,7 +185,7 @@ const AllMeals: React.FC = () => {
   const createActivity = async (activityData: Omit<Activity, "activityId">) => {
     try {
       const response = await fetch(
-        `${API_BASE_URL}/nutrition-activity-template`,
+        `${API_BASE_URL}/nutrition-activity-template?type=NUTRITION`,
         {
           method: "POST",
           headers: {
@@ -216,59 +216,60 @@ const AllMeals: React.FC = () => {
     console.log("Add activity clicked");
   };
 
-  const handleSaveNewActivity = async () => {
-    if (!newActivityData) return;
+ const handleSaveNewActivity = async () => {
+  if (!newActivityData) return;
 
-    try {
-      // Validate required fields
-      const name = newActivityData.name.trim();
-      const description = newActivityData.description.trim();
-      const unit = newActivityData.unit.trim();
-      if (!name || !description || newActivityData.target <= 0 || !unit) {
-        enqueueSnackbar(
-          "Please fill in all required fields: Name, Description, Target (greater than 0), and Unit",
-          {
-            variant: "error",
-            autoHideDuration: 3000,
-          }
-        );
-        return false;
-      }
-      // Prepare data for API (excluding temporary ID)
-      const activityToCreate: any = {
-        name,
-        description,
-        target: Number(newActivityData.target),
-        unit,
-      };
-
-      // Include optional fields if provided
-      if (newActivityData.target2 > 0) {
-        activityToCreate.target2 = Number(newActivityData.target2);
-      }
-      if (newActivityData.unit2.trim() !== "") {
-        activityToCreate.unit2 = newActivityData.unit2.trim();
-      }
-      if (newActivityData.videoLink.trim() !== "") {
-        activityToCreate.videoLink = newActivityData.videoLink.trim();
-      }
-
-      // Create the activity via API
-      await createActivity(activityToCreate);
-
-      // Refetch activities to update the list
-      await fetchActivities();
-
-      enqueueSnackbar("Activity created successfully!", {
-        variant: "success",
-        autoHideDuration: 3000,
-      });
-      return true;
-    } catch (error) {
-      enqueueSnackbar("Failed to create activity", { variant: "error" });
+  try {
+    // Validate required fields
+    const name = newActivityData.name.trim();
+    const description = newActivityData.description.trim();
+    const unit = newActivityData.unit.trim();
+    if (!name || !description || newActivityData.target <= 0 || !unit) {
+      enqueueSnackbar(
+        "Please fill in all required fields: Name, Description, Target (greater than 0), and Unit",
+        {
+          variant: "error",
+          autoHideDuration: 3000,
+        }
+      );
       return false;
     }
-  };
+    // Prepare data for API (excluding temporary ID)
+    const activityToCreate: any = {
+      name,
+      description,
+      target: Number(newActivityData.target),
+      unit,
+      vegNonVeg: newActivityData.vegNonVeg.trim() || "", // Add vegNonVeg field
+    };
+
+    // Include optional fields if provided
+    if (newActivityData.target2 > 0) {
+      activityToCreate.target2 = Number(newActivityData.target2);
+    }
+    if (newActivityData.unit2.trim() !== "") {
+      activityToCreate.unit2 = newActivityData.unit2.trim();
+    }
+    if (newActivityData.videoLink.trim() !== "") {
+      activityToCreate.videoLink = newActivityData.videoLink.trim();
+    }
+
+    // Create the activity via API
+    await createActivity(activityToCreate);
+
+    // Refetch activities to update the list
+    await fetchActivities();
+
+    enqueueSnackbar("Activity created successfully!", {
+      variant: "success",
+      autoHideDuration: 3000,
+    });
+    return true;
+  } catch (error) {
+    enqueueSnackbar("Failed to create activity", { variant: "error" });
+    return false;
+  }
+};
 
   const bulkUpdateActivities = async (
     updates: Array<{ activityId: string } & Partial<Activity>>

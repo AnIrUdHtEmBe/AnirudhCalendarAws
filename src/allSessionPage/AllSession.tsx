@@ -323,7 +323,7 @@ function AllSession() {
             justifyContent: "center",
           }}
         >
-          <div style={{ width: "200px", minWidth: "200px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <TextField
               fullWidth
               size="small"
@@ -334,7 +334,7 @@ function AllSession() {
               placeholder="Enter session name..."
             />
           </div>
-          <div style={{ width: "180px", minWidth: "180px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <FormControl fullWidth size="small">
               <InputLabel id="category-filter-label">Category</InputLabel>
               <Select
@@ -366,7 +366,7 @@ function AllSession() {
             justifyContent: "center",
           }}
         >
-          <div style={{ width: "200px", minWidth: "200px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <FormControl fullWidth size="small">
               <InputLabel id="themes-filter-label">Themes</InputLabel>
               <Select
@@ -387,7 +387,7 @@ function AllSession() {
             </FormControl>
           </div>
 
-          <div style={{ width: "180px", minWidth: "180px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <FormControl fullWidth size="small">
               <InputLabel id="goals-filter-label">Goals</InputLabel>
               <Select

@@ -34,19 +34,6 @@ function AllNutrition() {
 
   const { activities_api_call, nutrition_api_call, setSelectComponent } =
     context;
-  const MEAL_TYPES = [
-    "breakfast",
-    "brunch",
-    "lunch",
-    "dinner",
-    "morning snack",
-    "evening snack",
-    "midnight snack",
-    "pre-bed snack",
-    "before workout",
-    "after workout",
-    "post dinner",
-  ];
   const [searchTerm, setSearchTerm] = useState(""); // KEEP original
   const [selecteddPlan, setSelectedPlan] = useState<Session_Api_call | null>(
     null
@@ -58,8 +45,6 @@ function AllNutrition() {
   const [loadingRowIndex, setLoadingRowIndex] = useState<number | null>(null);
   const [themes, setThemes] = useState<string[]>(selecteddPlan?.themes || []);
   const [goals, setGoals] = useState<string[]>(selecteddPlan?.goals || []);
-
-  const [mealType, setMealType] = useState<string>(selecteddPlan?.type || "");
   const [allThemes, setAllThemes] = useState<string[]>([]);
   const [allGoals, setAllGoals] = useState<string[]>([]);
   const [allCategories, setAllCategories] = useState<string[]>([]);
@@ -195,7 +180,6 @@ function AllNutrition() {
 
       if (!planName?.trim()) missingFields.push("Nutrition name");
       if (!category?.trim()) missingFields.push("Category");
-      if (!mealType?.trim()) missingFields.push("Meal Type");
       if (!themes || themes.length === 0) missingFields.push("Themes");
       if (!goals || goals.length === 0) missingFields.push("Goals");
 
@@ -223,7 +207,6 @@ function AllNutrition() {
         activityIds: selecteddPlan?.activityIds,
         themes: themes,
         goals: goals,
-        type: mealType,
         vegNonVeg: vegNonVegStatus,
         editedActivities: selecteddPlan?.editedActivities || [], // Add this line
       });
@@ -303,7 +286,6 @@ function AllNutrition() {
       setCategory(selecteddPlan.category || "");
       setThemes(selecteddPlan.themes || []);
       setGoals(selecteddPlan.goals || []);
-      setMealType(selecteddPlan.type || "");
     }
   }, [selecteddPlan]);
   const updateEditedActivity = (
@@ -362,7 +344,7 @@ function AllNutrition() {
             justifyContent: "center",
           }}
         >
-          <div style={{ width: "200px", minWidth: "200px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <TextField
               fullWidth
               size="small"
@@ -373,7 +355,7 @@ function AllNutrition() {
               placeholder="Enter meal name..."
             />
           </div>
-          <div style={{ width: "180px", minWidth: "180px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <FormControl fullWidth size="small">
               <InputLabel id="veg-filter-label">Veg-NonVeg</InputLabel>
               <Select
@@ -401,7 +383,7 @@ function AllNutrition() {
             justifyContent: "center",
           }}
         >
-          <div style={{ width: "200px", minWidth: "200px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <FormControl fullWidth size="small">
               <InputLabel id="themes-filter-label">Themes</InputLabel>
               <Select
@@ -422,7 +404,7 @@ function AllNutrition() {
             </FormControl>
           </div>
 
-          <div style={{ width: "180px", minWidth: "180px" }}>
+          <div style={{ width: "150px", minWidth: "150px" }}>
             <FormControl fullWidth size="small">
               <InputLabel id="goals-filter-label">Goals</InputLabel>
               <Select
@@ -496,22 +478,6 @@ function AllNutrition() {
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
               />
-            </FormControl>
-            <FormControl fullWidth sx={{ width: "200px" }}>
-              <InputLabel id="meal-type-label">Meal Timing</InputLabel>
-              <Select
-                labelId="meal-type-label"
-                id="meal-type-select"
-                value={mealType}
-                onChange={(e) => setMealType(e.target.value as string)}
-                label="Meal Type"
-              >
-                {MEAL_TYPES.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
-                  </MenuItem>
-                ))}
-              </Select>
             </FormControl>
             <FormControl fullWidth sx={{ width: "200px" }}>
               <InputLabel id="themes-label">Themes</InputLabel>

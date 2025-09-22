@@ -1,413 +1,682 @@
 import React, { useContext, useEffect, useState } from "react";
+import axios from "axios";
 import {
   Activity_Api_call,
   DataContext,
   Session_Api_call,
 } from "../store/DataContext";
-import { useApiCalls } from "../store/axios";
-import {
-  Autocomplete,
-
-  TextField,
-} from "@mui/material";
+import { API_BASE_URL, useApiCalls } from "../store/axios";
+import { Autocomplete, TextField, Button } from "@mui/material";
 import { Dumbbell, MinusCircle, Plus } from "lucide-react";
+import "./styles/EventModal.css";
+import YouTubeVideoModal from "../Youtube/YouTubeVideoModal";
 
-import './styles/EventModal.css';
+// ----------  merge helper  ----------
+const pickEdited = (editedArr: any[], activityId: string) =>
+  editedArr?.find((e) => e.activityId === activityId) || {};
+/* ----------  tiny helper ---------- */
+const prettyUnit = (u: string | null) => {
+  if (!u) return "";
+  return u === "weight"
+    ? "Kg"
+    : u === "distance"
+    ? "Km"
+    : u === "time"
+    ? "Min"
+    : u === "repetitions"
+    ? "Reps"
+    : u;
+};
 
-export default function EventModal({ isOpen, onClose, eventData, sessionId, planInstanceId, regenerate, getData }) {
+export default function EventModal({
+  isOpen,
+  onClose,
+  eventData,
+  sessionId,
+  planInstanceId,
+  regenerate,
+  getData,
+}) {
   if (!isOpen || !eventData) return null;
+
   const context = useContext(DataContext);
-  const { getActivities } = useApiCalls();
-  const { activities_api_call } = useContext(DataContext);
-  const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
-  const [emptyArr, setEmptyArr] = useState<Activity_Api_call[]>([
-    {
-      name: "",
-      description: "",
-      target: null,
-      unit: "",
-      icon: "",
-    },
-  ]);
+  const { getActivities, patchSession } = useApiCalls(); // <— added patchSession
+  const { activities_api_call } = context;
+
+  /* ----------  local state ---------- */
+  const [details, setDetails] = useState<any>({});
+  const [editMode, setEditMode] = useState(false);
+  const [draft, setDraft] = useState<Record<string, any>>({}); // keyed by activityInstanceId
+  const [template, setTemplate] = useState<any>(null);
+  const [youtubeModal, setYoutubeModal] = useState({
+    isOpen: false,
+    videoUrl: "",
+    title: "",
+  });
+  /* ----------  initial fetch ---------- */
   useEffect(() => {
     getActivities();
+    fetchSessionDetails();
   }, []);
 
-  // useEffect(() => {
-  //     // console.log(activities_api_call,"wpwndiwon");
-  // }, [activities_api_call]);
+  const fetchSessionDetails = async () => {
+    const res = await getSessionDetails(eventData);
+    if (res) setDetails(res);
+  };
 
-  const [selectedActivities, setSelectedActivities] = useState<{ [id: number]: string; }>({});
-  const updateTheActivitityById = async (activityId: string, index: number) => {
-    const activity = await getActivityById(activityId);
-    if (activity) {
-      emptyArr[index] = activity;
-      setEmptyArr([...emptyArr]);
-    } else {
-      console.error("Activity not found");
+  /* ----------  enter/exit edit ---------- */
+  const enterEdit = () => {
+    const clone: Record<string, any> = {};
+    Object.entries(details.activityDetails || {}).forEach(
+      ([actInstId, act]: any) => {
+        clone[actInstId] = {
+          activityId: act.activityId,
+          name: act.name, // Add this
+          description: act.description, // Add this
+          videoLink: act.videoLink, // Add this
+          target: act.target,
+          unit: act.unit,
+          target2: act.target2,
+          unit2: act.unit2,
+        };
+      }
+    );
+    setDraft(clone);
+    setEditMode(true);
+  };
+
+  const cancelEdit = () => {
+    setDraft({});
+    setEditMode(false);
+  };
+
+  /* ----------  save ---------- */
+  /* ----------  add axios import at top ---------- */
+
+  /* ----------  inside the component ---------- */
+  const saveEdit = async () => {
+    /* 1. Build a delta object per activityId ----------------------------- */
+    const deltaMap = new Map<string, any>();
+
+    Object.entries(draft).forEach(([activityInstanceId, d]) => {
+      const original = details.activityDetails[activityInstanceId];
+      if (!original) return;
+
+      const changes: any = { activityId: d.activityId };
+      // Inside the Object.entries(draft).forEach loop, add these checks:
+      if (d.name !== original.name) changes.name = d.name;
+      if (d.description !== original.description)
+        changes.description = d.description;
+      if (d.videoLink !== original.videoLink) changes.videoLink = d.videoLink;
+      if (d.target !== original.target) changes.target = d.target;
+      if (d.unit !== original.unit) changes.unit = d.unit;
+      if (d.target2 !== original.target2) changes.target2 = d.target2;
+      if (d.unit2 !== original.unit2) changes.unit2 = d.unit2;
+
+      if (Object.keys(changes).length > 1) {
+        deltaMap.set(d.activityId, changes);
+      }
+    });
+
+    /* 2. Merge deltas into existing server editedActivities -------------- */
+    const serverMap = new Map(
+      (details.editedActivities || []).map((item) => [
+        item.activityId,
+        { ...item },
+      ])
+    );
+
+    deltaMap.forEach((delta, activityId) => {
+      const existing = serverMap.get(activityId) || { activityId };
+      serverMap.set(activityId, { ...existing, ...delta });
+    });
+
+    const editedActivities = Array.from(serverMap.values());
+
+    /* 3. Nothing to do? ------------------------------------------------- */
+    if (!editedActivities.length) {
+      setEditMode(false);
+      return;
+    }
+    try {
+      /* 4. Patch ---------------------------------------------------------- */
+      await axios.patch(
+        `${API_BASE_URL}/session-instances/${details.sessionInstanceId}`,
+        { editedActivities }
+      );
+
+      await fetchSessionDetails();
+      setEditMode(false);
+    } catch (e: any) {
+      console.error(e);
+      alert("Could not save changes");
     }
   };
 
+  /* ----------  field onChange ---------- */
+  const updateDraft = (
+    actInstId: string,
+    field:
+      | "name"
+      | "description"
+      | "videoLink"
+      | "target"
+      | "unit"
+      | "target2"
+      | "unit2", // Add the new fields
+    value: any
+  ) => {
+    setDraft((prev) => ({
+      ...prev,
+      [actInstId]: { ...prev[actInstId], [field]: value },
+    }));
+  };
+
+  /* ----------  rest of your code untouched ---------- */
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [showConfirmAct, setshowConfirmAct] = useState(false);
+  const [activityId, setactivityId] = useState("");
+  const [removalNote, setRemovalNote] = useState("");
+
+  const {
+    getSessionById,
+    getActivityById,
+    getSessionInstanceById,
+    RemoveSessionInPlanInstance,
+    RemoveActivityFromSession,
+    AddActivityToSession,
+  } = useApiCalls();
+
+  const getSessionDetails = async (eventData: any) => {
+    if (!eventData?.extendedProps?.sessionInstanceId) return null;
+
+    const sid = eventData.extendedProps.sessionInstanceId;
+
+    /* 1. get the instance --------------------------------------------------- */
+    const ses = await getSessionInstanceById(sid);
+
+    /* 2. get its template --------------------------------------------------- */
+    const { data: template } = await axios.get(
+      `${API_BASE_URL}/session-templates/${ses.sessionTemplateId}`
+    );
+
+    /* 3. tiny helper -------------------------------------------------------- */
+    const pick = (arr: any[] = [], id: string) =>
+      arr.find((e) => e.activityId === id) || {};
+
+    /* 4. build activityDetails with correct precedence ---------------------- */
+    ses.activityDetails = {};
+    await Promise.all(
+      ses.activities.map(async (a: any) => {
+        if (a.status === "REMOVED") return;
+
+        const base = await getActivityById(a.activityId);
+        if (!base) return;
+
+        const merged = {
+          ...base, // base activity
+          ...pick(template.editedActivities, a.activityId), // template overrides
+          ...pick(ses.editedActivities, a.activityId), // instance overrides (win)
+          activityId: a.activityId,
+          activityInstanceId: a.activityInstanceId,
+        };
+
+        ses.activityDetails[a.activityInstanceId] = merged;
+      })
+    );
+
+    return ses;
+  };
+  /* ----------  remove session ---------- */
+  const handleRemove = async (note: string) => {
+    const ok = await RemoveSessionInPlanInstance(
+      sessionId,
+      planInstanceId,
+      note
+    );
+    if (ok) {
+      setShowConfirm(false);
+      getData();
+      await regenerate();
+      onClose();
+    }
+  };
+
+  /* ----------  remove activity ---------- */
+  const handleRemoveAct = async (id: string, note: string) => {
+    const ok = await RemoveActivityFromSession(
+      id,
+      sessionId,
+      planInstanceId,
+      note
+    );
+    if (ok) {
+      setshowConfirmAct(false);
+      getData();
+      onClose();
+    }
+  };
+
+  /* ----------  add activity ---------- */
+  const [activityForTable, setActivityForTable] = useState<Activity_Api_call>();
+  const [selectedActivities, setSelectedActivities] = useState<{
+    [id: number]: string;
+  }>({});
+
+  const updateTheActivitityById = async (activityId: string, index: number) => {
+    const act = await getActivityById(activityId);
+    if (act) setActivityForTable(act);
+  };
   const handleActivitySelectChange = (id: number, value: string) => {
-    setSelectedActivities((prev) => ({ ...prev, [id]: value }));
+    setSelectedActivities((p) => ({ ...p, [id]: value }));
     updateTheActivitityById(value, id);
   };
-
-
-
-  const { getSessionById, getActivityById, getSessionInstanceById, patchSession, RemoveSessionInPlanInstance, RemoveActivityFromSession, AddActivityToSession } = useApiCalls();
-  const [details, setDetails] = useState({});
-  console.log(sessionId,"iohhhhhhhioh")
-  const getSessionDetails = async (eventData) => {
-    try {
-      if (!eventData?.extendedProps?.sessionInstanceId) {
-        console.error("Invalid eventData or missing sessionInstanceId", eventData);
-        return null;
-      }
-
-      const sessionId = eventData.extendedProps.sessionInstanceId;
-      const sessionDetails = await getSessionInstanceById(sessionId)
-      const activityDetailsArray = (await Promise.all(
-        sessionDetails.activities.map(async (data: any) => {
-          // console.log(data?.status,data)
-          if (data?.status != "REMOVED") {
-            // console.log("omlu i am able to enter",da/ta)
-            const activityDetails = await getActivityById(data.activityId);
-            return { activityInstanceId: data.activityInstanceId, activityDetails };
-          }
-          return null
-        })
-      )).filter(Boolean);
-
-      // Store all activity details in a single object
-      sessionDetails.activityDetails = {};
-      for (const { activityInstanceId, activityDetails } of activityDetailsArray) {
-        if (activityDetails) {
-          sessionDetails.activityDetails[activityInstanceId] = activityDetails;
-        }
-      }
-
-      // console.log("Session Details:", sessionDetails);
-      return sessionDetails;
-
-    } catch (error) {
-      // console.error("Error fetching session details:", error);
-      return null;
+  const handleActivityAdd = async (e: any) => {
+    e.preventDefault();
+    if (!activityForTable?.activityId) return;
+    const ok = await AddActivityToSession(
+      activityForTable.activityId,
+      sessionId,
+      planInstanceId,
+      ""
+    );
+    if (ok) {
+      getData();
+      onClose();
     }
   };
 
-
-  useEffect(() => {
-    const fetchSessionDetails = async () => {
-      const res = await getSessionDetails(eventData);
-      console.log(res, "this is res from get")
-      if (res) {
-        setDetails(res);
-      } else {
-        console.error("Failed to fetch session details");
-      }
-    };
-    fetchSessionDetails();
-
-  }
-    , []);
-  useEffect(() => {
-    // console.log(details,details.category,"eventdatatttt");
-  }
-    , [details]);
-
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [showConfirmAct, setshowConfirmAct] = useState(false)
-  const [activityId, setactivityId] = useState('')
-  const [removalNote, setRemovalNote] = useState("");
-  const handleRemove = async (removalNote: string) => {
-    // console.log(details,"8732trg387",details.sessionId,planInstanceId)
-    // const confirmDelete = window.confirm("Are you sure you want to remove this session?");
-    if (showConfirm) {
-      // console.log(removalNote)
-      const res = await RemoveSessionInPlanInstance(sessionId, planInstanceId, removalNote)
-      if (res) {
-        setShowConfirm(false)
-        // console.log("session updated")
-        getData()
-        await regenerate();
-        onClose();
-      } else {
-        console.error("session not updated")
-      }
-    } else {
-      console.error("Removal cancelled.");
-    }
-
-  }
-  // this to commit the before pull
-  const handleRemoveAct = async (id: string, removalNote: string) => {
-    if (showConfirmAct) {
-      const res = await RemoveActivityFromSession(id, sessionId, planInstanceId, removalNote)
-      if (res) {
-        setshowConfirmAct(false)
-        getData()
-        // await regenerate();
-        onClose();
-      } else {
-        console.error("activity not updated")
-      }
-    } else {
-      console.log("Removal cancelled.");
-    }
-  }
-  const handleActivityAdd = async (e: any) => {
-    e.preventDefault();
-    console.log(activityForTable?.activityId, sessionId, planInstanceId, "thi si new ")
-    const res = await AddActivityToSession(activityForTable?.activityId, sessionId, planInstanceId,"")
-    if (res) {
-
-      console.log("checjidvobuewifbvwiyvfeouy")
-      //     await getData();  
-      // // await regenerate();
-      // setshowConfirmAct(false)
-
-      // onClose(); 
-      // setShowConfirm(false)
-      // console.log("session updated")
-      getData()
-      // await regenerate();
-      onClose();
-
-    } else {
-      console.error("session insatnce not updated")
-    }
-
-
-  }
+  /* ----------  UI ---------- */
   return (
-<div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs">
-  {showConfirm && (
-<div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs">          
-  <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
+    <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs">
+      {/* confirm modals … */}
+      {showConfirm && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 backdrop-blur-xs">
+          <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
               Are you sure you want to remove this session?
             </h2>
-
-            <label className="block mb-2 text-sm text-gray-700">
-              Reason of removal:
-            </label>
             <textarea
               value={removalNote}
               onChange={(e) => setRemovalNote(e.target.value)}
               rows={3}
-              minLength={20}
-              maxLength={100}
-              className="w-full border border-gray-300 rounded-md p-2 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Enter your note here..."
+              className="w-full border border-gray-300 rounded-md p-2 mb-4 text-sm"
+              placeholder="Reason (20-100 chars)"
             />
             <p className="text-right text-sm text-gray-500 mb-4">
-              {removalNote.length}/100 characters
+              {removalNote.length}/100
             </p>
-
             <div className="flex justify-end space-x-3">
-              <button
+              <Button
                 onClick={() => {
-                  setShowConfirm(false)
+                  setShowConfirm(false);
                   setRemovalNote("");
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
               >
                 Cancel
-              </button>
-              <button
-                onClick={() => {
-                  handleRemove(removalNote);
-                  setRemovalNote("");
-                }}
-                className={`px-4 py-2 rounded text-white ${removalNote.trim().length > 20
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-red-300 cursor-not-allowed"
-                  }`}
+              </Button>
+              <Button
                 disabled={removalNote.trim().length < 20}
+                onClick={() => handleRemove(removalNote)}
+                color="error"
+                variant="contained"
               >
                 Yes, Remove
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
+
       {showConfirmAct && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+        <div className="fixed inset-0 flex items-center justify-center backdrop-blur  bg-opacity-50 z-50">
           <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
             <h2 className="text-lg font-semibold text-gray-800 mb-4">
-              Are you sure you want to remove this activity?
+              Remove activity?
             </h2>
-
-            <label className="block mb-2 text-sm text-gray-700">
-              Reason of removal:
-            </label>
             <textarea
               value={removalNote}
               onChange={(e) => setRemovalNote(e.target.value)}
               rows={3}
-              minLength={10}
-              maxLength={50}
-              className="w-full border border-gray-300 rounded-md p-2 mb-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-              placeholder="Enter your note here..."
+              className="w-full border border-gray-300 rounded-md p-2 mb-4 text-sm"
+              placeholder="Reason (10-50 chars)"
             />
             <p className="text-right text-sm text-gray-500 mb-4">
-              {removalNote.length}/50 characters
+              {removalNote.length}/50
             </p>
-
             <div className="flex justify-end space-x-3">
-              <button
+              <Button
                 onClick={() => {
-                  setshowConfirmAct(false)
+                  setshowConfirmAct(false);
                   setRemovalNote("");
                 }}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
               >
                 Cancel
-              </button>
-              <button
-                onClick={() => {
-
-                  handleRemoveAct(activityId, removalNote);
-                  setRemovalNote("");
-                }}
-                className={`px-4 py-2 rounded text-white ${removalNote.trim().length > 10
-                  ? "bg-red-600 hover:bg-red-700"
-                  : "bg-red-300 cursor-not-allowed"
-                  }`}
+              </Button>
+              <Button
                 disabled={removalNote.trim().length < 10}
+                onClick={() => handleRemoveAct(activityId, removalNote)}
+                color="error"
+                variant="contained"
               >
                 Yes, Remove
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
+      {/* ----------  main modal ---------- */}
+      <div className="bg-white rounded-2xl shadow-lg w-full max-w-3xl max-h-[calc(100vh-4rem)] p-6 relative my-4 sm:my-6 flex flex-col">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl cursor-pointer"
+        >
+          &times;
+        </button>
 
-{/*changes made to adjust css = responsive window*/}
-<div className="bg-white rounded-2xl shadow-lg w-full max-w-2xl max-h-[calc(100vh-4rem)] p-6 relative my-4 sm:my-6 flex flex-col">
-  <button
-    onClick={onClose}
-    className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 text-xl cursor-pointer"
-  >
-    &times;
-  </button>
-  <p className="text-3xl font-bold mb-2">
-    {eventData.title === "DUMMY" ? "ACTIVITIES" : eventData.title}
-  </p>
+        <p className="text-3xl font-bold mb-2">
+          {eventData.title === "DUMMY" ? "ACTIVITIES" : eventData.title}
+        </p>
+        <p className="text-xl">
+          <strong>Plan Name:</strong>{" "}
+          {eventData.title === "DUMMY"
+            ? details?.activityDetails &&
+              `(${Object.keys(details.activityDetails).length} activities)`
+            : eventData.extendedProps.planTitle === "alacartePH"
+            ? "alacarte plan"
+            : eventData.extendedProps.planTitle}
+        </p>
 
-  <div className="text-sm text-gray-700 space-y-2 flex-grow">
-    {/* <p><strong>Plan ID:</strong> {eventData.extendedProps.planInstanceId}</p> */}
-    <p className="text-xl">
-      <strong>Plan Name: </strong>
-      {eventData.title === "DUMMY"
-        ? details?.activityDetails && (
-            <>
-              ({Object.keys(details.activityDetails).length} activities)
-            </>
-          )
-        : eventData.extendedProps.planTitle}
-    </p>
-    {details?.activityDetails && (
-      <div>
-        <p className="text-xl"><strong>Activities:</strong></p>
-        <ol className="list-decimal pl-5 text-xl">
-          <ol style={{ listStyleType: "none" }}>
-            <div className="flex flex-wrap bg-gray-200 font-semibold border border-gray-300 rounded">
-              <div className="w-1/4 p-2">Item</div>
-              <div className="w-1/4 p-2">Description</div>
-              <div className="w-1/4 p-2">Target</div>
-              <div className="w-1/4 p-2">Remove</div>
-            </div>
-          </ol>
-          {/* Scrollable Content */}
-          <div className="max-h-[calc(100vh-24rem)] overflow-y-auto">
-            {Object.entries(details.activityDetails).map(([activityId, activity]) => (
-              <li key={activityId}>
-                <div className="flex flex-wrap items-center">
-                  <div className="w-1/4 p-2">
-                    <strong>{activity.name}</strong>
-                  </div>
-                  <div className="w-1/4 p-2">{activity.description}</div>
-                  <div className="w-1/4 p-2">
-                    {activity?.target}
-                    {activity?.unit == "weight"
-                      ? "Kg"
-                      : activity?.unit == "distance"
-                      ? "Km"
-                      : activity?.unit == "time"
-                      ? "Min"
-                      : activity?.unit == "repetitions"
-                      ? "Reps"
-                      : ""}
-                  </div>
-                  <div className="w-1/4 p-2 flex justify-center items-center">
-                    <MinusCircle
-                      className="w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer transition mr-10"
-                      onClick={() => {
-                        setactivityId(activityId);
-                        setshowConfirmAct(true);
-                      }}
-                    />
-                  </div>
+        {/* ----------  table ---------- */}
+        {details?.activityDetails && (
+          <div className="mt-4 flex-grow overflow-hidden">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-lg font-semibold">Activities</span>
+              {!editMode ? (
+                <Button size="small" variant="outlined" onClick={enterEdit}>
+                  Edit
+                </Button>
+              ) : (
+                <div className="space-x-2">
+                  <Button size="small" onClick={cancelEdit}>
+                    Cancel
+                  </Button>
+                  <Button size="small" variant="contained" onClick={saveEdit}>
+                    Save
+                  </Button>
                 </div>
-              </li>
-            ))}
+              )}
+            </div>
+
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              {/* header */}
+              <div className="grid grid-cols-12 gap-2 bg-gray-100 text-gray-700 text-sm font-semibold px-3 py-2">
+                <div className="col-span-3">Name</div>
+                <div className="col-span-2">Description</div>
+                <div className="col-span-1">Target</div>
+                <div className="col-span-1">Unit</div>
+                <div className="col-span-1">Target2</div>
+                <div className="col-span-1">Unit2</div>
+                <div className="col-span-2">Video</div>
+                <div className="col-span-1 text-center">Remove</div>
+              </div>
+
+              {/* body */}
+              <div className="max-h-[calc(100vh-28rem)] overflow-y-auto">
+                {Object.entries(details.activityDetails).map(
+                  ([activityInstanceId, act]: any) => {
+                    const d = editMode
+                      ? draft[activityInstanceId] || {}
+                      : {
+                          target: act.target,
+                          unit: act.unit,
+                          target2: act.target2,
+                          unit2: act.unit2,
+                        };
+                    return (
+                      <div
+                        key={activityInstanceId}
+                        className="grid grid-cols-12 gap-2 items-center px-3 py-2 border-b border-gray-100 hover:bg-gray-50 text-sm"
+                      >
+                        {/* Replace the existing name cell */}
+                        <div className="col-span-3 font-medium">
+                          {editMode ? (
+                            <input
+                              type="text"
+                              className="w-full border rounded px-1"
+                              value={d.name ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "name",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          ) : (
+                            act.name
+                          )}
+                        </div>
+                        {/* Replace the existing description cell */}
+                        <div className="col-span-2 text-gray-600">
+                          {editMode ? (
+                            <textarea
+                              className="w-full border rounded px-1"
+                              rows={2}
+                              value={d.description ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "description",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          ) : (
+                            act.description
+                          )}
+                        </div>
+
+                        {/* target */}
+                        <div className="col-span-1">
+                          {editMode ? (
+                            <input
+                              type="number"
+                              className="w-full border rounded px-1"
+                              value={d.target ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "target",
+                                  e.target.value ? Number(e.target.value) : null
+                                )
+                              }
+                            />
+                          ) : (
+                            d.target ?? "-"
+                          )}
+                        </div>
+
+                        {/* unit */}
+                        <div className="col-span-1">
+                          {editMode ? (
+                            <select
+                              className="w-full border rounded px-1"
+                              value={d.unit ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "unit",
+                                  e.target.value || null
+                                )
+                              }
+                            >
+                              <option value="">-</option>
+                              <option value="weight">Kg</option>
+                              <option value="distance">Km</option>
+                              <option value="time">Min</option>
+                              <option value="repetitions">Reps</option>
+                            </select>
+                          ) : (
+                            prettyUnit(d.unit)
+                          )}
+                        </div>
+
+                        {/* target2 */}
+                        <div className="col-span-1">
+                          {editMode ? (
+                            <input
+                              type="number"
+                              className="w-full border rounded px-1"
+                              value={d.target2 ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "target2",
+                                  e.target.value ? Number(e.target.value) : null
+                                )
+                              }
+                            />
+                          ) : (
+                            d.target2 ?? "-"
+                          )}
+                        </div>
+
+                        {/* unit2 */}
+                        <div className="col-span-1">
+                          {editMode ? (
+                            <select
+                              className="w-full border rounded px-1"
+                              value={d.unit2 ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "unit2",
+                                  e.target.value || null
+                                )
+                              }
+                            >
+                              <option value="">-</option>
+                              <option value="weight">Kg</option>
+                              <option value="distance">Km</option>
+                              <option value="time">Min</option>
+                              <option value="repetitions">Reps</option>
+                            </select>
+                          ) : (
+                            prettyUnit(d.unit2)
+                          )}
+                        </div>
+
+                        {/* video */}
+                        <div className="col-span-2">
+                          {editMode ? (
+                            <input
+                              type="url"
+                              className="w-full border rounded px-1 text-sm"
+                              placeholder="YouTube URL"
+                              value={d.videoLink ?? ""}
+                              onChange={(e) =>
+                                updateDraft(
+                                  activityInstanceId,
+                                  "videoLink",
+                                  e.target.value
+                                )
+                              }
+                            />
+                          ) : act.videoLink ? (
+                            <button
+                              onClick={() =>
+                                setYoutubeModal({
+                                  isOpen: true,
+                                  videoUrl: act.videoLink,
+                                  title: act.name,
+                                })
+                              }
+                              className="text-blue-600 hover:underline truncate block bg-transparent border-none cursor-pointer"
+                            >
+                              Watch
+                            </button>
+                          ) : (
+                            <span className="text-gray-400">N/A</span>
+                          )}
+                        </div>
+
+                        {/* remove */}
+                        <div className="col-span-1 flex justify-center">
+                          <MinusCircle
+                            className="w-5 h-5 text-red-500 hover:text-red-600 cursor-pointer"
+                            onClick={() => {
+                              setactivityId(activityInstanceId);
+                              setshowConfirmAct(true);
+                            }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </div>
+            </div>
           </div>
-        </ol>
-      </div>
-    )}
-  </div>
-  <div className="mt-4 flex justify-end gap-3">
-    <button
-      onClick={onClose}
-      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-    >
-      Close
-    </button>
-    <button
-      id="remove_eventmodal"
-      onClick={() => setShowConfirm(true)}
-      className="px-2 py-1 bg-red-600 text-white rounded-md hover:bg-red-700"
-    >
-      Remove
-    </button>
-  </div>
-  <div className="mt-4 flex items-center gap-4">
-    <div>
-      <Autocomplete
-        options={activities_api_call}
-        getOptionLabel={(option) => option.name || ""}
-        value={
-          activities_api_call.find((a) => a.activityId === selectedActivities[0]) || null
-        }
-        onChange={(_, newValue) => {
-          handleActivitySelectChange(0, newValue ? newValue.activityId : "");
-          setActivityForTable(newValue);
-        }}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label="Select Activity"
-            variant="outlined"
-            size="small"
-            sx={{ width: 250 }}
-          />
         )}
-        sx={{ width: 250, backgroundColor: "white" }}
-        isOptionEqualToValue={(option, value) => option.activityId === value.activityId}
-        freeSolo
-      />
-    </div>
-    <button
-      onClick={(e) => handleActivityAdd(e)}
-      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 ml-60"
-    >
-      Add Activity
-    </button>
-  </div>
-</div>
+
+        {/* ----------  bottom buttons ---------- */}
+        <div className="mt-4 flex justify-end gap-3">
+          <Button variant="outlined" onClick={onClose}>
+            Close
+          </Button>
+          <Button
+            id="remove_eventmodal"
+            color="error"
+            variant="contained"
+            onClick={() => setShowConfirm(true)}
+          >
+            Remove Session
+          </Button>
+        </div>
+
+        {/* ----------  add activity row ---------- */}
+        <div className="mt-4 flex items-center gap-4">
+          <Autocomplete
+            options={activities_api_call}
+            getOptionLabel={(o) => o.name || ""}
+            value={
+              activities_api_call.find(
+                (a) => a.activityId === selectedActivities[0]
+              ) || null
+            }
+            onChange={(_, nv) => {
+              handleActivitySelectChange(0, nv ? nv.activityId : "");
+              setActivityForTable(nv || undefined);
+            }}
+            renderInput={(p) => (
+              <TextField
+                {...p}
+                label="Select Activity"
+                size="small"
+                sx={{ width: 250 }}
+              />
+            )}
+            isOptionEqualToValue={(o, v) => o.activityId === v?.activityId}
+          />
+          <Button
+            variant="contained"
+            onClick={handleActivityAdd}
+            disabled={!activityForTable?.activityId}
+          >
+            Add Activity
+          </Button>
+        </div>
+        <YouTubeVideoModal
+          isOpen={youtubeModal.isOpen}
+          onClose={() =>
+            setYoutubeModal((prev) => ({ ...prev, isOpen: false }))
+          }
+          videoUrl={youtubeModal.videoUrl}
+          title={youtubeModal.title}
+        />
+      </div>
     </div>
   );
 }
