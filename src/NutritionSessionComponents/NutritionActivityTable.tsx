@@ -693,7 +693,7 @@ function NutritionActivityTable() {
           {/* Right Panel Header */}
 
           <div className="flex flex-col gap-3 py-3 mb-3 border-b border-gray-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2">
               <div className="min-w-0">
                 <FormControl fullWidth variant="standard">
                   <TextField
@@ -804,118 +804,93 @@ function NutritionActivityTable() {
                 </FormControl>
               </div>
 
-              {/* <div className="min-w-0">
-                <FormControl fullWidth variant="standard">
-                  <InputLabel id="meal-type-select-label" shrink={true}>
-                    Type
-                  </InputLabel>
-                  <Select
-                    labelId="meal-type-select-label"
-                    value={mealType}
-                    onChange={(e) => setMealType(e.target.value)}
-                    displayEmpty
-                    renderValue={(selected) => {
-                      if (!selected) {
-                        return <span></span>;
-                      }
-                      return selected;
-                    }}
-                    sx={{ fontSize: "0.9rem", fontFamily: "Roboto" }}
-                    size="small"
-                  >
-                    <MenuItem value="">None</MenuItem>
-                    {mealTypes.map((type, i) => (
-                      <MenuItem key={i} value={type}>
-                        {type}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </div> */}
-            </div>
-
-            {/* Action Buttons Row */}
-            <div className="flex justify-end gap-2">
-              {!isEditMode ? (
-                <>
-                  <button
-                    className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
-                    onClick={() => {
-                      setOriginalEmptyArr(JSON.parse(JSON.stringify(emptyArr)));
-                      setIsEditMode(true);
-                    }}
-                  >
-                    <Edit size={14} />
-                    <span>Edit</span>
-                  </button>
-                  <button
-                    className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-xs btn2 whitespace-nowrap"
-                    onClick={handleSessionCreation}
-                  >
-                    <Save size={14} />
-                    <span>Save</span>
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-xs btn2 whitespace-nowrap"
-                    onClick={() => {
-                      const changes = [];
-                      emptyArr.forEach((activity, index) => {
-                        const original = originalEmptyArr[index];
-                        if (original) {
-                          const changedFields = {};
-                          if (activity.name !== original.name) {
-                            changedFields.name = activity.name;
-                            setSelectedActivities((prev) => ({
-                              ...prev,
-                              [index]:
-                                activity.activityId ||
-                                prev[index] ||
-                                Date.now().toString(),
-                            }));
+              {/* Action Buttons moved here - next to Goal */}
+              <div className="flex items-end gap-1">
+                {!isEditMode ? (
+                  <>
+                    <button
+                      className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
+                      onClick={() => {
+                        setOriginalEmptyArr(
+                          JSON.parse(JSON.stringify(emptyArr))
+                        );
+                        setIsEditMode(true);
+                      }}
+                    >
+                      <Edit size={14} />
+                      <span>Edit Mode</span>
+                    </button>
+                    <button
+                      className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-xs btn2 whitespace-nowrap"
+                      onClick={handleSessionCreation}
+                    >
+                      <Save size={14} />
+                      <span>Save</span>
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="flex items-center justify-center space-x-1 text-white px-3 py-2 rounded-xl text-xs btn2 whitespace-nowrap"
+                      onClick={() => {
+                        const changes = [];
+                        emptyArr.forEach((activity, index) => {
+                          const original = originalEmptyArr[index];
+                          if (original) {
+                            const changedFields = {};
+                            if (activity.name !== original.name) {
+                              changedFields.name = activity.name;
+                              setSelectedActivities((prev) => ({
+                                ...prev,
+                                [index]:
+                                  activity.activityId ||
+                                  prev[index] ||
+                                  Date.now().toString(),
+                              }));
+                            }
+                            if (activity.description !== original.description)
+                              changedFields.description = activity.description;
+                            if (activity.target !== original.target)
+                              changedFields.target = activity.target;
+                            if (activity.unit !== original.unit)
+                              changedFields.unit = activity.unit;
+                            if (activity.target2 !== original.target2)
+                              changedFields.target2 = activity.target2;
+                            if (activity.unit2 !== original.unit2)
+                              changedFields.unit2 = activity.unit2;
+                            if (activity.vegNonVeg !== original.vegNonVeg)
+                              changedFields.vegNonVeg =
+                                activity.vegNonVeg || "VEG";
+                            if (Object.keys(changedFields).length > 0) {
+                              changes.push({
+                                activityId: activity.activityId,
+                                ...changedFields,
+                              });
+                            }
                           }
-                          if (activity.description !== original.description)
-                            changedFields.description = activity.description;
-                          if (activity.target !== original.target)
-                            changedFields.target = activity.target;
-                          if (activity.unit !== original.unit)
-                            changedFields.unit = activity.unit;
-                          if (activity.target2 !== original.target2)
-                            changedFields.target2 = activity.target2;
-                          if (activity.unit2 !== original.unit2)
-                            changedFields.unit2 = activity.unit2;
-                          if (activity.vegNonVeg !== original.vegNonVeg)
-                            changedFields.vegNonVeg =
-                              activity.vegNonVeg || "VEG";
-                          if (Object.keys(changedFields).length > 0) {
-                            changes.push({
-                              activityId: activity.activityId,
-                              ...changedFields,
-                            });
-                          }
-                        }
-                      });
-                      setEditedActivities(changes);
-                      setIsEditMode(false);
-                    }}
-                  >
-                    <Save size={14} />
-                    <span>Save</span>
-                  </button>
-                  <button
-                    className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
-                    onClick={() => {
-                      setEmptyArr(JSON.parse(JSON.stringify(originalEmptyArr)));
-                      setIsEditMode(false);
-                      setEditedActivities([]);
-                    }}
-                  >
-                    <span>Cancel</span>
-                  </button>
-                </>
-              )}
+                        });
+                        setEditedActivities(changes);
+                        setIsEditMode(false);
+                      }}
+                    >
+                      <Save size={14} />
+                      <span>Save</span>
+                    </button>
+                    <button
+                      className="flex items-center justify-center space-x-1 p-2 text-xs plus-new-actvity whitespace-nowrap"
+                      onClick={() => {
+                        setEmptyArr(
+                          JSON.parse(JSON.stringify(originalEmptyArr))
+                        );
+                        setIsEditMode(false);
+                        setEditedActivities([]);
+                      }}
+                    >
+                      <span>Cancel</span>
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 

@@ -33,7 +33,7 @@ import { TbMessage } from "react-icons/tb";
 import Breadcrumb from "../Breadcrumbs/Breadcrumb";
 // Add these imports at the top of the UserChats component file
 import axios from "axios";
-import { API_BASE_URL , API_BASE_URL2 } from "../store/axios";
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 const API_KEY = "0DwkUw.pjfyJw:CwXcw14bOIyzWPRLjX1W7MAoYQYEVgzk8ko3tn0dYUI";
 
 interface RoomData {
@@ -58,6 +58,7 @@ interface Message {
   text: string;
   timestamp: number;
   sender: string;
+  senderName?: string;
   isOwn: boolean;
   context?: {
     openDate?: string;
@@ -123,13 +124,47 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const [nameCache, setNameCache] = useState<{ [clientId: string]: string }>(
+    {}
+  );
+
+  const fetchUserName = async (clientId: string): Promise<string> => {
+    // Return cached name if available
+    if (nameCache[clientId]) {
+      return nameCache[clientId];
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL2}/human/${clientId}`);
+      if (response.ok) {
+        const userData = await response.json();
+        const userName = userData.name || clientId;
+
+        // Cache the name
+        setNameCache((prev) => ({
+          ...prev,
+          [clientId]: userName,
+        }));
+
+        return userName;
+      }
+    } catch (error) {
+      console.error(`Error fetching name for ${clientId}:`, error);
+    }
+
+    // Fallback to clientId if API fails
+    return clientId;
+  };
 
   // Use Ably Chat React hook
   const { send, historyBeforeSubscribe } = useMessages({
-    listener: (event: ChatMessageEvent) => {
+    listener: async (event: ChatMessageEvent) => {
       console.log("📨 Message event received:", event);
 
       if (event.type === ChatMessageEventType.Created) {
+        // Fetch sender name
+        const senderName = await fetchUserName(event.message.clientId);
+
         const newMsg: Message = {
           id: `${Date.now()}-${Math.random()}`,
           text: event.message.text,
@@ -137,6 +172,7 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
             event.message.timestamp || event.message.createdAt || Date.now()
           ).getTime(),
           sender: event.message.clientId,
+          senderName: senderName, // Add this line
           isOwn: event.message.clientId === currentClientId,
           context:
             event.message.metadata?.context &&
@@ -164,31 +200,40 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
         console.log("📥 Loading messages for room:", roomData?.roomName);
         const result = await historyBeforeSubscribe({ limit: 60 });
 
-        // Sort messages by timestamp (oldest first, newest last)
-        // Sort messages by timestamp (oldest first, newest last)
-        // Sort messages by timestamp (oldest first, newest last)
-        const initialMessages: Message[] = result.items
-          .map((msg: any, index: number) => ({
-            id: `${roomData?.chatId || "room"}-${index}`,
-            text: msg.text,
-            timestamp: new Date(
-              msg.timestamp || msg.createdAt || Date.now()
-            ).getTime(),
-            sender: msg.clientId,
-            isOwn: msg.clientId === currentClientId,
-            context:
-              msg.metadata?.context && typeof msg.metadata.context === "object"
-                ? {
-                    openDate: (msg.metadata.context as any).openDate,
-                    sessionTemplateTitle: (msg.metadata.context as any)
-                      .sessionTemplateTitle,
-                  }
-                : undefined,
-          }))
-          .sort((a, b) => a.timestamp - b.timestamp);
+        // Process messages and fetch sender names
+        const initialMessages: Message[] = await Promise.all(
+          result.items.map(async (msg: any, index: number) => {
+            const senderName = await fetchUserName(msg.clientId);
 
-        console.log("📋 Loaded messages:", initialMessages.length);
-        setMessages(initialMessages);
+            return {
+              id: `${roomData?.chatId || "room"}-${index}`,
+              text: msg.text,
+              timestamp: new Date(
+                msg.timestamp || msg.createdAt || Date.now()
+              ).getTime(),
+              sender: msg.clientId,
+              senderName: senderName, // Add this line
+              isOwn: msg.clientId === currentClientId,
+              context:
+                msg.metadata?.context &&
+                typeof msg.metadata.context === "object"
+                  ? {
+                      openDate: (msg.metadata.context as any).openDate,
+                      sessionTemplateTitle: (msg.metadata.context as any)
+                        .sessionTemplateTitle,
+                    }
+                  : undefined,
+            };
+          })
+        );
+
+        // Sort by timestamp
+        const sortedMessages = initialMessages.sort(
+          (a, b) => a.timestamp - b.timestamp
+        );
+
+        console.log("📋 Loaded messages:", sortedMessages.length);
+        setMessages(sortedMessages);
       } catch (error) {
         console.error("Error loading messages:", error);
         setMessages([]);
@@ -216,7 +261,10 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
 
     try {
       console.log("📤 Sending message:", newMessage.trim());
-      await send({ text: newMessage.trim(), metadata: {location: "User-Chats"} });
+      await send({
+        text: newMessage.trim(),
+        metadata: { location: "User-Chats" },
+      });
       setNewMessage("");
       console.log("✅ Message sent successfully");
     } catch (error) {
@@ -293,6 +341,19 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
                     wordBreak: "break-word",
                   }}
                 >
+                  {/* Sender Name - Show at top of message bubble for non-own messages */}
+                  {!message.isOwn && (
+                    <div
+                      className={`text-xs font-medium mb-1 pb-1 border-b ${
+                        message.isOwn
+                          ? "text-green-700 border-green-200"
+                          : "text-blue-700 border-blue-200"
+                      }`}
+                    >
+                      {message.senderName || message.sender}
+                    </div>
+                  )}
+
                   {/* Context Header inside message */}
                   {message.context &&
                     (message.context.openDate ||
@@ -315,6 +376,8 @@ const ChatRoom: React.FC<ChatRoomProps> = ({
 
                   {/* Message Text */}
                   <div className="whitespace-pre-wrap">{message.text}</div>
+
+                  {/* Timestamp */}
                   <div
                     className={`text-xs mt-1 ${
                       message.isOwn ? "text-green-600" : "text-blue-600"
@@ -471,147 +534,150 @@ const UserChats: React.FC<UserChatsProps> = ({
     console.log("🔑 Current client ID (logged in user):", currentClientId);
   }, [currentClientId, propUserId, propUserName]);
 
+  // const recordPresence = async (action: "ENTER" | "EXIT") => {
+  //   if (roomsData.length === 0) return;
 
-// const recordPresence = async (action: "ENTER" | "EXIT") => {
-//   if (roomsData.length === 0) return;
+  //   const payload = roomsData.map(room => ({
+  //     action,
+  //     userId: getClientId(),
+  //     roomId: room.chatId,
+  //     timeStamp: Date.now(),
+  //   }));
 
-//   const payload = roomsData.map(room => ({
-//     action,
-//     userId: getClientId(),
-//     roomId: room.chatId,
-//     timeStamp: Date.now(),
-//   }));
+  //   try {
+  //     const response = await axios.post(
+  //       "${API_BASE_URL2}/chatV1/presence/record",
+  //       payload
+  //     );
+  //     console.log(`${action} presence recorded:`, response.data);
+  //   } catch (error) {
+  //     console.error(`Error recording ${action} presence:`, error);
+  //   }
+  // };
 
-//   try {
-//     const response = await axios.post(
-//       "${API_BASE_URL2}/chatV1/presence/record",
-//       payload
-//     );
-//     console.log(`${action} presence recorded:`, response.data);
-//   } catch (error) {
-//     console.error(`Error recording ${action} presence:`, error);
-//   }
-// };
+  const recordPresence = async (
+    action: "ENTER" | "EXIT",
+    useBeacon = false
+  ) => {
+    const currentRooms =
+      roomsRef.current.length > 0 ? roomsRef.current : roomsData;
+    if (currentRooms.length === 0) return;
 
-const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
-  const currentRooms = roomsRef.current.length > 0 ? roomsRef.current : roomsData;
-  if (currentRooms.length === 0) return;
+    const payload = currentRooms.map((room) => ({
+      action,
+      userId: getClientId(),
+      roomId: room.chatId,
+      timeStamp: Date.now(),
+    }));
 
-  const payload = currentRooms.map(room => ({
-    action,
-    userId: getClientId(),
-    roomId: room.chatId,
-    timeStamp: Date.now(),
-  }));
+    const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
-  const url = `${API_BASE_URL2}/chatV1/presence/record`;
-
-  if (useBeacon && navigator.sendBeacon) {
-    const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-    const success = navigator.sendBeacon(url, blob);
-    console.log(`${action.toLowerCase()} beacon sent:`, success);
-    if (success) return;
-  }
-
-  try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-    
-    if (response.ok) {
-      console.log(`${action} presence recorded successfully`);
+    if (useBeacon && navigator.sendBeacon) {
+      const blob = new Blob([JSON.stringify(payload)], {
+        type: "application/json",
+      });
+      const success = navigator.sendBeacon(url, blob);
+      console.log(`${action.toLowerCase()} beacon sent:`, success);
+      if (success) return;
     }
-  } catch (error) {
-    console.error(`Error recording ${action} presence:`, error);
-  }
-};
-  
-useEffect(() => {
-  if (!userId) return;
 
-  const fetchRoomData = async () => {
     try {
-      setLoading(true);
-      console.log("📡 Fetching room data for userId:", userId);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      });
 
-      const response = await fetch(
-        `${API_BASE_URL2}/human/human/${userId}`
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (response.ok) {
+        console.log(`${action} presence recorded successfully`);
       }
-
-      const data: RoomData[] = await response.json();
-      console.log("📋 Room data received:", data);
-
-      setRoomsData(data);
-      setError(null);
     } catch (error) {
-      console.error("Error fetching room data:", error);
-      setError("Failed to load chat rooms");
-      // Set empty array for development
-      setRoomsData([]);
-    } finally {
-      setLoading(false);
+      console.error(`Error recording ${action} presence:`, error);
     }
   };
 
-  fetchRoomData();
-}, [userId]);
+  useEffect(() => {
+    if (!userId) return;
 
-useEffect(() => {
-  roomsRef.current = roomsData;
-}, [roomsData]);
+    const fetchRoomData = async () => {
+      try {
+        setLoading(true);
+        console.log("📡 Fetching room data for userId:", userId);
 
-useEffect(() => {
-  if (roomsData.length === 0) return;
+        const response = await fetch(`${API_BASE_URL2}/human/human/${userId}`);
 
-  recordPresence("ENTER");
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-  return () => {
-    recordPresence("EXIT");
-  };
-}, [roomsData]);
+        const data: RoomData[] = await response.json();
+        console.log("📋 Room data received:", data);
 
-// useEffect(() => {
-//   const handleBeforeUnload = () => {
-//     recordPresence("EXIT");
-//   };
+        setRoomsData(data);
+        setError(null);
+      } catch (error) {
+        console.error("Error fetching room data:", error);
+        setError("Failed to load chat rooms");
+        // Set empty array for development
+        setRoomsData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-//   window.addEventListener("beforeunload", handleBeforeUnload);
+    fetchRoomData();
+  }, [userId]);
 
-//   return () => {
-//     window.removeEventListener("beforeunload", handleBeforeUnload);
-//   };
-// }, [roomsData]);
+  useEffect(() => {
+    roomsRef.current = roomsData;
+  }, [roomsData]);
 
-useEffect(() => {
-  const handleBeforeUnload = () => {
-    recordPresence("EXIT", true);
-  };
+  useEffect(() => {
+    if (roomsData.length === 0) return;
 
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'hidden') {
-      recordPresence("EXIT", false);
-    } else {
-      recordPresence("ENTER", false);
-    }
-  };
+    recordPresence("ENTER");
 
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      recordPresence("EXIT");
+    };
+  }, [roomsData]);
 
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [roomsData]);
+  // useEffect(() => {
+  //   const handleBeforeUnload = () => {
+  //     recordPresence("EXIT");
+  //   };
+
+  //   window.addEventListener("beforeunload", handleBeforeUnload);
+
+  //   return () => {
+  //     window.removeEventListener("beforeunload", handleBeforeUnload);
+  //   };
+  // }, [roomsData]);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT", true);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        recordPresence("EXIT", false);
+      } else {
+        recordPresence("ENTER", false);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [roomsData]);
 
   const getColumnHeaderStyle = (type: string): string => {
     switch (type) {
@@ -724,9 +790,9 @@ useEffect(() => {
   return (
     <ChatClientProvider client={chatClient}>
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 relative">
-        <div className="absolute top-4 left-4 z-50">
+        {/* <div className="absolute top-4 left-4 z-50">
           <Breadcrumb />
-        </div>
+        </div> */}
         <div className="max-w-7xl mx-auto">
           {/* Header with customer name */}
 
@@ -737,7 +803,7 @@ useEffect(() => {
                   onClick={onBack}
                   className="flex text-blue-500 hover:text-blue-600 text-sm"
                 >
-                  <ArrowLeft className="w-5 h-5 mr-2" />
+                  <ArrowLeft className="w-5 h-5"/>
                   Back to RM Dashboard
                 </button>
               </div>

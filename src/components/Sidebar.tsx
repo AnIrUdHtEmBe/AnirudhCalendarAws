@@ -130,9 +130,10 @@ const Sidebar: React.FC<SidebarProps> = ({ collapsed, toggleSidebar }) => {
       path: "/rmdashboard",
     },
     { icon: <MessageCircle size={20} />, text: "Communications", path: "/notifications" },
+    { icon: <LogOut size={20} />, text: "Logout", path: "/logout" },
     { icon: <Settings size={20} />, text: "Settings", path: "/settings" },
     { icon: <HelpCircle size={20} />, text: "Help", path: "/help" },
-    { icon: <LogOut size={20} />, text: "Logout", path: "/logout" },
+    
   ];
 
   return (

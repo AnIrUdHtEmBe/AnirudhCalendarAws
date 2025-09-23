@@ -30,7 +30,7 @@ import {
 } from "react-icons/gi";
 import { MdSportsTennis } from "react-icons/md";
 import { TbSkateboard } from "react-icons/tb";
-import { API_BASE_URL ,API_BASE_URL2 } from "../store/axios";
+import { API_BASE_URL, API_BASE_URL2 } from "../store/axios";
 export const PLAY_CONFIG = {
   startTime: "6:00",
   endTime: "24:00",
@@ -127,7 +127,7 @@ export default function Communications({
   const [mySport, setMySports] = useState<any[]>([]);
   const chatType = "tribe";
   const [activeChat, setActiveChat] = useState<string | null>(null);
-  
+  const [clientPhotos, setClientPhotos] = useState<Record<string, string>>({});
 
   const { historyBeforeSubscribe, send } = useMessages({
     listener: (event: ChatMessageEvent) => {
@@ -135,6 +135,7 @@ export default function Communications({
         const newMsg = event.message as unknown as Message;
         setMessages((prev) => [...prev, event.message as unknown as Message]);
         fetchSenderName(newMsg.clientId);
+        fetchSenderPhoto(newMsg.clientId);
       }
     },
     onDiscontinuity: (error: Error) => {
@@ -150,7 +151,10 @@ export default function Communications({
         const initialMessages: Message[] = result.items as unknown as Message[];
         setMessages(initialMessages);
         setLoading(false);
-        initialMessages.forEach((msg) => fetchSenderName(msg.clientId));
+        initialMessages.forEach((msg) => {
+          fetchSenderName(msg.clientId);
+          fetchSenderPhoto(msg.clientId); // Add this line
+        });
       });
     }
   }, [historyBeforeSubscribe, loading]);
@@ -160,70 +164,76 @@ export default function Communications({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    recordPresence("ENTER");
+    return () => {
+      recordPresence("EXIT");
+    };
+  }, [roomName]);
 
-useEffect(() => {
-  recordPresence("ENTER")
-  return(() => {
-    recordPresence("EXIT")
-  })
-},[roomName])
+  const recordPresence = async (
+    action: "ENTER" | "EXIT",
+    useBeacon = false
+  ) => {
+    try {
+      const payload = [
+        {
+          action,
+          userId: getUserId(),
+          roomId: roomName,
+          timeStamp: Date.now(),
+        },
+      ];
 
-const recordPresence = async (action: "ENTER" | "EXIT", useBeacon = false) => {
-  try {
-    const payload = [{
-      action,
-      userId: getUserId(),
-      roomId: roomName,
-      timeStamp: Date.now(),
-    }];
+      const url = `${API_BASE_URL2}/chatV1/presence/record`;
 
-    const url = `${API_BASE_URL2}/chatV1/presence/record`;
+      if (useBeacon && navigator.sendBeacon) {
+        const blob = new Blob([JSON.stringify(payload)], {
+          type: "application/json",
+        });
+        const success = navigator.sendBeacon(url, blob);
+        console.log(`${action.toLowerCase()} beacon sent:`, success);
+        if (success) return;
+      }
 
-    if (useBeacon && navigator.sendBeacon) {
-      const blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
-      const success = navigator.sendBeacon(url, blob);
-      console.log(`${action.toLowerCase()} beacon sent:`, success);
-      if (success) return;
-    }
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      });
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-      keepalive: true
-    });
-    
-    if (response.ok) {
-      console.log(`${action} presence recorded successfully`);
-    }
-  } catch (error) {
-    console.error(`Error recording ${action} presence:`, error);
-  }
-};
-  
-useEffect(() => {
-  const handleBeforeUnload = () => {
-    recordPresence("EXIT", true);
-  };
-
-  const handleVisibilityChange = () => {
-    if (document.visibilityState === 'hidden') {
-      recordPresence("EXIT", false);
-    } else {
-      recordPresence("ENTER", false);
+      if (response.ok) {
+        console.log(`${action} presence recorded successfully`);
+      }
+    } catch (error) {
+      console.error(`Error recording ${action} presence:`, error);
     }
   };
 
-  window.addEventListener("beforeunload", handleBeforeUnload);
-  document.addEventListener("visibilitychange", handleVisibilityChange);
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      recordPresence("EXIT", true);
+    };
 
-  return () => {
-    window.removeEventListener("beforeunload", handleBeforeUnload);
-    document.removeEventListener("visibilitychange", handleVisibilityChange);
-  };
-}, [roomName]);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        recordPresence("EXIT", false);
+      } else {
+        recordPresence("ENTER", false);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [roomName]);
 
   const getIconForSport = (sportName: string) => {
     const name = sportName.toLowerCase();
@@ -252,9 +262,10 @@ useEffect(() => {
 
   const sendMessage = () => {
     if (!inputValue.trim()) return;
-    send({ text: inputValue.trim(), metadata: {location: "Communications-Tribe"} }).catch((err: unknown) =>
-      console.error("Send error", err)
-    );
+    send({
+      text: inputValue.trim(),
+      metadata: { location: "Communications-Tribe" },
+    }).catch((err: unknown) => console.error("Send error", err));
     setInputValue("");
     setIsTyping(false);
   };
@@ -280,7 +291,7 @@ useEffect(() => {
     }
   }
 
-   function getUserId() {
+  function getUserId() {
     try {
       const t = sessionStorage.getItem("token");
       return t ? JSON.parse(atob(t.split(".")[1])).sub : "Guest";
@@ -305,6 +316,38 @@ useEffect(() => {
     }
   };
 
+  const fetchSenderPhoto = async (clientId: string) => {
+    if (!clientId || clientId === "Guest" || clientPhotos[clientId]) return; // already fetched or guest
+
+    try {
+      const res = await axios.post(
+  `${API_BASE_URL_Latest}/human/human/get-photo`,
+  clientId,  // just the value
+  {
+    headers: { 'Content-Type': 'text/plain' }
+  }
+);
+      if (res.data?.photoThumbUrl) {
+        setClientPhotos((prev) => ({
+          ...prev,
+          [clientId]: res.data.photoThumbUrl,
+        }));
+      } else {
+        // Use default avatar if no photo
+        setClientPhotos((prev) => ({
+          ...prev,
+          [clientId]: "https://randomuser.me/api/portraits/men/78.jpg",
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching sender photo", error);
+      setClientPhotos((prev) => ({
+        ...prev,
+        [clientId]: "https://randomuser.me/api/portraits/men/78.jpg",
+      })); // fallback
+    }
+  };
+
   useEffect(() => {
     if (chatType === "tribe") {
       async function fetchSportDetails() {
@@ -313,7 +356,7 @@ useEffect(() => {
           const data = res.data;
           setMySports(data);
           console.log("communication sports", data);
-          setActiveChat("CHAT_BTAV33")
+          setActiveChat("CHAT_BTAV33");
           // Optionally set the first sport as active by default
           // if (data.length > 0 && data[0].chatId) {
           //   setActiveChat("CHAT_BTAV33");
@@ -327,47 +370,47 @@ useEffect(() => {
     }
   }, [chatType]);
 
-  
-
   // Updated handleIconClick function
   const handleIconClick = (sport: any) => {
     console.log("Icon clicked for sport:", sport);
     console.log("ChatId from icon click:", sport.chatId);
-    
+
     if (sport.chatId) {
       setActiveChat(sport.chatId);
       console.log("Active chat set to:", sport.chatId);
-      
+
       // Update sessionStorage and dispatch custom event
       sessionStorage.setItem("communicationName", sport.chatId);
       localStorage.setItem("communicationName", sport.chatId);
-      
+
       // Dispatch custom event to notify other components
-      window.dispatchEvent(new CustomEvent('sessionStorageUpdate', {
-        detail: { key: 'communicationName', value: sport.chatId }
-      }));
+      window.dispatchEvent(
+        new CustomEvent("sessionStorageUpdate", {
+          detail: { key: "communicationName", value: sport.chatId },
+        })
+      );
     } else {
       console.warn("No chatId found for sport:", sport.name);
     }
   };
 
   function extractChatId(roomName: string) {
-  const prefix = "";
-  // console.log("original roomname", roomName);
-  
-  // console.log(roomName.startsWith(prefix) ? roomName.substring(prefix.length) : roomName, "undefined!");
-  
-  return roomName.startsWith(prefix) ? roomName.substring(prefix.length) : roomName;
-}
+    const prefix = "";
+    // console.log("original roomname", roomName);
 
+    // console.log(roomName.startsWith(prefix) ? roomName.substring(prefix.length) : roomName, "undefined!");
 
-console.log(
-  roomName
-    ? (mySport.find(s => s.chatId === roomName)?.name || 'Box Cricket')
-    : activeChat,
-  "Header roomname"
-);
+    return roomName.startsWith(prefix)
+      ? roomName.substring(prefix.length)
+      : roomName;
+  }
 
+  console.log(
+    roomName
+      ? mySport.find((s) => s.chatId === roomName)?.name || "Box Cricket"
+      : activeChat,
+    "Header roomname"
+  );
 
   return (
     <div className="flex flex-col h-screen bg-gray-50">
@@ -397,7 +440,7 @@ console.log(
           );
         })}
       </div>
-      
+
       <div className="bg-white shadow-sm border-none px-4 py-3 flex items-center gap-3">
         <button onClick={onClose}>
           <ChevronLeft />
@@ -406,8 +449,12 @@ console.log(
           {roomName.toUpperCase().charAt(0)}
         </div> */}
         <h1 className="text-2xl font-bold tracking-wide text-gray-900">
-          {roomName ? `${mySport.find(s => s.chatId === roomName)?.name || 'Box Cricket'}` : activeChat}
-          
+          {roomName
+            ? `${
+                mySport.find((s) => s.chatId === roomName)?.name ||
+                "Box Cricket"
+              }`
+            : activeChat}
         </h1>
       </div>
 
@@ -426,29 +473,30 @@ console.log(
           [...messages]
             .sort(
               (a, b) =>
-                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                new Date(a.timestamp).getTime() -
+                new Date(b.timestamp).getTime()
             )
             .map((msg: Message, idx) => {
               const isMine = msg.clientId === getUserId();
               const date = new Date(msg.timestamp || msg.createdAt || 0);
 
-                  const day = date.getDate(); // 25
-                  const month = date.toLocaleString("en-US", {
-                    month: "short",
-                  }); // Aug
+              const day = date.getDate(); // 25
+              const month = date.toLocaleString("en-US", {
+                month: "short",
+              }); // Aug
 
-                  const time = date.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  });
+              const time = date.toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              });
 
-                  const timestamp = `${day} ${month} - ${time}`;
-
-                  
+              const timestamp = `${day} ${month} - ${time}`;
 
               // Avatar (static or with msg.avatarUrl if you have per-user photo)
+              // Replace the avatarUrl assignment in the message mapping
               const avatarUrl =
-                msg.avatarUrl || "https://randomuser.me/api/portraits/men/78.jpg";
+                clientPhotos[msg.clientId] ||
+                "https://randomuser.me/api/portraits/men/78.jpg";
 
               return (
                 <div
@@ -522,7 +570,9 @@ console.log(
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               className="w-full bg-white border border-blue-200 rounded-full px-6 py-3 text-base shadow-md focus:outline-none focus:border-teal-500 focus:ring-2 focus:ring-blue-400/50 pr-14 placeholder:text-blue-300 font-medium transition"
-              placeholder={roomName ? "Type a message…" : "Select a sport first…"}
+              placeholder={
+                roomName ? "Type a message…" : "Select a sport first…"
+              }
               disabled={!roomName}
             />
             {isTyping && roomName && (
@@ -542,7 +592,6 @@ console.log(
             className="flex-shrink-0 bg-teal-200 hover:bg-teal-300 transition rounded-full w-9 h-9 flex items-center justify-center text-teal-700 shadow"
             aria-label="Record Voice"
             disabled={!roomName}
-            
           >
             {/* Voice icon (use 🎤 for emoji, or Lucide <Mic />) */}
             <span className="text-lg">🎤</span>

@@ -50,7 +50,7 @@ function AllNutrition() {
   const [allCategories, setAllCategories] = useState<string[]>([]);
   const [vegNonVegStatus, setVegNonVegStatus] = useState<string>("VEG");
   const [nameFilter, setNameFilter] = useState(""); // For name-based search
-  const [vegFilter, setVegFilter] = useState("All"); // For veg/non-veg filter
+  const [vegFilter, setVegFilter] = useState<string[]>(["All"]); // For veg/non-veg filter
   // Add these state variables after your existing ones
   const [themesFilter, setThemesFilter] = useState<string[]>([]);
   const [goalsFilter, setGoalsFilter] = useState<string[]>([]);
@@ -92,9 +92,10 @@ function AllNutrition() {
       plan.title.toLowerCase().includes(nameFilter.toLowerCase()) ||
       plan.category?.toLowerCase().includes(nameFilter.toLowerCase());
 
-    // Veg/Non-veg filter
+    // Veg/Non-veg filter - Updated for multi-select
     const planVegStatus = plan.vegNonVeg || "VEG";
-    const matchesVegFilter = vegFilter === "All" || planVegStatus === vegFilter;
+    const matchesVegFilter =
+      vegFilter.includes("All") || vegFilter.includes(planVegStatus);
 
     // New theme filter
     const matchesThemes =
@@ -360,14 +361,47 @@ function AllNutrition() {
               <InputLabel id="veg-filter-label">Veg-NonVeg</InputLabel>
               <Select
                 labelId="veg-filter-label"
+                multiple
                 value={vegFilter}
-                onChange={(e) => setVegFilter(e.target.value)}
-                label="Filter by Type"
+                onChange={(e) => {
+                  const value = e.target.value as string[];
+
+                  // If "All" is selected, clear other selections and keep only "All"
+                  if (value.includes("All") && !vegFilter.includes("All")) {
+                    setVegFilter(["All"]);
+                  }
+                  // If "All" was previously selected and user selects something else, remove "All"
+                  else if (vegFilter.includes("All") && value.length > 1) {
+                    setVegFilter(value.filter((v) => v !== "All"));
+                  }
+                  // If user deselects "All" or selects other options
+                  else if (!value.includes("All")) {
+                    setVegFilter(value);
+                  }
+                  // Default case
+                  else {
+                    setVegFilter(value);
+                  }
+                }}
+                input={<OutlinedInput label="Veg-NonVeg" />}
+                renderValue={(selected) => (selected as string[]).join(", ")}
               >
-                <MenuItem value="All">All Types</MenuItem>
-                <MenuItem value="VEG">Veg</MenuItem>
-                <MenuItem value="EGG">Egg</MenuItem>
-                <MenuItem value="NONVEG">Non-Veg</MenuItem>
+                <MenuItem value="All">
+                  <Checkbox checked={vegFilter.indexOf("All") > -1} />
+                  <ListItemText primary="All Types" />
+                </MenuItem>
+                <MenuItem value="VEG">
+                  <Checkbox checked={vegFilter.indexOf("VEG") > -1} />
+                  <ListItemText primary="Veg" />
+                </MenuItem>
+                <MenuItem value="EGG">
+                  <Checkbox checked={vegFilter.indexOf("EGG") > -1} />
+                  <ListItemText primary="Egg" />
+                </MenuItem>
+                <MenuItem value="NONVEG">
+                  <Checkbox checked={vegFilter.indexOf("NONVEG") > -1} />
+                  <ListItemText primary="Non-Veg" />
+                </MenuItem>
               </Select>
             </FormControl>
           </div>
@@ -785,3 +819,4 @@ function AllNutrition() {
 }
 
 export default AllNutrition;
+  

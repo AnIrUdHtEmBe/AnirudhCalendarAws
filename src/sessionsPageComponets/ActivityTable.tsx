@@ -954,7 +954,7 @@ function ActivityTable() {
                     </td>
 
                     {/* Activity Name/Select - Conditional for edit mode */}
-                    <td className="w-[18%] px-1 py-2 border-b border-gray-200 align-middle">
+                    <td className="w-[24%] px-1 py-2 border-b border-gray-200 align-middle">
                       <div className="flex justify-center">
                         {!isEditMode ? (
                           /* Your original Autocomplete code here - paste it unchanged */
@@ -1075,7 +1075,7 @@ function ActivityTable() {
                     </td>
 
                     {/* Description - Conditional */}
-                    <td className="w-[22%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[26%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         <div className="break-words overflow-hidden text-left">
                           {activity.description}
@@ -1120,7 +1120,7 @@ function ActivityTable() {
                     </td>
 
                     {/* Unit 1 - Conditional */}
-                    <td className="w-[7%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[2%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         formatUnit(activity.unit)
                       ) : (
@@ -1170,7 +1170,7 @@ function ActivityTable() {
                     </td>
 
                     {/* Unit 2 - Conditional */}
-                    <td className="w-[7%] px-1 py-2 border-b border-gray-200 text-center align-middle">
+                    <td className="w-[2%] px-1 py-2 border-b border-gray-200 text-center align-middle">
                       {!isEditMode ? (
                         formatUnit(activity.unit2)
                       ) : (
