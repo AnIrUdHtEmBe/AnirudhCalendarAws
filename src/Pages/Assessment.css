@@ -356,3 +356,39 @@
   border-bottom: 1px solid #d1d5db; 
   font-size: 16px;
 }
+
+/* Main assessment table row spacing */
+.assessment-table th,
+.assessment-table td {
+  padding: 0.25rem 1rem; /* Changed from 1rem to 0.5rem for vertical padding */
+  font-family: 'roboto', sans-serif;
+  height: 25px; /* Reduced from 40px to 30px */
+  max-height: 25px; /* Reduced from 40px to 30px */
+}
+
+/* Modal table row spacing */
+.modal-table tr {
+  display: table;
+  height: 25px; /* Reduced from 40px to 30px */
+  width: 100%;
+  table-layout: auto;
+}
+
+.modal-table th,
+.modal-table td {
+  padding: 0.25rem 1rem; /* Reduced from 0.5rem to 0.25rem for vertical padding */
+  font-size: 12px;
+  border-bottom: 1px solid #d1d5db;
+  box-sizing: border-box;
+}
+
+/* Change Assessment column header to left align */
+.assess-header{
+  width: 31%; /* w-3/12 */
+  text-align: left; /* Changed from center to left */
+}
+
+/* Left align Assessment column data (2nd column) */
+.assessment-table td:nth-child(2) {
+  text-align: left;
+}
